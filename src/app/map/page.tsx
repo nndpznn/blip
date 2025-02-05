@@ -34,12 +34,17 @@ const Map: React.FC<MapProps> = ({ events = [] }) => {
 
 	return (
 		<div>
-			<button className="m-4 bg-blue-500 text-white px-4 py-2 rounded" type="button" onClick={() => router.push("/")}>go back</button>
+			<button className="m-4 text-white px-4 py-2 rounded hover:text-red-300" type="button" onClick={() => router.push("/")}>go back</button>
 			{/* <Link href="/">go back</Link> */}
 
 			<br></br>
 
-			<h1 className="italic font-bold text-8xl text-center">blip.</h1>
+			<div className="flex justify-center items-center gap-4">
+				{/* <h1 className="italic font-bold text-8xl text-center">blip.</h1> */}
+				<img src="../favicon.ico" className="flex w-[150px] h-[150px]"></img>
+			</div>
+
+			<br></br>
 
 			<p className="italic text-4xl text-center">"welcome in." - nolan and brenden</p>
 
@@ -49,9 +54,9 @@ const Map: React.FC<MapProps> = ({ events = [] }) => {
 				<div id="map" ref={mapContainerRef} className="w-full h-full" />
 			</div>
 
-			<p className="not-italic text-s text-center">see the map below!</p>
+			<p className="not-italic text-s text-center">see the map above!</p>
 
-			<a className="absolute left-0 bottom-0 m-4 bg-blue-500 text-white px-4 py-2 rounded" href="https://github.com/nndpznn/carsNcoffeeFinder">link to documentation</a>
+			<a className="absolute left-0 bottom-0 m-4 text-white px-4 py-2 rounded hover:text-red-300" href="https://github.com/nndpznn/carsNcoffeeFinder">link to documentation</a>
 
 
 		</div>

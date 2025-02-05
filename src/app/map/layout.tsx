@@ -1,4 +1,11 @@
-export default function CreatePageLayout({
+import type { Metadata } from "next"
+
+export const metadata: Metadata = {
+	title: "blip - map",
+	description: "blip map.",
+  };
+
+export default function MapPageLayout({
 	children, // will be a page or nested layout
   }: {
 	children: React.ReactNode
@@ -7,8 +14,8 @@ export default function CreatePageLayout({
 	  <section>
 		{/* Include shared UI here e.g. a header or sidebar */}
 		<nav></nav>
-  
-		{children}
+		<main>{children}</main>
+		
 	  </section>
 	)
   }
