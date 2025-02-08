@@ -2,9 +2,14 @@
 
 // imports
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import React, { useEffect, useRef } from "react";
 import { initMap, addEventMarkers } from "../../api/mapbox";
+
+// components
+import {Button, ButtonGroup} from "@heroui/button";
+import Link from 'next/link';
+
+// customs
 import { Event } from "../../types/event"
 
 interface MapProps {
@@ -33,31 +38,19 @@ const Map: React.FC<MapProps> = ({ events = [] }) => {
   	}, [events]);
 
 	return (
-		<div>
-			<button className="m-4 text-white px-4 py-2 rounded hover:text-red-300" type="button" onClick={() => router.push("/")}>go back</button>
-			{/* <Link href="/">go back</Link> */}
+		<div className="">
 
-			<br></br>
-
-			<div className="flex justify-center items-center gap-4">
-				{/* <h1 className="italic font-bold text-8xl text-center">blip.</h1> */}
+			<div className="flex justify-center items-center gap-4 mt-10">
+				<Button color="primary" className="absolute top-4 left-4 m-4 px-4 py-2 hover:text-red-400" type="button" onPress={() => router.push("/")}>go back</Button>
 				<img src="../favicon.ico" className="flex w-[150px] h-[150px]"></img>
 			</div>
 
 			<br></br>
 
-			<p className="italic text-4xl text-center">"welcome in." - nolan and brenden</p>
-
-			<br></br>
-
-			<div className="flex justify-center items-center w-full h-[500px]">
-				<div id="map" ref={mapContainerRef} className="w-full h-full" />
+			<div className="flex justify-center items-center w-full h-full mt-5 border-t-8 border-red-400"> {/* could be border-t-4 */}
+				<div id="map" ref={mapContainerRef} className="flex w-[100vw] h-[65vh] text-center overflow-hidden" />  
+				{/* <div id="mapreplacement" className="flex w-[100vw] h-[65vh] bg-gray-500"/> */}
 			</div>
-
-			<p className="not-italic text-s text-center">see the map above!</p>
-
-			<a className="absolute left-0 bottom-0 m-4 text-white px-4 py-2 rounded hover:text-red-300" href="https://github.com/nndpznn/carsNcoffeeFinder">link to documentation</a>
-
 
 		</div>
 	);

@@ -15,12 +15,12 @@ mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
  * @param {Array} center - [lng, lat] coordinates for the map center.
  * @returns {mapboxgl.Map} - The created Mapbox instance.
  */
-export const initMap = (containerId: string, center: [number, number] = [-122.4194, 37.7749]) => {
+export const initMap = (containerId: string, center: [number, number] = [-122.4194, 37.7749]) => { // [-87.616, 41.776] is o block
 	return new mapboxgl.Map({
 		container: containerId,
-		style: "mapbox://styles/mapbox/streets-v11",
+		style: "mapbox://styles/mapbox/dark-v10",
 		center,
-		zoom: 10,
+		zoom: 11,
 	});
 };
 
