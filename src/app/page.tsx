@@ -25,7 +25,7 @@ export default function Home() {
         </main>
 
         <Link
-          className="mt-10 rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-red-400 hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
+          className="mt-5 rounded-full border border-solid border-white/[.145] transition-colors flex items-center justify-center hover:bg-red-400 text-base h-12 px-5 min-w-44"
           href="/map"
         >
           open blip

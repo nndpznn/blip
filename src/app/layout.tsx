@@ -1,4 +1,3 @@
-
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import {HeroUIProvider} from "@heroui/react";
@@ -25,13 +24,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="bg-[#0d0d0d]" >
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} >
 
         {/* <HeroUIProvider> */}
-          {/* <main className="purple-dark" > */}
+          <main className="blip-main" >
             {children}
-          {/* </main> */}
+          </main>
         {/* </HeroUIProvider> */}
         
       </body>

@@ -6,14 +6,13 @@ export const metadata: Metadata = {
   };
 
 export default function MapPageLayout({
-	children, // will be a page or nested layout
+	children,
   }: {
 	children: React.ReactNode
   }) {
 	return (
 	  <section>
 		{/* Include shared UI here e.g. a header or sidebar */}
-		<nav></nav>
 		<main>{children}</main>
 		
 	  </section>

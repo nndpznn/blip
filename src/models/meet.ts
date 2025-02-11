@@ -5,13 +5,15 @@ class Meet {
 	title: string
 	body: string
 	link?: string
+	coords: [number, number]
 	images: string[]
 	// user_id: string
   
-	constructor(title: string, body: string) {
+	constructor(title: string, body: string, coords: [number, number]) {
 	  this.id = ''
 	  this.title = title
 	  this.body = body
+	  this.coords = coords
 	  this.images = []
 	}
   }
