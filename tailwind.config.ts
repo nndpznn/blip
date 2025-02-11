@@ -7,6 +7,7 @@ export default {
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}"
   ],
   theme: {
     extend: {
@@ -16,45 +17,46 @@ export default {
       },
     },
   },
+  darkMode: "class",
   plugins: [
-    // heroui({
-    //   themes: {
-    //     "purple-dark": {
-    //       extend: "dark", // <- inherit default values from dark theme
-    //       colors: {
-    //         background: "#0D001A",
-    //         foreground: "#ffffff",
-    //         primary: {
-    //           50: "#3B096C",
-    //           100: "#520F83",
-    //           200: "#7318A2",
-    //           300: "#9823C2",
-    //           400: "#c031e2",
-    //           500: "#DD62ED",
-    //           600: "#F182F6",
-    //           700: "#FCADF9",
-    //           800: "#FDD5F9",
-    //           900: "#FEECFE",
-    //           DEFAULT: "#DD62ED",
-    //           foreground: "#ffffff",
-    //         },
-    //         focus: "#F182F6",
-    //       },
-    //       layout: {
-    //         disabledOpacity: "0.3",
-    //         radius: {
-    //           small: "4px",
-    //           medium: "6px",
-    //           large: "8px",
-    //         },
-    //         borderWidth: {
-    //           small: "1px",
-    //           medium: "2px",
-    //           large: "3px",
-    //         },
-    //       },
-    //     },
-    //   },
-    // }),
+    heroui({
+      themes: {
+        "blip-main": {
+          extend: "dark", // <- inherit default values from dark theme
+          colors: {
+            background: "#0D001A",
+            foreground: "#FFFFFF",
+            primary: {
+              50:  "#FEECEC",  // Very light pinkish red
+              100: "#FDCBCB",  // Lighter pastel red
+              200: "#FCA5A5",  // Soft warm red
+              300: "#F98080",  // Light red
+              400: "#F87171",  // Main focus (Tailwind red-400)
+              500: "#EF4444",  // Vibrant red
+              600: "#DC2626",  // Deeper red
+              700: "#B91C1C",  // Darker red
+              800: "#991B1B",  // Deep crimson
+              900: "#7F1D1D",  // Darkest red
+              DEFAULT: "#F87171", // Matches the core theme color
+              foreground: "#FFFFFF",
+            },
+            focus: "#EF4444", // Slightly more vibrant red
+          },
+          layout: {
+            disabledOpacity: "0.3",
+            radius: {
+              small: "4px",
+              medium: "6px",
+              large: "8px",
+            },
+            borderWidth: {
+              small: "1px",
+              medium: "2px",
+              large: "3px",
+            },
+          },
+        },
+      },
+    }),
   ],
 } satisfies Config;
