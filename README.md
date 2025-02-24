@@ -1,36 +1,35 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Welcome to blip.
 
-## Getting Started
+Targeting amateur videographers and filmmakers looking for a platform to organize their many ideas and keep track of projects, viDoc is designed to streamline the creative process, providing space to take notes, compose shotlists, and eventually, organize ideas visually on a graphic timeline.
 
-First, run the development server:
+<img width="1918" alt="blip main map page" src="https://github.com/user-attachments/assets/b85fa111-ec47-427f-9b95-fe26a5495012" />
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### State of viDoc (updated 9/30)
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+As of Monday, 2/24, blip is in early stages of development, not yet deployed to Vercel. We expect to have a baseline working version deployed by May at the latest.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Ideation
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+This app came about as a result of the realization that we, as car enthusiasts, have no real central resource to find if there are any nearby/upcoming car enthusiast shows and meets, known to the community as "cars and coffee" events. Looking through Reddit threads, Facebook forums, and Instagram pages can be tedious and community centers can be hard to find.
 
-## Learn More
+We hope that this map can become this central resource for carspotters around the country(but California for now) to rely on to find cool events near them. 
 
-To learn more about Next.js, take a look at the following resources:
+### To-Dos
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Some ideas of possible additions/changes to blip that are in consideration.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- [High Priority] Add, create and delete events
+- [High Priority] Google maps links on event posts
+- Map searchbar
+- Attach images to events
 
-## Deploy on Vercel
+### Tech Stack
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Our tech stack consists of TypeScript, React, Next.js, and Supabase, along with the HeroUI library.
+- The project will be hosted by Vercel.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+[![My Skills](https://skillicons.dev/icons?i=ts,react,nextjs,supabase,vercel)](https://skillicons.dev)
+
+### Thanks/Credits
+
+- Thank you to [Net Ninja](https://www.youtube.com/@NetNinja) on YouTube for tutorials on accessing Supabase through JS/React!
