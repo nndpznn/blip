@@ -1,8 +1,9 @@
 'use client'
 
 import { Button } from "@heroui/button"
-import { Input, Textarea} from "@heroui/input";
+import { Input, Textarea, Alert} from "@heroui/react";
 import { useRouter } from 'next/navigation'
+import Image from "next/image";
 
 import { useState } from "react";
 
@@ -16,15 +17,22 @@ export default function Create() {
 	const [body, setBody] = useState('')
 	const [links, setLinks] = useState('')
 
-	const handlePress = () => {
-		console.log("yippie")
+	const [incAlertVisible, setIncAlertVisible] = useState(false)
+
+	const handleClear = () => {
+		setTitle('')
+		setLocation([-87.616, 41.776])
+		setBody('')
+		setLinks('')
+
 	}
 	const handleSubmit = async (e:any) => {
 		console.log([title, body, links])
 
 		if (!title || !body) {
 			console.log("no title or no body")
-
+			setIncAlertVisible(true)
+			return
 		}
 
 		// const {
@@ -68,7 +76,7 @@ export default function Create() {
 			<div id="nav" className="flex justify-center items-center gap-4 w-full py-4 border-b-8 border-red-400">
 				<Button color="primary" className="absolute top-10 left-4 m-4 hover:text-red-400" type="button" onPress={() => router.push("/map")}>go back</Button>
 
-				<img src="../favicon.ico" className="flex w-[120px] h-[120px] cursor-pointer hover:opacity-75" onClick={() => router.push("/")}></img>
+				<Image className="cursor-pointer hover:brightness-75" src="/favicon.ico" width={120} height={120} alt="Logo" onClick={() => router.push("/")}/>
 
 				{/* <Button color="primary" className="absolute top-10 right-4 m-4 hover:text-red-400" type="button" onPress={() => router.push("/create")}>new meet</Button> */}
 			</div>
@@ -84,7 +92,7 @@ export default function Create() {
 						<p className="mt-5 text-xl font-bold">Body</p>
 						<Textarea value={body} onChange={e => setBody(e.target.value)} size="md" type="text" />
 						<p className="mt-5 text-xl font-bold">Location</p>
-						<Input size="md" type="text" />
+						<Input size="md" type="text" value={location.join(", ")} onChange={(e) => setLocation(e.target.value.split(",").map(Number))}/>
 						<p className="mt-5 text-xl font-bold">Links (Optional)</p>
 						<Input value={links} onChange={e => setLinks(e.target.value)}size="md" type="text" />
 					</div>
@@ -96,9 +104,11 @@ export default function Create() {
 					</div>
 				</div>
 
-				<Button color="primary" className="mx-3 bg-primary-700">Clear</Button>
-				<Button color="primary"className="mx-3">Save Draft</Button>
+				<Button color="primary" className="mx-3 bg-primary-700" onPress={handleClear}>Clear</Button>
+				<Button color="primary" className="mx-3">Save Draft</Button>
 				<Button color="primary" className="mx-3" onPress={handleSubmit}>Submit</Button>
+
+				<Alert className="mt-5" title="Incomplete Meet"  description="Your meet is incomplete. Please fill out the required sections." isVisible={incAlertVisible}  onClose={() => setIncAlertVisible(false)}/>
 				
 			</div>
 			
