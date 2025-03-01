@@ -17,9 +17,11 @@ As of Monday, 2/24, blip is in early stages of development, not yet deployed to 
 Some ideas of possible additions/changes to blip that are in consideration.
 
 - [High Priority] Add, create and delete events
+- [High Priority] Sign-in and Google integration
 - [High Priority] Google maps links on event posts
 - Map searchbar
 - Attach images to events
+- 
 
 ### Tech Stack
 
