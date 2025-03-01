@@ -4,8 +4,64 @@ import { Button } from "@heroui/button"
 import { Input, Textarea} from "@heroui/input";
 import { useRouter } from 'next/navigation'
 
+import { useState } from "react";
+
+import { supabase } from '@/clients/supabaseClient'
+
 export default function Create() {
 	const router = useRouter()
+
+	const [title, setTitle] = useState('')
+	const [location, setLocation] = useState([-87.616, 41.776])
+	const [body, setBody] = useState('')
+	const [links, setLinks] = useState('')
+
+	const handlePress = () => {
+		console.log("yippie")
+	}
+	const handleSubmit = async (e:any) => {
+		console.log([title, body, links])
+
+		if (!title || !body) {
+			console.log("no title or no body")
+
+		}
+
+		// const {
+		// 	data: { session },
+		// 	error: sessionError,
+		// } = await supabase.auth.getSession()
+
+		// if (sessionError || !session) {
+		// 	console.log('session not found')
+		// 	return
+		//   }
+
+		// const userID = session.user.id
+
+		const { data, error } = await supabase
+			.from('meets')
+			.insert([
+				{
+					organizer_id: 0,
+					title: title,
+					body: body,
+					location: [-87.616, 41.776],
+					links: links
+				}
+			])
+			.select()
+
+		if (error) {
+			console.log("uh oh. submission error.", error)
+			return
+		}
+
+		if (data) {
+			console.log(data)
+			console.log('form data submitted successfully.', title, body, links)
+		}
+	}
 
 	return (
 		<div className="">
@@ -17,20 +73,20 @@ export default function Create() {
 				{/* <Button color="primary" className="absolute top-10 right-4 m-4 hover:text-red-400" type="button" onPress={() => router.push("/create")}>new meet</Button> */}
 			</div>
 
-			<div className="mx-[10vw] mt-10 h-full">
+			<div className="mx-[10vw] mt-20 h-full">
 
-				<h1 id="header" className="text-3xl font-bold mb-5">new meet</h1>
+				<h1 id="header" className="text-3xl font-bold mb-5">New Meet</h1>
 
 				<div className="flex">
 					<div id="fields" className="w-2/5">
 						<p className="mt-5 text-xl font-bold">Title</p>
-						<Input size="md" type="text" />
+						<Input value={title} onChange={e => setTitle(e.target.value)}size="md" type="text" />
+						<p className="mt-5 text-xl font-bold">Body</p>
+						<Textarea value={body} onChange={e => setBody(e.target.value)} size="md" type="text" />
 						<p className="mt-5 text-xl font-bold">Location</p>
 						<Input size="md" type="text" />
-						<p className="mt-5 text-xl font-bold">Body</p>
-						<Textarea size="md" type="text" />
 						<p className="mt-5 text-xl font-bold">Links (Optional)</p>
-						<Input size="md" type="text" />
+						<Input value={links} onChange={e => setLinks(e.target.value)}size="md" type="text" />
 					</div>
 
 					<div id="images" className="w-3/5 m-10 h-full">
@@ -42,7 +98,7 @@ export default function Create() {
 
 				<Button color="primary" className="mx-3 bg-primary-700">Clear</Button>
 				<Button color="primary"className="mx-3">Save Draft</Button>
-				<Button color="primary" className="mx-3">Submit</Button>
+				<Button color="primary" className="mx-3" onPress={handleSubmit}>Submit</Button>
 				
 			</div>
 			
