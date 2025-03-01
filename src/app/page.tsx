@@ -8,9 +8,9 @@ export default function Home() {
   const router = useRouter()
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <div className="flex flex-col items-center justify-center sm:p-20 font-[family-name:var(--font-geist-sans)]">
-        <main className="p-5 flex flex-col gap-8 items-center sm:items-start"> {/* border-b-2 border-red-400 */}
+    <div className="flex flex-col justify-between min-h-screen sm:p-20 font-[var(--font-geist-sans)]">
+      <div id="main-cluster" className="flex flex-col flex-grow items-center justify-center sm:p-20 font-[var(--font-geist-sans)]">
+        <main className="flex flex-col gap-8 items-center sm:items-start"> {/* border-b-2 border-red-400 */}
           <Image
             className=""
             src="/favicon.ico"
@@ -32,7 +32,7 @@ export default function Home() {
         </Link>
       </div>
 
-      <footer className="flex gap-6 flex-wrap items-center justify-center mt-auto w-full">
+      <footer className="flex py-5 gap-6 items-center justify-center mt-auto w-full">
         <a
           className="flex items-center gap-2 hover:underline hover:underline-offset-4"
           href="https://github.com/nndpznn/blip"
