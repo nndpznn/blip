@@ -35,7 +35,7 @@ export default function Create() {
 
 					<div id="images" className="w-3/5 m-10 h-full">
 						<div className="p-40 bg-[#171717] border border-red-400 rounded">
-							hey
+							wsg bb	
 						</div>
 					</div>
 				</div>
