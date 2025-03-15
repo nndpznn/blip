@@ -8,6 +8,7 @@ import { initMap, addEventMarkers } from "../../api/mapbox";
 // components
 import {Button, ButtonGroup} from "@heroui/button";
 import Link from 'next/link';
+import Image from "next/image";
 
 // customs
 import { Event } from "../../types/event"
@@ -43,7 +44,7 @@ export default function Map({ events = [] }: MapProps) {
 			<div id="nav" className="flex justify-center items-center gap-4 w-full py-4 border-b-8 border-red-400">
 				<Button color="primary" className="absolute top-10 left-4 m-4 hover:text-red-400" type="button" onPress={() => router.push("/")}>go back</Button>
 
-				<img src="../favicon.ico" className="flex w-[120px] h-[120px] cursor-pointer hover:opacity-75" onClick={() => router.push("/")}></img>
+				<Image className="cursor-pointer hover:brightness-75" src="/favicon.ico" width={120} height={120} alt="Logo" onClick={() => router.push("/")}/>
 
 				<Button color="primary" className="absolute top-10 right-4 m-4 hover:text-red-400" type="button" onPress={() => router.push("/create")}>new meet</Button>
 			</div>

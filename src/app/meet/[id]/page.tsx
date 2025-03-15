@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation'
 
 export default function MeetDetail() {
 
-	const exampleMeet = new Meet("Placeholder Meet", "This is some placeholder text. Wow!", [-87.616, 41.776])
+	const exampleMeet = new Meet("Placeholder Meet", "This is some placeholder text. Wow!", "", [-87.616, 41.776])
 
 	const router = useRouter()
 
@@ -19,7 +19,7 @@ export default function MeetDetail() {
 
 				<p className="text-center font-bold text-4xl mx-6 mt-2">{exampleMeet.title}</p>
 
-				<p className="text-center text-xl mx-6 mt-2">Organized by PLACEHOLDER</p>
+					<p className="text-center text-xl mx-6 mt-2">Organized by PLACEHOLDER</p>
 
 				<p className="text-center break-words mx-12 mt-12">{exampleMeet.body} {exampleMeet.body} {exampleMeet.body} {exampleMeet.body} {exampleMeet.body} {exampleMeet.body} {exampleMeet.body} {exampleMeet.body} {exampleMeet.body}</p>
 
