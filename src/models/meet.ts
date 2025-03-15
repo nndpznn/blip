@@ -2,7 +2,7 @@ import User from "./user"
 import { supabase } from "@/clients/supabaseClient"
 
 class Meet {
-	// supabase generates a unique meet ID upon data entry, and can be retrieved later.
+	// supabase generates a unique meet ID upon data entry, and can be retrieved later...
 	organizer_id?: number
 	title: string
 	body: string
