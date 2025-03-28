@@ -54,7 +54,12 @@ export default function Map({ events = [] }: MapProps) {
 				<div id="mapreplacement" className="flex w-[100vw] h-[70vh] text-center bg-gray-500 overflow-hidden"/>
 			</div>
 
-			<Button color="primary" className="m-4 hover:text-red-400" type="button" onPress={() => router.push("/meet/24")}>example meet</Button>
+			<div className="flex justify-center justify-between">
+				<Button color="primary" className="m-4 hover:text-red-400" type="button" onPress={() => router.push("/meet/24")}>example meet</Button>
+				<Button color="primary" className="m-4 hover:text-red-400" type="button" onPress={() => router.push("/seeAllMeets")}>see meets</Button>
+			</div>
+
+
 
 		</div>
 	);
