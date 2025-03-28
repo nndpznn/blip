@@ -4,6 +4,7 @@ import { supabase } from "@/clients/supabaseClient"
 class Meet {
 	// supabase generates a unique meet ID upon data entry, and can be retrieved later...
 	organizer_id?: number
+	id: number
 	title: string
 	body: string
 	coords: [number, number]
@@ -11,6 +12,7 @@ class Meet {
 	images: string[]
   
 	constructor(title: string, body: string, link: string, coords: [number, number]) {
+	  this.id = 0
 	  this.title = title
 	  this.body = body
 	  this.link = link
@@ -64,13 +66,14 @@ class Meet {
 			  links: this.link,
 			  images: this.images,
 			}
-		  ]);
+		  ]).select("id");
 	
 		if (error) {
 		  console.error("Error saving meet data:", error);
 		  return;
 		}
-	
+		
+		this.id = data[0].id
 		console.log("Meet data saved:", data);
 	  }
   }
