@@ -55,7 +55,7 @@ export default function Map({ events = [] }: MapProps) {
 			</div>
 
 			<div className="flex justify-center justify-between">
-				<Button color="primary" className="m-4 hover:text-red-400" type="button" onPress={() => router.push("/meet/24")}>example meet</Button>
+				<Button color="primary" className="m-4 hover:text-red-400" type="button" onPress={() => router.push("/meet/10")}>example meet</Button>
 				<Button color="primary" className="m-4 hover:text-red-400" type="button" onPress={() => router.push("/seeAllMeets")}>see meets</Button>
 			</div>
 
