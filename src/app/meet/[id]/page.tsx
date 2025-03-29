@@ -1,6 +1,7 @@
 'use client'
 
 import Meet from "../../../models/meet"
+import User from "../../../models/user"
 
 import { Button } from "@heroui/button"
 import {Image} from "@heroui/image";
@@ -12,6 +13,8 @@ import { supabase } from '@/clients/supabaseClient'
 export default function MeetDetail() {
 
 	const exampleMeet = new Meet("Placeholder Meet", "This is some placeholder text. Wow!", "", [-87.616, 41.776])
+
+	const exampleUser = new User("chris G.P. T. (gary payton two)", "areyousure@gmail.com")
 
 	const router = useRouter()
 	const { id } = useParams()
@@ -48,9 +51,9 @@ export default function MeetDetail() {
 			<div className="w-1/3 h-screen border-r-4 border-red-400">
 				<p className="text-center font-bold text-4xl mx-6 mt-2">{data.title}</p>
 
-					<p className="text-center text-xl mx-6 mt-2">Organized by PLACEHOLDER</p>
+					<p className="text-center text-xl mx-6 mt-2">Organized by {exampleUser.name}</p>
 
-				<p className="text-center break-words mx-12 mt-12">{data.body} {data.body} {data.body} {data.body} {data.body} {data.body} {data.body} {data.body} {data.body}</p>
+				<p className="text-center break-words mx-12 mt-12">{data.body}</p>
 
 				<p className="text-center mt-12">
 					<Button color="primary" className="text-center" type="button">Instagram</Button>
