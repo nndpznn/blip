@@ -39,15 +39,7 @@ export default function Map({ events = [] }: MapProps) {
   	// }, [events]);
 
 	return (
-		<div className="flex flex-col w-full h-screen">
-
-			<div id="nav" className="flex justify-center items-center gap-4 w-full py-4 border-b-8 border-red-400">
-				<Button color="primary" className="absolute top-10 left-4 m-4 hover:text-red-400" type="button" onPress={() => router.push("/")}>go back</Button>
-
-				<Image className="cursor-pointer hover:brightness-75" src="/favicon.ico" width={120} height={120} alt="Logo" onClick={() => router.push("/")}/>
-
-				<Button color="primary" className="absolute top-10 right-4 m-4 hover:text-red-400" type="button" onPress={() => router.push("/create")}>new meet</Button>
-			</div>
+		<div className="flex flex-col w-full h-full">
 
 			<div className="flex-1 w-full"> {/* could be border-t-4 */}
 				{/* <div id="map" ref={mapContainerRef} className="flex w-[100vw] h-[70vh] text-center overflow-hidden" />   */}
@@ -58,8 +50,6 @@ export default function Map({ events = [] }: MapProps) {
 				<Button color="primary" className="m-4 hover:text-red-400" type="button" onPress={() => router.push("/meet/10")}>example meet</Button>
 				<Button color="primary" className="m-4 hover:text-red-400" type="button" onPress={() => router.push("/seeAllMeets")}>see meets</Button>
 			</div>
-
-
 
 		</div>
 	);

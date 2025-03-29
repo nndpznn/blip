@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Nav from "@/components/nav";
 
 export const metadata: Metadata = {
 	title: "blip - all meets",

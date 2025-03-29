@@ -46,8 +46,6 @@ export default function MeetDetail() {
 	return (
 		<div className="flex">
 			<div className="w-1/3 h-screen border-r-4 border-red-400">
-				<Button color="primary" className="left-4 m-4 hover:text-red-400" type="button" onPress={() => router.push("/map")}>go back</Button>
-
 				<p className="text-center font-bold text-4xl mx-6 mt-2">{data.title}</p>
 
 					<p className="text-center text-xl mx-6 mt-2">Organized by PLACEHOLDER</p>

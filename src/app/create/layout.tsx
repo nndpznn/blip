@@ -1,3 +1,4 @@
+import Nav from "@/components/nav";
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
@@ -12,7 +13,6 @@ export default function MapPageLayout({
   }) {
 	return (
 	  <section>
-		{/* Include shared UI here e.g. a header or sidebar */}
 		<main>{children}</main>
 		
 	  </section>
