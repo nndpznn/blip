@@ -61,6 +61,7 @@ export default function Create() {
 
 		console.log('form data submitted successfully.', meet)
 
+		router.push("/seeAllMeets")
 	}
 
 	return (
