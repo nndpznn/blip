@@ -22,19 +22,6 @@ export default function Searchbar({
 				search
 			  )}.json?autocomplete=true&access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}&limit=5&country=US&bbox=-124.4,32.5,-114.1,42.0`,
 			  { signal: controller.signal }
-
-			//   fetch(
-			// 	`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(search)}.json?` +
-			// 	new URLSearchParams({
-			// 	  access_token: process.env.NEXT_PUBLIC_MAPBOX_TOKEN!,
-			// 	  autocomplete: 'true',
-			// 	  limit: '5',
-			// 	  country: 'us',
-			// 	  bbox: '-124.4,32.5,-114.1,42.0',
-			// 	  types: 'place,address,poi',
-			// 	  language: 'en',
-			// 	}),
-			// 	{ signal: controller.signal }
 			)
 			  .then((res) => res.json())
 			  .then((data) => {
@@ -54,13 +41,17 @@ export default function Searchbar({
 	return (
 		<div className="relative w-screen max-w-md p-4">
 			<div className="relative w-full">
-				<input
-					type="text"
-					value={search}
-					placeholder="search an area"
-					className="w-full p-2 bg-black text-gray-200 placeholder-gray-400 border border-gray-700 rounded"
-					onChange={(e) => setSearch(e.target.value)}
-				/>
+				<div className="flex items-center">
+					<input
+						type="text"
+						value={search}
+						placeholder="search an area"
+						className="w-full p-2 bg-black text-gray-200 placeholder-gray-400 border border-gray-700 rounded"
+						onChange={(e) => setSearch(e.target.value)}
+					/>
+					<Button onPress={() => setSearch("")}>clear</Button>
+				</div>
+	
 				{results.length > 0 && (
 				<ul className="absolute z-50 bg-black rounded shadow w-full max-h-60 overflow-y-auto">
 				{results.map((place) => (
