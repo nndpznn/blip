@@ -4,7 +4,6 @@
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useRef } from "react";
 import { initMap, addEventMarkers } from "../../api/mapbox";
-import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import mapboxgl from 'mapbox-gl';
 // components
 import {Button, ButtonGroup} from "@heroui/button";

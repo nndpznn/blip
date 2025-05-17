@@ -47,23 +47,25 @@ export default function MeetDetail() {
 	)
 
 	return (
-		<div className="flex">
-			<div className="w-1/3 h-screen border-r-4 border-red-400">
-				<p className="text-center font-bold text-4xl mx-6 mt-2">{data.title}</p>
-
+		<div className="flex justify-between">
+			<div className="flex flex-col w-1/3 h-screen border-r-4 border-red-400">
+				<div className="flex-1">
+					<p className="text-center font-bold text-4xl mx-6 mt-2">{data.title}</p>
 					<p className="text-center text-xl mx-6 mt-2">Organized by {exampleUser.name}</p>
+					<p className="text-center break-words mx-12 mt-12">{data.body}</p>
 
-				<p className="text-center break-words mx-12 mt-12">{data.body}</p>
+					<div id="buttoncontainer" className="flex flex-col">
+						<Button color="primary" className="self-center mx-12 my-3" type="button">Instagram</Button>
+						<Button color="primary" className="self-center mx-12 my-3" type="button">TikTok</Button>
+					</div>
+				</div>
 
-				<p className="text-center mt-12">
-					<Button color="primary" className="text-center" type="button">social media 1</Button>
-				</p>
-
-				<p className="text-center mt-4">
-					<Button color="primary" className="text-center" type="button">social media 2</Button>
-				</p>
+				<div id="modifycontainer" className="flex sticky bottom-0 justify-between justify-center">
+					<Button className="mx-8 my-8">Edit</Button>
+					<Button className="mx-8 my-8">Delete</Button>
+				</div>
 			</div>
-
+			
 			{/* TO ADD: GALLERY FUNCTIONALITY */}
 			<div className="w-2/3 h-screen border-l-4 border-red-400">
 				{data.images && (<Image className="rounded-none w-fit object-cover" alt="test" src={data.images[0]} ></Image>)}
