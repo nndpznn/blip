@@ -56,16 +56,17 @@ export default function MeetDetail() {
 				<p className="text-center break-words mx-12 mt-12">{data.body}</p>
 
 				<p className="text-center mt-12">
-					<Button color="primary" className="text-center" type="button">Instagram</Button>
+					<Button color="primary" className="text-center" type="button">social media 1</Button>
 				</p>
 
 				<p className="text-center mt-4">
-					<Button color="primary" className="text-center" type="button">TikTok</Button>
+					<Button color="primary" className="text-center" type="button">social media 2</Button>
 				</p>
 			</div>
 
+			{/* TO ADD: GALLERY FUNCTIONALITY */}
 			<div className="w-2/3 h-screen border-l-4 border-red-400">
-				<Image className="rounded-none w-screen h-screen object-cover" alt="test" src="https://hips.hearstapps.com/hmg-prod/images/2025-porsche-718-cayman-101-66f6f7b824e6d.jpg" ></Image>
+				{data.images && (<Image className="rounded-none w-fit object-cover" alt="test" src={data.images[0]} ></Image>)}
 			</div>
 		</div>
 	);

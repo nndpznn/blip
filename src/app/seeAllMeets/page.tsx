@@ -17,7 +17,7 @@ export default function AllMeets() {
 		  const { data, error } = await supabase.from('meets').select().order('created_at', { ascending: false })
 	
 		  if (error) {
-			setFetchError('Error fetching viDoc projects for this user.')
+			setFetchError('Error fetching meets for this user.')
 			setMeets(null)
 			console.log(error)
 		  }
@@ -33,7 +33,7 @@ export default function AllMeets() {
 	return (
 		<div className="mx-5 my-5">
 			{meets?.map((meet: Meet) => (
-				<p className="block w-fit cursor-pointer my-2 bg-red-400" onClick={() => router.push(`/meet/${meet.id}`)} key={meet.id}>{meet.title}</p>
+				<p className="rounded-xl p-2 block w-fit cursor-pointer my-3 bg-red-400" onClick={() => router.push(`/meet/${meet.id}`)} key={meet.id}>{meet.title}</p>
 			))}
 		</div>
 	)
