@@ -71,8 +71,15 @@ export default function MeetDetail() {
 		<div className="flex justify-between">
 			<div className="flex flex-col w-1/3 h-screen border-r-4 border-red-400">
 				<div className="flex-1">
+					{/* TITLE/HEADING */}
 					<p className="text-center font-bold text-4xl mx-6 mt-2">{data.title}</p>
+					<p className="text-center text-xl mx-6 mt-2">On {data.date ? data.date.toString() : "No date found"}</p>
+
+					<p className="text-center text-xl mx-6 mt-2">From {Meet.getTimeStringFrom(data.startDateTime)} to {Meet.getTimeStringFrom(data.endDateTime)}</p>					
 					<p className="text-center text-xl mx-6 mt-2">Organized by {exampleUser.name}</p>
+
+
+					{/* CONTENT */}
 					<p className="text-center break-words mx-12 mt-12">{data.body}</p>
 
 					<div id="buttoncontainer" className="flex flex-col">

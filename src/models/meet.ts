@@ -26,6 +26,8 @@ class Meet {
 	}
 
 	// DATE TIME STUFF
+	
+	// Takes our data and returns real date
 	static getCalendarDateFrom(datetime: string): CalendarDate | null {
 		if (!datetime) return null;
 		try {
@@ -35,58 +37,55 @@ class Meet {
 		}
 	}
 
+	// Takes our data and returns just time string
 	static getTimeStringFrom(datetime: string): string | null {
 		if (!datetime.includes("T")) return null;
-		return datetime.split("T")[1]?.slice(0, 5) ?? null;
+
+		let timePart = datetime.split("T")[1]?.replace("Z", "") ?? ""; // "4:00:00"
+		const [hour, minute] = timePart.split(":");
+
+		if (!hour || !minute) return null;
+
+		const paddedHour = hour.padStart(2, "0");
+		return `${paddedHour}:${minute}`;
 	}
 
+	// Combines date and time into datetime string
 	static setDatetimeParts(date: CalendarDate, time: string): string {
 		return `${date.toString()}T${time}:00Z`;
 	}
 
-	get startCalendarDate(): CalendarDate | null {
+	// Get/Set starting calendar date
+	get date(): CalendarDate | null {
 		return Meet.getCalendarDateFrom(this.startDateTime);
 	}
-
-	set startCalendarDate(val: CalendarDate | null) {
+	set date(val: CalendarDate | null) {
 		if (!val) return;
 		const time = this.startTimeString ?? "00:00";
 		this.startDateTime = Meet.setDatetimeParts(val, time);
 	}
 
+	// Get/Set starting time
 	get startTimeString(): string | null {
 		return Meet.getTimeStringFrom(this.startDateTime);
 	}
-
 	set startTimeString(val: string | null) {
 		if (!val) return;
-		const date = this.startCalendarDate;
+		const date = this.date;
 		if (date) this.startDateTime = Meet.setDatetimeParts(date, val);
 	}
 
-		get endCalendarDate(): CalendarDate | null {
-		return Meet.getCalendarDateFrom(this.endDateTime);
-	}
-
-	set endCalendarDate(val: CalendarDate | null) {
-		if (!val) return;
-		const time = this.endTimeString ?? "00:00";
-		this.endDateTime = Meet.setDatetimeParts(val, time);
-	}
-
+	// Get/Set ending time
 	get endTimeString(): string | null {
 		return Meet.getTimeStringFrom(this.endDateTime);
 	}
-
 	set endTimeString(val: string | null) {
 		if (!val) return;
-		const date = this.endCalendarDate;
+		const date = this.date;
 		if (date) this.endDateTime = Meet.setDatetimeParts(date, val);
 	}
 
-
 	// END DATE TIME STUFF
-
 
 	async uploadImages(files: File[]): Promise<void> {
 		const uploadedImageUrls: string[] = [];

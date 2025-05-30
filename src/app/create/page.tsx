@@ -47,6 +47,9 @@ export default function Create() {
 		setBody('')
 		setLinks('')
 		setImageFiles([])
+		setDate(today(getLocalTimeZone()).toString())
+		setStartTime('')
+		setEndTime('')
 		setLocation([-87.616, 41.776])
 
 	}
@@ -60,6 +63,9 @@ export default function Create() {
 		}
 
 		const meet = new Meet(title, body, links, [-87.616, 41.776])
+		meet.date = Meet.getCalendarDateFrom(date)
+		meet.startTimeString = startTime
+		meet.endTimeString = endTime
 
 		await meet.uploadImages(imageFiles)
 
