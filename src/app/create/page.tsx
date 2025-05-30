@@ -6,6 +6,9 @@ import { Input, Textarea, Alert} from "@heroui/react";
 import { useRouter } from 'next/navigation'
 import Image from "next/image";
 
+import {Calendar} from '@heroui/calendar'
+import {today, getLocalTimeZone} from "@internationalized/date";
+
 import mapboxgl from 'mapbox-gl';
 
 import { useState, useRef, useEffect } from "react";
@@ -25,6 +28,9 @@ export default function Create() {
 	const [body, setBody] = useState('')
 	const [links, setLinks] = useState('')
 	const [imageFiles, setImageFiles] = useState<File[]>([])
+	const [date, setDate] = useState('')
+	const [startTime, setStartTime] = useState('')
+	const [endTime, setEndTime] = useState('')
 
 	const [incAlertVisible, setIncAlertVisible] = useState(false)
 
@@ -67,7 +73,7 @@ export default function Create() {
 	return (
 		<div className="">
 
-			<div className="mx-[10vw] mt-5 h-full">
+			<div className="mx-[5vw] mt-5 h-full">
 				<h1 id="header" className="text-3xl font-bold mb-5">New Meet</h1>
 
 				<div className="flex mb-5">
@@ -85,21 +91,34 @@ export default function Create() {
 						<Input value={links} onChange={e => setLinks(e.target.value)}size="md" type="text" />
 					</div>
 
-					<div id="images" className="w-3/5 ml-10">
-						<p className="text-xl font-bold">Upload Images</p>
-				
-						<div className="mt-4 p-40 bg-[#171717] border border-red-400 rounded">
+					<div id="calendar" className="w-1/5 ml-10">
+						<p className="text-xl font-bold">Date</p>
 
-							<input
-							className=""
-							type="file"
-							multiple
-							accept="image/*"
-							onChange={handleImageChange}
-							/>
+						<Calendar
+    					aria-label="Date (Min Date Value)"
+      					defaultValue={today(getLocalTimeZone())}
+      					minValue={today(getLocalTimeZone())}
+    					/>
+					</div>
 
-							<p>yes we know this looks not great</p>
-						</div>
+					<div id="misc" className="w-2/5 ml-10">
+						<p className="mt-5 text-xl font-bold">Start Time</p>
+						<Input value={startTime} onChange={e => setStartTime(e.target.value)}size="md" type="text" />
+
+						<p className="mt-5 text-xl font-bold">End Time</p>
+						<Input value={endTime} onChange={e => setEndTime(e.target.value)}size="md" type="text" />
+
+						<p className="mt-5 text-xl font-bold">Upload Images</p>
+
+						<input
+						className="mt-5"
+						type="file"
+						multiple
+						accept="image/*"
+						onChange={handleImageChange}
+						/>
+
+						{/* <p>yes we know this looks not great</p> */}
 					</div>
 				</div>
 
