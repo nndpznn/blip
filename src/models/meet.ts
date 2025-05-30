@@ -39,7 +39,7 @@ class Meet {
 
 	// Takes our data and returns just time string
 	static getTimeStringFrom(datetime: string): string | null {
-		if (!datetime.includes("T")) return null;
+		if (!datetime || !datetime.includes("T")) return null;
 
 		let timePart = datetime.split("T")[1]?.replace("Z", "") ?? ""; // "4:00:00"
 		const [hour, minute] = timePart.split(":");
