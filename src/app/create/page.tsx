@@ -2,12 +2,12 @@
 
 // huh
 import { Button } from "@heroui/button"
-import { Input, Textarea, Alert} from "@heroui/react";
+import { Input, Textarea, Alert, TimeInput} from "@heroui/react";
 import { useRouter } from 'next/navigation'
 import Image from "next/image";
 
 import {Calendar} from '@heroui/calendar'
-import {today, getLocalTimeZone} from "@internationalized/date";
+import {Time, parseTime, today, getLocalTimeZone} from "@internationalized/date";
 
 import mapboxgl from 'mapbox-gl';
 
@@ -28,9 +28,9 @@ export default function Create() {
 	const [body, setBody] = useState('')
 	const [links, setLinks] = useState('')
 	const [imageFiles, setImageFiles] = useState<File[]>([])
-	const [date, setDate] = useState('')
-	const [startTime, setStartTime] = useState('')
-	const [endTime, setEndTime] = useState('')
+	const [date, setDate] = useState<any>(null)
+	const [startTime, setStartTime] = useState<Time | null>()
+	const [endTime, setEndTime] = useState<Time | null>()
 
 	const [incAlertVisible, setIncAlertVisible] = useState(false)
 
@@ -47,25 +47,25 @@ export default function Create() {
 		setBody('')
 		setLinks('')
 		setImageFiles([])
-		setDate(today(getLocalTimeZone()).toString())
-		setStartTime('')
-		setEndTime('')
+		setDate(today(getLocalTimeZone()))
+		setStartTime(null)
+		setEndTime(null)
 		setLocation([-87.616, 41.776])
 
 	}
 	const handleSubmit = async (e:any) => {
 		console.log([title, body, links])
 
-		if (!title || !body) {
+		if (!title || !body || !date || !startTime || !endTime) {
 			console.log("no title or no body")
 			setIncAlertVisible(true)
 			return
 		}
 
 		const meet = new Meet(title, body, links, [-87.616, 41.776])
-		meet.date = Meet.getCalendarDateFrom(date)
-		meet.startTimeString = startTime
-		meet.endTimeString = endTime
+		meet.date = date
+		meet.startTime = startTime
+		meet.endTime = endTime
 
 		await meet.uploadImages(imageFiles)
 
@@ -97,22 +97,28 @@ export default function Create() {
 						<Input value={links} onChange={e => setLinks(e.target.value)}size="md" type="text" />
 					</div>
 
-					<div id="calendar" className="w-1/5 ml-10">
+					<div id="calendar" className="w-2/5 ml-10 align-items-center">
 						<p className="text-xl font-bold">Date</p>
 
 						<Calendar
     					aria-label="Date (Min Date Value)"
       					defaultValue={today(getLocalTimeZone())}
       					minValue={today(getLocalTimeZone())}
+						value={date}
+						onChange={setDate}
     					/>
+
+						<Button color="primary" onPress={() => console.log(date)}>Print date to console</Button>
 					</div>
 
-					<div id="misc" className="w-2/5 ml-10">
+					<div id="misc" className="flex flex-col w-1/5 ml-10">
 						<p className="mt-5 text-xl font-bold">Start Time</p>
-						<Input value={startTime} onChange={e => setStartTime(e.target.value)}size="md" type="text" />
+						{/* <Input value={startTime} onChange={e => setStartTime(e.target.value)}size="md" type="text" /> */}
+						<TimeInput value={startTime} onChange={setStartTime} label="Start Time" />
 
 						<p className="mt-5 text-xl font-bold">End Time</p>
-						<Input value={endTime} onChange={e => setEndTime(e.target.value)}size="md" type="text" />
+						{/* <Input value={endTime} onChange={e => setEndTime(e.target.value)}size="md" type="text" /> */}
+						<TimeInput value={endTime} onChange={setEndTime} label="End Time" />
 
 						<p className="mt-5 text-xl font-bold">Upload Images</p>
 

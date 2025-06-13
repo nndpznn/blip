@@ -1,6 +1,6 @@
 import User from "./user"
 import { supabase } from "@/clients/supabaseClient"
-import { parseDate, CalendarDate } from "@internationalized/date";
+import { CalendarDateTime, Time, parseDate, CalendarDate, toCalendarDate, fromDate } from "@internationalized/date";
 
 class Meet {
 	// supabase generates a unique meet ID upon data entry, and can be retrieved later...
@@ -9,20 +9,22 @@ class Meet {
 	title: string
 	body: string
 	link?: string
-	coords: [number, number]
+	location: [number, number]
 	images: string[]
-	startDateTime: string
-	endDateTime: string
+	date: CalendarDate | null
+	startTime: Time | null
+	endTime: Time | null
   
-	constructor(title: string, body: string, link: string, coords: [number, number]) {
+	constructor(title: string, body: string, link: string, location: [number, number]) {
 	  this.id = 0
 	  this.title = title
 	  this.body = body
 	  this.link = link
-	  this.coords = coords
+	  this.location = location
 	  this.images = []
-	  this.startDateTime = ""
-	  this.endDateTime = ""
+	  this.date = null
+	  this.startTime = null
+	  this.endTime = null
 	}
 
 	// DATE TIME STUFF
@@ -48,41 +50,6 @@ class Meet {
 
 		const paddedHour = hour.padStart(2, "0");
 		return `${paddedHour}:${minute}`;
-	}
-
-	// Combines date and time into datetime string
-	static setDatetimeParts(date: CalendarDate, time: string): string {
-		return `${date.toString()}T${time}:00Z`;
-	}
-
-	// Get/Set starting calendar date
-	get date(): CalendarDate | null {
-		return Meet.getCalendarDateFrom(this.startDateTime);
-	}
-	set date(val: CalendarDate | null) {
-		if (!val) return;
-		const time = this.startTimeString ?? "00:00";
-		this.startDateTime = Meet.setDatetimeParts(val, time);
-	}
-
-	// Get/Set starting time
-	get startTimeString(): string | null {
-		return Meet.getTimeStringFrom(this.startDateTime);
-	}
-	set startTimeString(val: string | null) {
-		if (!val) return;
-		const date = this.date;
-		if (date) this.startDateTime = Meet.setDatetimeParts(date, val);
-	}
-
-	// Get/Set ending time
-	get endTimeString(): string | null {
-		return Meet.getTimeStringFrom(this.endDateTime);
-	}
-	set endTimeString(val: string | null) {
-		if (!val) return;
-		const date = this.date;
-		if (date) this.endDateTime = Meet.setDatetimeParts(date, val);
 	}
 
 	// END DATE TIME STUFF
@@ -129,11 +96,12 @@ class Meet {
 			  organizer_id: 0,
 			  title: this.title,
 			  body: this.body,
-			  location: this.coords,
+			  location: this.location,
 			  links: this.link,
 			  images: this.images,
-			  startDateTime: this.startDateTime,
-			  endDateTime: this.endDateTime
+			  date: this.date?.toString(),
+			  startTime: this.startTime?.toString(),
+			  endTime: this.endTime?.toString(),
 			}
 		  ]).select("id");
 	
