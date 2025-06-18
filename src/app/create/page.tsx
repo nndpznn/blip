@@ -57,7 +57,7 @@ export default function Create() {
 		console.log([title, body, links])
 
 		if (!title || !body || !date || !startTime || !endTime) {
-			console.log("no title or no body")
+			console.log("missing one or more required fields")
 			setIncAlertVisible(true)
 			return
 		}

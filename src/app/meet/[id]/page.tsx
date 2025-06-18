@@ -4,9 +4,13 @@ import Meet from "../../../models/meet"
 import User from "../../../models/user"
 
 import { Button } from "@heroui/button"
+import { Input, Textarea, TimeInput} from "@heroui/react";
 import {Image} from "@heroui/image";
 import { useRouter, useParams } from 'next/navigation'
 import { useEffect, useState } from "react";
+
+import {Calendar} from '@heroui/calendar'
+import {Time, today, getLocalTimeZone} from "@internationalized/date";
 
 import { supabase } from '@/clients/supabaseClient'
 import { parseDate, CalendarDate } from "@internationalized/date";
@@ -21,7 +25,81 @@ import {
 } from "@heroui/react";
 
 export default function MeetDetail() {
-	const {isOpen, onOpen, onOpenChange} = useDisclosure()
+	const [title, setTitle] = useState('')
+	const [address, setAddress] = useState('')
+	const [location, setLocation] = useState([-87.616, 41.776]) 
+	const [body, setBody] = useState('')
+	const [links, setLinks] = useState('')
+	const [imageFiles, setImageFiles] = useState<File[]>([])
+	const [date, setDate] = useState<any>(null)
+	const [startTime, setStartTime] = useState<Time | null>()
+	const [endTime, setEndTime] = useState<Time | null>()
+
+	const [incAlertVisible, setIncAlertVisible] = useState(false)
+
+	const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const files = e.target.files;
+		if (files) {
+		  setImageFiles(Array.from(files)); // Convert FileList to an array
+		}
+	  };
+
+	const handleClear = () => {
+		setTitle('')
+		setAddress('')
+		setBody('')
+		setLinks('')
+		setImageFiles([])
+		setDate(today(getLocalTimeZone()))
+		setStartTime(null)
+		setEndTime(null)
+		setLocation([-87.616, 41.776])
+	}
+
+	// const handleFill = () => {
+	// 	setTitle(meet?.title || '')
+	// 	setBody(meet?.body || '')
+	// 	setLinks(meet?.link || '')
+	// 	// setImageFiles(meet?.files || '')
+	// 	setDate(today(getLocalTimeZone()))
+	// 	setStartTime(null)
+	// 	setEndTime(null)
+	// 	setLocation([-87.616, 41.776])
+	// }
+
+	const handleEdit = async (e:any) => {
+		console.log([title, body, links])
+
+		if (!title || !body || !date || !startTime || !endTime) {
+			console.log("missing one or more required fields")
+			setIncAlertVisible(true)
+			return
+		}
+
+		const meet = new Meet(title, body, links, [-87.616, 41.776])
+		meet.date = date
+		meet.startTime = startTime
+		meet.endTime = endTime
+
+		await meet.uploadImages(imageFiles)
+
+		await meet.saveEditDatabase()
+
+		console.log('form data submitted successfully.', meet)
+
+		router.push("/seeAllMeets")
+	}
+
+	const {
+		isOpen: isDeleteOpen, 
+		onOpen: onDeleteOpen, 
+		onOpenChange: onDeleteOpenChange
+	} = useDisclosure()
+	const {
+		isOpen: isEditOpen, 
+		onOpen: onEditOpen, 
+		onOpenChange: onEditOpenChange
+	} = useDisclosure()
 	const exampleMeet = new Meet("Placeholder Meet", "This is some placeholder text. Wow!", "", [-87.616, 41.776])
 
 	const exampleUser = new User("chris G.P. T. (gary payton two)", "areyousure@gmail.com")
@@ -81,6 +159,7 @@ export default function MeetDetail() {
 		}
 	}
 
+
 	return (
 		<div className="flex justify-between">
 			<div className="flex flex-col w-1/3 h-screen border-r-4 border-red-400">
@@ -103,8 +182,8 @@ export default function MeetDetail() {
 				</div>
 
 				<div id="modifycontainer" className="flex sticky bottom-0 justify-between justify-center">
-					<Button onPress={() => console.log(meet)}className="mx-8 my-8">Edit</Button>
-					<Button onPress={onOpen} className="mx-8 my-8">Delete</Button>
+					<Button onPress={onEditOpen} className="mx-8 my-8">Edit</Button>
+					<Button onPress={onDeleteOpen} className="mx-8 my-8">Delete</Button>
 				</div>
 			</div>
 
@@ -114,7 +193,7 @@ export default function MeetDetail() {
 			</div>
 
 			{/* DELETE CONFIRM PROTOCOL */}
-			<Drawer className="bg-black" isOpen={isOpen} onOpenChange={onOpenChange} size="xs">
+			<Drawer className="bg-black" isOpen={isDeleteOpen} onOpenChange={onDeleteOpenChange} size="xs">
 				<DrawerContent>
 				{(onClose) => (
 					<>
@@ -130,6 +209,75 @@ export default function MeetDetail() {
 						</Button>
 						<Button color="primary" onPress={() => onDelete(meet.id)}>
 						Delete
+						</Button>
+					</DrawerFooter>
+					</>
+				)}
+				</DrawerContent>
+			</Drawer>
+
+			{/* EDIT CONFIRM PROTOCOL */}
+			<Drawer className="bg-black" isOpen={isEditOpen} onOpenChange={onEditOpenChange} size="full">
+				<DrawerContent>
+				{(onClose) => (
+					<>
+					<DrawerHeader className="flex flex-col gap-1">Edit Meet</DrawerHeader>
+					<DrawerBody>
+						<div className="flex mb-5">
+							<div id="fields" className="w-2/5">
+								<p className="text-xl font-bold">Title</p>
+								<Input value={meet.title} onChange={e => setTitle(e.target.value)}size="md" type="text" />
+						
+								<p className="mt-5 text-xl font-bold">Body</p>
+								<Textarea minRows={4} maxRows={4} value={meet.body} onChange={e => setBody(e.target.value)} size="md" type="text" />
+						
+								<p className="mt-5 text-xl font-bold">Location</p>
+								<Input value={address} onChange={e => setAddress(e.target.value)}size="md" type="text" />
+						
+								<p className="mt-5 text-xl font-bold">Links (Optional)</p>
+								<Input value={links} onChange={e => setLinks(e.target.value)}size="md" type="text" />
+							</div>
+
+							<div id="calendar" className="w-1/5 ml-10">
+								<p className="text-xl font-bold">Date</p>
+
+								<Calendar
+    							aria-label="Date (Min Date Value)"
+      							defaultValue={today(getLocalTimeZone())}
+      							minValue={today(getLocalTimeZone())}
+    							/>
+						</div>
+
+					<div id="misc" className="w-2/5 ml-10">
+						<p className="mt-5 text-xl font-bold">Start Time</p>
+						{/* <Input value={startTime} onChange={e => setStartTime(e.target.value)}size="md" type="text" /> */}
+						<TimeInput value={startTime} onChange={setStartTime} label="Start Time" />
+
+						<p className="mt-5 text-xl font-bold">End Time</p>
+						{/* <Input value={endTime} onChange={e => setEndTime(e.target.value)}size="md" type="text" /> */}
+						<TimeInput value={endTime} onChange={setEndTime} label="End Time" />
+
+						<p className="mt-5 text-xl font-bold">Upload Images</p>
+
+						<input
+						className="mt-5"
+						type="file"
+						multiple
+						accept="image/*"
+						onChange={handleImageChange}
+						/>
+					</div>
+				</div>
+					</DrawerBody>
+					<DrawerFooter>
+						<Button color="primary" onPress={onClose}>
+						Cancel
+						</Button>
+						<Button color="primary" onPress={handleClear}>
+						Clear
+						</Button>
+						<Button color="primary" onPress={() => handleEdit(meet.id)}>
+						Edit
 						</Button>
 					</DrawerFooter>
 					</>
