@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import LoginWithGoogle from "../components/googleSignin";
 
 export default function Home() {
   const router = useRouter()
@@ -24,12 +25,15 @@ export default function Home() {
 
         </main>
 
-        <Link
+        {/* <Link
           className="mt-5 rounded-full border border-solid border-white/[.145] transition-colors flex items-center justify-center hover:bg-red-400 text-base h-12 px-5 min-w-44"
           href="/map"
         >
           open blip
-        </Link>
+        </Link> */}
+
+        <LoginWithGoogle />
+
       </div>
 
       <footer className="flex py-5 gap-6 items-center justify-center mt-auto w-full">
