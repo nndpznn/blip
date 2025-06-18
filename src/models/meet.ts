@@ -113,6 +113,33 @@ class Meet {
 		this.id = data[0].id
 		console.log("Meet data saved:", data);
 	  }
+
+	  async saveEditDatabase(): Promise<void> {
+		const { data, error } = await supabase
+		  .from('meets')
+		  .update([
+			{
+			  organizer_id: 0,
+			  title: this.title,
+			  body: this.body,
+			  location: this.location,
+			  links: this.link,
+			  images: this.images,
+			  date: this.date?.toString(),
+			  startTime: this.startTime?.toString(),
+			  endTime: this.endTime?.toString(),
+			}
+		  ]).eq("id", this.id)
+		  .select("id");
+	
+		if (error) {
+		  console.error("Error saving meet data:", error);
+		  return;
+		}
+		
+		this.id = data[0].id
+		console.log("Meet data edited:", data);
+	  }
   }
   
   export default Meet
