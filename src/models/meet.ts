@@ -4,7 +4,7 @@ import { CalendarDateTime, Time, parseDate, CalendarDate, toCalendarDate, fromDa
 
 class Meet {
 	// supabase generates a unique meet ID upon data entry, and can be retrieved later...
-	organizer_id?: number
+	organizerId: string 
 	id: number
 	title: string
 	body: string
@@ -15,7 +15,8 @@ class Meet {
 	startTime: Time | null
 	endTime: Time | null
   
-	constructor(title: string, body: string, link: string, location: [number, number]) {
+	constructor(organizerId: string, title: string, body: string, link: string, location: [number, number]) {
+	  this.organizerId = organizerId ? organizerId : "unknown"
 	  this.id = 0
 	  this.title = title
 	  this.body = body
@@ -93,7 +94,7 @@ class Meet {
 		  .from('meets')
 		  .insert([
 			{
-			  organizer_id: 0,
+			  organizerId: this.organizerId,
 			  title: this.title,
 			  body: this.body,
 			  location: this.location,
@@ -119,7 +120,7 @@ class Meet {
 		  .from('meets')
 		  .update([
 			{
-			  organizer_id: 0,
+			  organizerId: this.organizerId,
 			  title: this.title,
 			  body: this.body,
 			  location: this.location,
