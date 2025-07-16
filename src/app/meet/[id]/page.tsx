@@ -30,7 +30,8 @@ export default function MeetDetail() {
 	const [location, setLocation] = useState([-87.616, 41.776]) 
 	const [body, setBody] = useState('')
 	const [links, setLinks] = useState('')
-	const [imageFiles, setImageFiles] = useState<File[]>([])
+	const [imageFiles, setImageFiles] = useState<string[]>([]) // TAKE ANOTHER LOOK AT THIS/FILES LATER
+	const [files, setFiles] = useState<File[]>([])
 	const [date, setDate] = useState<any>(null)
 	const [startTime, setStartTime] = useState<Time | null>()
 	const [endTime, setEndTime] = useState<Time | null>()
@@ -40,7 +41,7 @@ export default function MeetDetail() {
 	const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = e.target.files;
 		if (files) {
-		  setImageFiles(Array.from(files)); // Convert FileList to an array
+		  setFiles(Array.from(files)); // Convert FileList to an array
 		}
 	  };
 
@@ -56,16 +57,16 @@ export default function MeetDetail() {
 		setLocation([-87.616, 41.776])
 	}
 
-	// const handleFill = () => {
-	// 	setTitle(meet?.title || '')
-	// 	setBody(meet?.body || '')
-	// 	setLinks(meet?.link || '')
-	// 	// setImageFiles(meet?.files || '')
-	// 	setDate(today(getLocalTimeZone()))
-	// 	setStartTime(null)
-	// 	setEndTime(null)
-	// 	setLocation([-87.616, 41.776])
-	// }
+	const handleFill = () => {
+		setTitle(meet?.title || '')
+		setBody(meet?.body || '')
+		setLinks(meet?.link || '')
+		// setImageFiles(meet?.files || '')
+		setDate(today(getLocalTimeZone()))
+		setStartTime(null)
+		setEndTime(null)
+		setLocation([-87.616, 41.776])
+	}
 
 	const handleEdit = async (e:any) => {
 		console.log([title, body, links])
@@ -76,12 +77,12 @@ export default function MeetDetail() {
 			return
 		}
 
-		const meet = new Meet(title, body, links, [-87.616, 41.776])
+		const meet = new Meet("lmao", title, body, links, [-87.616, 41.776])
 		meet.date = date
 		meet.startTime = startTime
 		meet.endTime = endTime
 
-		await meet.uploadImages(imageFiles)
+		await meet.uploadImages(files)
 
 		await meet.saveEditDatabase()
 
@@ -100,7 +101,7 @@ export default function MeetDetail() {
 		onOpen: onEditOpen, 
 		onOpenChange: onEditOpenChange
 	} = useDisclosure()
-	const exampleMeet = new Meet("Placeholder Meet", "This is some placeholder text. Wow!", "", [-87.616, 41.776])
+	const exampleMeet = new Meet("lmao", "Placeholder Meet", "This is some placeholder text. Wow!", "", [-87.616, 41.776])
 
 	const exampleUser = new User("chris G.P. T. (gary payton two)", "areyousure@gmail.com")
 
@@ -126,6 +127,21 @@ export default function MeetDetail() {
 	
 		fetchData()
 	  }, [id])
+
+	  useEffect(() => {
+
+		if (isEditOpen && meet) {
+			setTitle(meet?.title || '')
+			setBody(meet?.body || '')
+			setLinks(meet?.link || '')
+			setImageFiles(meet?.images || '') // FIX LATER
+			setDate(today(getLocalTimeZone()))
+			setStartTime(meet?.startTime)
+			setEndTime(meet?.endTime)
+			setLocation([-87.616, 41.776])
+		}
+	  }, [meet, isEditOpen])
+
 
 	if (!meet)
 	return (
@@ -226,10 +242,10 @@ export default function MeetDetail() {
 						<div className="flex mb-5">
 							<div id="fields" className="w-2/5">
 								<p className="text-xl font-bold">Title</p>
-								<Input value={meet.title} onChange={e => setTitle(e.target.value)}size="md" type="text" />
+								<Input value={title} onChange={e => setTitle(e.target.value)}size="md" type="text" />
 						
 								<p className="mt-5 text-xl font-bold">Body</p>
-								<Textarea minRows={4} maxRows={4} value={meet.body} onChange={e => setBody(e.target.value)} size="md" type="text" />
+								<Textarea minRows={4} maxRows={4} value={body} onChange={e => setBody(e.target.value)} size="md" type="text" />
 						
 								<p className="mt-5 text-xl font-bold">Location</p>
 								<Input value={address} onChange={e => setAddress(e.target.value)}size="md" type="text" />
@@ -248,25 +264,25 @@ export default function MeetDetail() {
     							/>
 						</div>
 
-					<div id="misc" className="w-2/5 ml-10">
-						<p className="mt-5 text-xl font-bold">Start Time</p>
-						{/* <Input value={startTime} onChange={e => setStartTime(e.target.value)}size="md" type="text" /> */}
-						<TimeInput value={startTime} onChange={setStartTime} label="Start Time" />
+						<div id="misc" className="w-2/5 ml-10">
+							<p className="mt-5 text-xl font-bold">Start Time</p>
+							{/* <Input value={startTime} onChange={e => setStartTime(e.target.value)}size="md" type="text" /> */}
+							<TimeInput value={startTime} onChange={setStartTime} label="Start Time" />
 
-						<p className="mt-5 text-xl font-bold">End Time</p>
-						{/* <Input value={endTime} onChange={e => setEndTime(e.target.value)}size="md" type="text" /> */}
-						<TimeInput value={endTime} onChange={setEndTime} label="End Time" />
+							<p className="mt-5 text-xl font-bold">End Time</p>
+							{/* <Input value={endTime} onChange={e => setEndTime(e.target.value)}size="md" type="text" /> */}
+							<TimeInput value={endTime} onChange={setEndTime} label="End Time" />
 
-						<p className="mt-5 text-xl font-bold">Upload Images</p>
+							<p className="mt-5 text-xl font-bold">Upload Images</p>
 
-						<input
-						className="mt-5"
-						type="file"
-						multiple
-						accept="image/*"
-						onChange={handleImageChange}
-						/>
-					</div>
+							<input
+							className="mt-5"
+							type="file"
+							multiple
+							accept="image/*"
+							onChange={handleImageChange}
+							/>
+						</div>
 				</div>
 					</DrawerBody>
 					<DrawerFooter>
