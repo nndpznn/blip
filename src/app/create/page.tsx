@@ -13,6 +13,7 @@ import mapboxgl from 'mapbox-gl';
 
 import { useState, useRef, useEffect } from "react";
 import Meet from '@/models/meet'
+import { useAuth } from "@/clients/authContext";
 
 mapboxgl.accessToken = 'pk.eyJ1Ijoibm5kcHpubiIsImEiOiJjbTZxNmF1NjgxbDV5MmxwemlxOG13OG1lIn0.Akl1Y0JXLXH6eB0R6z9wkQ'
 
@@ -33,6 +34,7 @@ export default function Create() {
 	const [endTime, setEndTime] = useState<Time | null>()
 
 	const [incAlertVisible, setIncAlertVisible] = useState(false)
+	const { user, loading: authLoading, signOut } = useAuth();
 
 	const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = e.target.files;
@@ -62,7 +64,7 @@ export default function Create() {
 			return
 		}
 
-		const meet = new Meet(title, body, links, [-87.616, 41.776])
+		const meet = new Meet(user!.id, title, body, links, [-87.616, 41.776])
 		meet.date = date
 		meet.startTime = startTime
 		meet.endTime = endTime

@@ -138,6 +138,7 @@ class Meet {
 		  return;
 		}
 		
+		this.id = data[0].id
 		console.log("Meet data edited:", data);
 	  }
   }

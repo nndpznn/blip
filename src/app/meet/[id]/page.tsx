@@ -8,6 +8,7 @@ import { Input, Textarea, TimeInput} from "@heroui/react";
 import {Image} from "@heroui/image";
 import { useRouter, useParams } from 'next/navigation'
 import { useEffect, useState } from "react";
+import { useAuth } from "@/clients/authContext";
 
 import {Calendar} from '@heroui/calendar'
 import {Time, today, getLocalTimeZone} from "@internationalized/date";
@@ -37,6 +38,7 @@ export default function MeetDetail() {
 	const [endTime, setEndTime] = useState<Time | null>()
 
 	const [incAlertVisible, setIncAlertVisible] = useState(false)
+	const { user, loading: authLoading, signOut } = useAuth();
 
 	const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = e.target.files;
@@ -68,8 +70,10 @@ export default function MeetDetail() {
 		setLocation([-87.616, 41.776])
 	}
 
-	const handleEdit = async (e:any) => {
+	const handleEdit = async () => {
 		console.log([title, body, links])
+
+		const correctId = parseInt(meetId, 10)
 
 		if (!title || !body || !date || !startTime || !endTime) {
 			console.log("missing one or more required fields")
@@ -77,7 +81,8 @@ export default function MeetDetail() {
 			return
 		}
 
-		const meet = new Meet("lmao", title, body, links, [-87.616, 41.776])
+		const meet = new Meet(user!.id, title, body, links, [-87.616, 41.776])
+		meet.id = correctId
 		meet.date = date
 		meet.startTime = startTime
 		meet.endTime = endTime
@@ -106,16 +111,17 @@ export default function MeetDetail() {
 	const exampleUser = new User("chris G.P. T. (gary payton two)", "areyousure@gmail.com")
 
 	const router = useRouter()
-	const { id } = useParams()
+	const params = useParams<{ id: string }>();
+    const meetId = params.id;
 
 	const [meet, setMeet] = useState<Meet | null>(null)
 
 	  // Fetching project information from Supabase based on page ID.
 	  useEffect(() => {
-		if (!id) return
+		if (!meetId) return
 	
 		const fetchData = async () => {
-		  const { data, error } = await supabase.from('meets').select('*').eq('id', id).single()
+		  const { data, error } = await supabase.from('meets').select('*').eq('id', meetId).single()
 	
 		  if (error) {
 			console.error('There was an error fetching the meet.', error)
@@ -126,7 +132,7 @@ export default function MeetDetail() {
 		}
 	
 		fetchData()
-	  }, [id])
+	  }, [meetId])
 
 	  useEffect(() => {
 
@@ -267,11 +273,11 @@ export default function MeetDetail() {
 						<div id="misc" className="w-2/5 ml-10">
 							<p className="mt-5 text-xl font-bold">Start Time</p>
 							{/* <Input value={startTime} onChange={e => setStartTime(e.target.value)}size="md" type="text" /> */}
-							<TimeInput value={startTime} onChange={setStartTime} label="Start Time" />
+							{/* <TimeInput value={startTime} onChange={setStartTime} label="Start Time" /> */}
 
 							<p className="mt-5 text-xl font-bold">End Time</p>
 							{/* <Input value={endTime} onChange={e => setEndTime(e.target.value)}size="md" type="text" /> */}
-							<TimeInput value={endTime} onChange={setEndTime} label="End Time" />
+							{/* <TimeInput value={endTime} onChange={setEndTime} label="End Time" /> */}
 
 							<p className="mt-5 text-xl font-bold">Upload Images</p>
 
@@ -292,7 +298,7 @@ export default function MeetDetail() {
 						<Button color="primary" onPress={handleClear}>
 						Clear
 						</Button>
-						<Button color="primary" onPress={() => handleEdit(meet.id)}>
+						<Button color="primary" onPress={handleEdit}>
 						Edit
 						</Button>
 					</DrawerFooter>

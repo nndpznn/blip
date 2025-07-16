@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import {HeroUIProvider} from "@heroui/react";
 import "@/styles/globals.css";
 import Nav from "@/components/nav";
+import { AuthProvider } from '../clients/authContext';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,11 +29,12 @@ export default function RootLayout({
   return (
     <html lang="en" className="bg-[#0d0d0d]" data-theme="blip-main">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-hidden`} >
-
-        <Nav />
-        <main className="blip-main" >
-          {children}
-        </main>
+        <AuthProvider>
+          <Nav />
+          <main className="blip-main" >
+            {children}
+          </main>
+        </AuthProvider>
         
       </body>
     </html>
