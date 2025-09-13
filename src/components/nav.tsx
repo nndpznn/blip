@@ -18,11 +18,11 @@ export default function Nav() {
 			<div id="nav" className="flex justify-between items-center w-full py-4 border-b-8 border-red-400">
 				<div className="flex gap-2">
 					<Button color="primary" className={allButtonClassses} type="button" onPress={() => router.back()}>go back</Button>
-					<Button color="primary" className={allButtonClassses} type="button" onPress={() => router.back()}>go back</Button>
+					<Button color="primary" className={allButtonClassses} type="button" onPress={() => router.push("/map")}>map</Button>
 				</div>
 
 
-				<Image className="cursor-pointer hover:brightness-75" src="/favicon.ico" width={120} height={120} alt="Logo" onClick={() => router.push("/")}/>
+				<Image className="cursor-pointer hover:brightness-75" src="/favicon.ico" width={120} height={120} alt="Logo" onClick={() => router.push("/map")}/>
 
 				<div className="flex gap-2">
 					<Button color="primary" className={allButtonClassses} type="button" onPress={() => router.push("/create")}>new meet</Button>

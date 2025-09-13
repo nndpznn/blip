@@ -15,6 +15,8 @@ import {Time, today, getLocalTimeZone} from "@internationalized/date";
 
 import { supabase } from '@/clients/supabaseClient'
 import { parseDate, CalendarDate } from "@internationalized/date";
+import { useSupabaseUserMetadata } from '@/hooks/useSupabaseUserMetadata'
+import { fetchUserByUID } from "@/hooks/fetchUserbyUID";
 
 import {
   Drawer,
@@ -36,6 +38,9 @@ export default function MeetDetail() {
 	const [date, setDate] = useState<any>(null)
 	const [startTime, setStartTime] = useState<Time | null>()
 	const [endTime, setEndTime] = useState<Time | null>()
+
+	const [username, setUsername] = useState<String | null>()
+	const { avatarUrl, uid, fullName, loading: metadataLoading } = useSupabaseUserMetadata()
 
 	const [incAlertVisible, setIncAlertVisible] = useState(false)
 	const { user, loading: authLoading, signOut } = useAuth();
@@ -106,9 +111,6 @@ export default function MeetDetail() {
 		onOpen: onEditOpen, 
 		onOpenChange: onEditOpenChange
 	} = useDisclosure()
-	const exampleMeet = new Meet("lmao", "Placeholder Meet", "This is some placeholder text. Wow!", "", [-87.616, 41.776])
-
-	const exampleUser = new User("chris G.P. T. (gary payton two)", "areyousure@gmail.com")
 
 	const router = useRouter()
 	const params = useParams<{ id: string }>();
@@ -116,25 +118,32 @@ export default function MeetDetail() {
 
 	const [meet, setMeet] = useState<Meet | null>(null)
 
-	  // Fetching project information from Supabase based on page ID.
-	  useEffect(() => {
-		if (!meetId) return
-	
-		const fetchData = async () => {
-		  const { data, error } = await supabase.from('meets').select('*').eq('id', meetId).single()
-	
-		  if (error) {
-			console.error('There was an error fetching the meet.', error)
-		  } else {
-			setMeet(data)
-		  }
-		//   setLoading(false)
-		}
-	
-		fetchData()
-	  }, [meetId])
+	// Fetching project information from Supabase based on page ID.
+	useEffect(() => {
+	if (!meetId) return
 
-	  useEffect(() => {
+	const fetchData = async () => {
+		const { data, error } = await supabase.from('meets').select('*').eq('id', meetId).single()
+
+		if (error) {
+		console.error('There was an error fetching the meet.', error)
+		} else {
+		setMeet(data)
+		}
+	//   setLoading(false)
+	}
+
+	const resolveAuthor = async () => {
+		if (meet) {
+			const author = await fetchUserByUID(meet.organizerId)
+			setUsername(author!.user_metadata.full_name)
+		}
+	}
+
+	fetchData()
+	}, [meetId])
+
+	useEffect(() => {
 
 		if (isEditOpen && meet) {
 			setTitle(meet?.title || '')
@@ -191,7 +200,7 @@ export default function MeetDetail() {
 					<p className="text-center text-xl mx-6 mt-2">On {meet.date ? meet.date.toString() : "No date found"}</p>
 
 					<p className="text-center text-xl mx-6 mt-2">From {meet.startTime?.toString()} to {meet.endTime?.toString()}</p>					
-					<p className="text-center text-xl mx-6 mt-2">Organized by {exampleUser.name}</p>
+					<p className="text-center text-xl mx-6 mt-2">Organized by {username}</p>
 
 
 					{/* CONTENT */}
@@ -203,10 +212,12 @@ export default function MeetDetail() {
 					</div>
 				</div>
 
-				<div id="modifycontainer" className="flex sticky bottom-0 justify-between justify-center">
-					<Button onPress={onEditOpen} className="mx-8 my-8">Edit</Button>
-					<Button onPress={onDeleteOpen} className="mx-8 my-8">Delete</Button>
-				</div>
+				{false && (
+					<div id="modifycontainer" className="flex sticky bottom-0 justify-between justify-center">
+						<Button onPress={onEditOpen} className="mx-8 my-8">Edit</Button>
+						<Button onPress={onDeleteOpen} className="mx-8 my-8">Delete</Button>
+					</div>
+				)}
 			</div>
 
 			{/* TO ADD: GALLERY FUNCTIONALITY */}

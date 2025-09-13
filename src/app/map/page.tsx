@@ -2,9 +2,11 @@
 
 // imports
 import { useRouter } from 'next/navigation';
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { initMap, addEventMarkers } from "../../api/mapbox";
 import mapboxgl from 'mapbox-gl';
+import { supabase } from '@/clients/supabaseClient';
+
 // components
 import {Button, ButtonGroup} from "@heroui/button";
 import Link from 'next/link';
@@ -13,6 +15,7 @@ import Image from "next/image";
 // customs
 import { Event } from "../../types/event"
 import Searchbar from '@/components/searchbar';
+import { useSupabaseUserMetadata } from '@/hooks/useSupabaseUserMetadata'
 
 interface MapProps {
 	events: Event[]
@@ -21,35 +24,55 @@ interface MapProps {
 export default function Map({ events = [] }: MapProps) {
 	const router = useRouter()
 
+	const { avatarUrl, fullName, loading: metadataLoading } = useSupabaseUserMetadata()
+
 	const mapContainerRef = useRef<HTMLDivElement>(null);
 	const mapRef = useRef<mapboxgl.Map | null>(null);
+	const markersRef = useRef([]);
+	const [meets, setMeets] = useState<any[]>([]);
+	const [loading, setLoading] = useState(true);
 
-
- 	useEffect(() => {
+	const init = async () => {
 		if (!mapContainerRef.current) return;
-
-    	const map = initMap(mapContainerRef.current.id);
+		const map = initMap(mapContainerRef.current.id);
 		mapRef.current = map;
 
-
-		// const geocoder = new MapboxGeocoder({
-		// 	accessToken: mapboxgl.accessToken!,
-		// 	mapboxgl,
-		// 	placeholder: "Search for an address",
-		// 	marker: false,
-		// 	flyTo: { zoom: 14 },
-		// });
-		
-		// Once the map is loaded, add markers
-		if (events.length > 0) {
-			map.on("load", () => {
-				addEventMarkers(map, events);
-			});
+		setLoading(true);
+		try {
+			const { data, error } = await supabase.from('meets').select('*');
+			if (error) {
+				console.error('Error fetching meets:', error);
+			}
+			setMeets(data || []);
+			} catch (error) {
+				console.error('Unexpected error:', error);
+			} finally {
+				setLoading(false);
 		}
+	}
 
+	useEffect(() => {
+		init();
 
-		return () => map.remove(); // Cleanup
-  	}, [events]);
+		return () => {
+			if (mapRef.current) {
+				mapRef.current.remove();
+			}
+		}
+	}, [])
+
+ 	useEffect(() => {
+		if (!mapRef.current) return;
+		
+
+		// Remove old markers
+		// markersRef.current.forEach(marker => marker.remove());
+		markersRef.current = [];
+
+		// if (meets.length > 0) {
+		// 	addEventMarkers(mapRef.current, meets);
+		// }
+  	}, [meets]);
 
 	return (
 		<div className="flex flex-col w-full h-full">
@@ -68,6 +91,7 @@ export default function Map({ events = [] }: MapProps) {
 
 			<div className="flex justify-center justify-between">
 				<Button color="primary" className="m-4 hover:text-red-400" type="button" onPress={() => router.push("/meet/10")}>example meet</Button>
+				<p className="text-[2vh] m-4">hi there, <strong>{fullName}</strong>. looking for something cool to do?</p>
 				<Button color="primary" className="m-4 hover:text-red-400" type="button" onPress={() => router.push("/seeAllMeets")}>see meets</Button>
 			</div>
 
