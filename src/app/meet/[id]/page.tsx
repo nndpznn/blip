@@ -70,7 +70,7 @@ export default function MeetDetail() {
 		setLocation([-87.616, 41.776])
 	}
 
-	const handleEdit = async () => {
+		const handleEdit = async () => {
 		console.log([title, body, links])
 
 		const correctId = parseInt(meetId, 10)
@@ -142,8 +142,8 @@ export default function MeetDetail() {
 			setLinks(meet?.link || '')
 			setImageFiles(meet?.images || '') // FIX LATER
 			setDate(today(getLocalTimeZone()))
-			setStartTime(meet?.startTime)
-			setEndTime(meet?.endTime)
+			setStartTime(meet?.startTime) // FIX LATER
+			setEndTime(meet?.endTime) // FIX LATER
 			setLocation([-87.616, 41.776])
 		}
 	  }, [meet, isEditOpen])

@@ -31,10 +31,12 @@ export default function AllMeets() {
 	  }, [])
 
 	return (
-		<div className="mx-5 my-5">
-			{meets?.map((meet: Meet) => (
-				<p className="rounded-xl p-2 block w-fit cursor-pointer my-3 bg-red-400" onClick={() => router.push(`/meet/${meet.id}`)} key={meet.id}>{meet.title}</p>
-			))}
+		<div className="flex flex-col h-screen">
+			<div className="flex-1 mx-5 my-5 overflow-auto">
+				{meets?.map((meet: Meet) => (
+					<p className="rounded-xl p-2 block w-fit cursor-pointer my-3 bg-red-400" onClick={() => router.push(`/meet/${meet.id}`)} key={meet.id}>{meet.title}</p>
+				))}
+			</div>
 		</div>
 	)
 }
