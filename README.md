@@ -4,23 +4,22 @@ The race might be a drag, but finding them doesn't have to be!
 
 <img width="1918" alt="blip main map page" src="https://github.com/user-attachments/assets/b85fa111-ec47-427f-9b95-fe26a5495012" />
 
-This app came about as a result of the realization that we, as car enthusiasts, have no real central resource to find if there are any nearby/upcoming car enthusiast shows and meets, known to the community as "cars and coffee" events. Looking through Reddit threads, Facebook forums, and Instagram pages can be tedious and community centers can be hard to find.
+This app came about as a result of the realization that we, as car enthusiasts, have no real central resource to find if there are any nearby/upcoming car shows, meets, or even "cars and coffee"s! Digging through Reddit threads, Facebook forums, and Instagram pages can be tedious and community centers can be hard to find.
 
 We hope that this map can become this central resource for carspotters around the country(but California for now) to rely on to find cool events near them. 
 
-### State of blip (updated 2/24)
+### State of blip (updated 9/15/2025)
 
-As of Monday, 2/24, blip is in early stages of development, not yet deployed to Vercel. We expect to have a baseline working version deployed by May at the latest.
+As of Monday, 9/15, blip has made great progress but is still missing key functionality regarding the map. It is not yet deployed to Vercel. We expect to have a baseline working version deployed by January.
 
 ### To-Dos
 
 Some ideas of possible additions/changes to blip that are in consideration.
 
-- [High Priority] Add, create and delete events
-- [High Priority] Sign-in and Google integration
-- [High Priority] Google maps links on event posts
-- Map searchbar
-- Attach images to events
+- [High Priority] Meets shown on map
+- User profile pages
+- 
+- Google maps links on event posts
 - 
 
 ### Tech Stack
