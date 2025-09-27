@@ -18,7 +18,7 @@ export default function Nav() {
 			<div id="nav" className="flex justify-between items-center w-full py-4 border-b-8 border-red-400">
 				<div className="flex gap-2">
 					<Button color="primary" className={allButtonClassses} type="button" onPress={() => router.back()}>go back</Button>
-					<Button color="primary" className={allButtonClassses} type="button" onPress={() => router.push("/map")}>map</Button>
+					<Button color="primary" className={allButtonClassses} type="button" onPress={() => router.push("/profile")}>map</Button>
 				</div>
 
 

@@ -1,11 +1,11 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-	title: "blip - meet detail page",
-	description: "view meet details.",
+	title: "blip - profile page",
+	description: "view and edit your profile.",
   };
 
-export default function MeetPageLayout({
+export default function ProfilePageLayout({
 	children,
   }: {
 	children: React.ReactNode
