@@ -133,15 +133,20 @@ export default function MeetDetail() {
 	//   setLoading(false)
 	}
 
-	const resolveAuthor = async () => {
-		if (meet) {
-			const author = await fetchUserByUID(meet.organizerId)
-			setUsername(author!.user_metadata.full_name)
-		}
-	}
-
 	fetchData()
 	}, [meetId])
+
+	useEffect(() => {
+		const resolveAuthor = async () => {
+		if (meet) {
+			const user = await fetchUserByUID(meet.organizerId)
+			if (user) {
+				setUsername(user.fullname)
+			}
+		}
+	}
+	resolveAuthor()
+	})
 
 	useEffect(() => {
 
@@ -156,14 +161,6 @@ export default function MeetDetail() {
 			setLocation([-87.616, 41.776])
 		}
 	  }, [meet, isEditOpen])
-
-
-	if (!meet)
-	return (
-		<div>
-			<p>sum ting wong</p>
-		</div>
-	)
 
 	const onDelete = async (idToDelete: number) => {
 		console.log(`ID: ${idToDelete}`)
@@ -190,6 +187,13 @@ export default function MeetDetail() {
 		}
 	}
 
+	if (!meet)
+	return (
+		<div className="flex flex-col justify-center items-center">
+			<p className="text-3xl my-3">...</p>
+			<p className="text-xl my-3">Meet data not found. Maybe it's TOO underground...</p>
+		</div>
+	)
 
 	return (
 		<div className="flex justify-between">
@@ -200,7 +204,7 @@ export default function MeetDetail() {
 					<p className="text-center text-xl mx-6 mt-2">On {meet.date ? meet.date.toString() : "No date found"}</p>
 
 					<p className="text-center text-xl mx-6 mt-2">From {meet.startTime?.toString()} to {meet.endTime?.toString()}</p>					
-					<p className="text-center text-xl mx-6 mt-2">Organized by {username}</p>
+					<p className="text-center text-xl mx-6 mt-2">Organized by {username ? username : "Unknown"}</p>
 
 
 					{/* CONTENT */}
@@ -212,7 +216,7 @@ export default function MeetDetail() {
 					</div>
 				</div>
 
-				{false && (
+				{(meet.organizerId == uid) && (
 					<div id="modifycontainer" className="flex sticky bottom-0 justify-between justify-center">
 						<Button onPress={onEditOpen} className="mx-8 my-8">Edit</Button>
 						<Button onPress={onDeleteOpen} className="mx-8 my-8">Delete</Button>
