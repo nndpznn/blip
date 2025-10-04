@@ -1,4 +1,3 @@
-import User from "./user"
 import { supabase } from "@/clients/supabaseClient"
 import { CalendarDateTime, Time, parseDate, CalendarDate, toCalendarDate, fromDate } from "@internationalized/date";
 

@@ -89,10 +89,21 @@ export default function Map({ events = [] }: MapProps) {
 				{/* <div id="mapreplacement" className="flex w-[100vw] h-[70vh] text-center bg-gray-500 overflow-hidden"/> */}
 			</div>
 
-			<div className="flex justify-center justify-between">
-				<Button color="primary" className="m-4 hover:text-red-400" type="button" onPress={() => router.push("/meet/39")}>example meet</Button>
-				<p className="text-[2vh] m-4">hi there, <strong>{fullName}</strong>. looking for something cool to do?</p>
-				<Button color="primary" className="m-4 hover:text-red-400" type="button" onPress={() => router.push("/seeAllMeets")}>see meets</Button>
+			<div className="grid grid-cols-3 items-center justify-between">
+				<div className="col-start-1 justify-self-start">
+					<Button 
+						color="primary" 
+						className="m-4 hover:bg-red-500" 
+						type="button" 
+						onPress={() => router.push("/meet/39")}
+					>example meet</Button>
+				</div>
+				<div className="col-start-2 justify-self-center">
+					<p className="text-[2vh] m-4">hi there, <strong>{fullName}</strong>. looking for something cool to do?</p>
+				</div>
+				<div className="col-start-3 justify-self-end">
+					
+				</div>
 			</div>
 
 		</div>

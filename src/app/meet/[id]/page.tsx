@@ -1,7 +1,6 @@
 'use client'
 
-import Meet from "../../../models/meet"
-import User from "../../../models/user"
+import Meet from "@/models/meet"
 
 import { Button } from "@heroui/button"
 import { Input, Textarea, TimeInput} from "@heroui/react";
