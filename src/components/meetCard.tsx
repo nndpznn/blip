@@ -34,7 +34,7 @@ export default function MeetCard({ meet }: MeetCardProps) {
     return (
         <Card
             isPressable
-            onPress={() => router.push('/meet/${meet.id}')}
+            onPress={() => router.push(`/meet/${meet.id}`)}
             className="w-full my-2 bg-red-600"
         >
             <CardBody className="p-0">
@@ -44,7 +44,7 @@ export default function MeetCard({ meet }: MeetCardProps) {
                     </div>
 
                     <div className="flex flex-1 justify-between items-center p-4 text-white">
-                        <p className="texr-xl font-bold">{meet.title}</p>
+                        <p className="text-xl font-bold">{meet.title}</p>
                         <div className="text-right">
                             <p className="font-semibold">by {username}</p>
                         </div>
