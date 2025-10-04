@@ -2,48 +2,140 @@
 
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/clients/authContext";
-
 import { useSupabaseUserMetadata } from '@/hooks/useSupabaseUserMetadata'
 import { fetchUserByUID } from "@/hooks/fetchUserbyUID";
 import { useEffect, useState } from "react";
 import User from "@/models/user";
+import { Button, Input, Textarea } from "@heroui/react"
+
 
 export default function Profile() {
 	const router = useRouter()
 	const [currentUser, setCurrentUser] = useState<User | null>()
+	const [editing, setEditing] = useState(false)
+	const { user, loading: authLoading, signOut } = useAuth()
 
-	const { user, loading: authLoading, signOut } = useAuth();
+	const [username, setUsername] = useState('')
+	const [fullname, setFullname] = useState('')
+	const [headline, setHeadline] = useState('')
+	const [bio, setBio] = useState('')
+	
 
-	useEffect(() => {
-		const resolveAuthor = async () => {
-		if (user) {
-			const data = await fetchUserByUID(user!.id)
-			if (data) {
-				setCurrentUser(data)
+	const ALL_BUTTON_CSS = "my-2 max-w-md"
+	
+	const setFormFields = () => {
+		if (currentUser) {
+		setUsername(currentUser.username);
+		setFullname(currentUser.fullname);
+		setHeadline(currentUser.headline);
+		setBio(currentUser.bio);
+		}
+	};
+
+    useEffect(() => {
+        const resolveAuthor = async () => {
+            if (user) {
+                const data = await fetchUserByUID(user.id)
+                setCurrentUser(data)
+            }
+        }
+        resolveAuthor()
+    }, [user])
+
+    useEffect(() => {
+        setFormFields()
+    }, [currentUser])
+
+	const handleFlipEdit = () => {
+		setEditing(!editing)
+		setFormFields()
+	}
+
+	const handleSave = async () => {
+		if (currentUser && user) {
+			const profile = new User(user.id,fullname,username,currentUser.email,headline,bio,currentUser.link)
+			const updatedData = await profile.saveProfile()
+
+			if (updatedData) {
+				// Update the state with the new, confirmed data from the database
+				// The structure of updatedData might need adjustment depending on your `select` statement.
+				// Assuming it returns an object with the same keys as your state:
+				setCurrentUser(prevUser => ({
+					...prevUser, // Keep all existing user properties
+					...updatedData, // Overwrite with the new data
+				}));
 			}
+			handleFlipEdit()
 		}
 	}
-	resolveAuthor()
-	})
 
 	if (!currentUser) {
 		return (
-			<div className="">
-				Not found.
+			<div className="flex">
+				<div className="flex-1 mx-[5vw] mt-5 h-full">
+					<h1 id="header" className="text-3xl font-bold mb-5">Profile not found</h1>
+					<p className="my-5 text-xl">We can't seem to load your profile. Something may be wrong, but this text box definitely can't diagnose it for you.</p>
+					<p className="my-5 text-xl">Maybe come back later?</p>
+				</div>
 			</div>
 		)
 	}
 
 	return (
-		<div className="">
-			<div className="mx-[5vw] mt-5 h-full">
-				<h1 id="header" className="text-3xl font-bold mb-5">Your Profile</h1>
+		<div className="flex">
+			<div className="flex-1 mx-[5vw] mt-5 h-full">
+				<h1 id="header" className="text-3xl font-bold mb-5">Your profile</h1>
 
-				<p>Username: {currentUser.username ? currentUser.username : "None"}</p>
-				<p>Name: {currentUser.fullname ? currentUser.fullname : "None"}</p>
-				<p>Headline: {currentUser.headline ? currentUser.headline : "None"}</p>
-				<p>Bio: {currentUser.bio ? currentUser.bio : "None"}</p>
+				<div className="w-[1/2]">
+					<Input 
+						isReadOnly={!editing}
+						label="username"
+						placeholder="type something..."
+						value={username}
+						onChange={e => setUsername(e.target.value)}
+						className={ALL_BUTTON_CSS}
+					></Input>
+					<Input 
+						isReadOnly={!editing}
+						label="name" 
+						placeholder="type something..." 
+						value={fullname}
+						onChange={e => setFullname(e.target.value)}
+						className={ALL_BUTTON_CSS}
+					></Input>
+					<Input 
+						isReadOnly={!editing}
+						label="headline" 
+						placeholder="type something..." 
+						value={headline}
+						onChange={e => setHeadline(e.target.value)}
+						className={ALL_BUTTON_CSS}
+					></Input>
+					<Input 
+						isReadOnly={!editing}
+						label="bio" 
+						placeholder="type something..." 
+						value={bio}
+						onChange={e => setBio(e.target.value)}
+						className={ALL_BUTTON_CSS}
+					></Input>
+				</div>
 
+				<div>
+					<Button onPress={handleFlipEdit}>{editing ? "Cancel" : "Edit"}</Button>
+					<Button onPress={handleSave} className="mx-4 bg-red-400 hover:bg-red-500">Save</Button>
+				</div>
+			</div>
+
+			<div className="flex-1 mx-[5vw] mt-5 h-full">
+				<h1 id="header" className="text-3xl font-bold mb-5">Should look something like...</h1>
+
+				<div className="p-8 bg-gray-900 rounded-xl">
+					<p className="my-2 text-5xl font-bold">{currentUser.username ? currentUser.username : "No username set"}</p>
+					<p className="mb-2 text-2xl italic">{currentUser.fullname ? currentUser.fullname : "No full name set"}</p>
+					<p className="my-2"><strong>currently:</strong> {currentUser.headline ? currentUser.headline : "No headline set"}</p>
+					<p className="my-2"><strong>bio:</strong> {currentUser.bio ? currentUser.bio : "No bio set"}</p>
+				</div>
 			</div>
 		</div>
 	)
