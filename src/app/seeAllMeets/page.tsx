@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Meet from "@/models/meet";
+import MeetCard from "@/components/meetCard"
 import { supabase } from "@/clients/supabaseClient";
 import { useRouter } from "next/navigation";
 import { Button } from "@heroui/react";
@@ -32,9 +33,10 @@ export default function AllMeets() {
 
 	return (
 		<div className="flex flex-col h-screen">
-			<div className="flex-1 mx-5 my-5 overflow-auto">
+			<h1 className="text-3xl font-bold mb-5 mx-[2vw] mt-5">All Meets</h1>
+			<div className="flex-1 px-5 py-5 overflow-auto">
 				{meets?.map((meet: Meet) => (
-					<p className="rounded-xl p-2 block w-fit cursor-pointer my-3 bg-red-400" onClick={() => router.push(`/meet/${meet.id}`)} key={meet.id}>{meet.title}</p>
+					<MeetCard key={meet.id} meet={meet}/>
 				))}
 			</div>
 		</div>
