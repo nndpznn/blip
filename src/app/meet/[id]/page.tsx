@@ -1,6 +1,7 @@
 'use client'
 
 import Meet from "@/models/meet"
+import User from "@/models/user";
 
 import { Button } from "@heroui/button"
 import { Input, Textarea, TimeInput} from "@heroui/react";
@@ -16,6 +17,9 @@ import { supabase } from '@/clients/supabaseClient'
 import { parseDate, CalendarDate } from "@internationalized/date";
 import { useSupabaseUserMetadata } from '@/hooks/useSupabaseUserMetadata'
 import { fetchUserByUID } from "@/hooks/fetchUserbyUID";
+
+import UserCard from "@/components/userCard";
+import { ReusableFadeInComponent } from "@/components/reusableFadeInComponent";
 
 import {
   Drawer,
@@ -37,8 +41,8 @@ export default function MeetDetail() {
 	const [date, setDate] = useState<any>(null)
 	const [startTime, setStartTime] = useState<Time | null>()
 	const [endTime, setEndTime] = useState<Time | null>()
+	const [organizer, setOrganizer] = useState<User | null>()
 
-	const [username, setUsername] = useState<String | null>()
 	const { avatarUrl, uid, fullName, loading: metadataLoading } = useSupabaseUserMetadata()
 
 	const [incAlertVisible, setIncAlertVisible] = useState(false)
@@ -101,6 +105,11 @@ export default function MeetDetail() {
 	}
 
 	const {
+		isOpen: isUserOpen, 
+		onOpen: onUserOpen, 
+		onOpenChange: onUserOpenChange
+	} = useDisclosure()
+	const {
 		isOpen: isDeleteOpen, 
 		onOpen: onDeleteOpen, 
 		onOpenChange: onDeleteOpenChange
@@ -140,7 +149,7 @@ export default function MeetDetail() {
 		if (meet) {
 			const user = await fetchUserByUID(meet.organizerId)
 			if (user) {
-				setUsername(user.fullname)
+				setOrganizer(user)
 			}
 		}
 	}
@@ -186,7 +195,7 @@ export default function MeetDetail() {
 		}
 	}
 
-	if (!meet)
+	if (!meet || !organizer)
 	return (
 		<div className="flex flex-col justify-center items-center">
 			<p className="text-3xl my-3">...</p>
@@ -203,7 +212,7 @@ export default function MeetDetail() {
 					<p className="text-center text-xl mx-6 mt-2">On {meet.date ? meet.date.toString() : "No date found"}</p>
 
 					<p className="text-center text-xl mx-6 mt-2">From {meet.startTime?.toString()} to {meet.endTime?.toString()}</p>					
-					<p className="text-center text-xl mx-6 mt-2">Organized by {username ? username : "Unknown"}</p>
+					<p className="text-center text-xl mx-6 mt-2">Organized by <Button onPress={onUserOpen} className="text-xl">{organizer.username ? organizer.username : organizer.fullname}</Button></p>
 
 
 					{/* CONTENT */}
@@ -227,6 +236,13 @@ export default function MeetDetail() {
 			<div className="w-2/3 h-screen border-l-4 border-red-400">
 				{meet.images && (<Image className="rounded-none w-fit object-cover" alt="test" src={meet.images[0]} ></Image>)}
 			</div>
+			
+
+			<ReusableFadeInComponent isOpen={isUserOpen} onClose={onUserOpenChange}>
+				<UserCard 
+					user={organizer}
+				/>
+			</ReusableFadeInComponent>
 
 			{/* DELETE CONFIRM PROTOCOL */}
 			<Drawer className="bg-black" isOpen={isDeleteOpen} onOpenChange={onDeleteOpenChange} size="xs">
