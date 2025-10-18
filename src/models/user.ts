@@ -1,4 +1,5 @@
 import { supabase } from "@/clients/supabaseClient"
+import { profile } from "console"
 
 class User {
 	id: string
@@ -8,8 +9,11 @@ class User {
 	headline: string
 	bio: string
 	link: string
+	
+	// customization
+	profile_color: string
   
-	constructor(id: string, fullname: string, username: string, email: string, headline: string, bio: string, link: string) {
+	constructor(id: string, fullname: string, username: string, email: string, headline: string, bio: string, link: string, profile_color:string) {
 	  this.id = id
 	  this.fullname = fullname
 	  this.username = username
@@ -17,6 +21,7 @@ class User {
 	  this.headline = headline
 	  this.bio = bio
 	  this.link = link
+	  this.profile_color = profile_color
 	}
 
 	async saveProfile(): Promise<any|null> {
@@ -28,7 +33,8 @@ class User {
 				username: this.username,
 				headline: this.headline,
 				bio: this.bio,
-				link: this.link
+				link: this.link,
+				profile_color: this.profile_color
 			}
 		  ]).eq("id", this.id)
 		  .select("*");

@@ -6,7 +6,11 @@ import { useSupabaseUserMetadata } from '@/hooks/useSupabaseUserMetadata'
 import { fetchUserByUID } from "@/hooks/fetchUserbyUID";
 import { useEffect, useState } from "react";
 import User from "@/models/user";
-import { Button, Input, Textarea } from "@heroui/react"
+import { Button, Input, Textarea, useDisclosure } from "@heroui/react"
+import { HexColorPicker } from "react-colorful";
+
+import UserCard from "@/components/userCard";
+import { ReusableFadeInComponent } from "@/components/reusableFadeInComponent";
 
 
 export default function Profile() {
@@ -14,13 +18,15 @@ export default function Profile() {
 	const [currentUser, setCurrentUser] = useState<User | null>()
 	const [editing, setEditing] = useState(false)
 	const { user, loading: authLoading, signOut } = useAuth()
+	const { isOpen, onOpen, onClose } = useDisclosure();
 
 	const [username, setUsername] = useState('')
 	const [fullname, setFullname] = useState('')
 	const [headline, setHeadline] = useState('')
 	const [bio, setBio] = useState('')
-	
 
+	const [profileColor, setProfileColor] = useState('')
+	
 	const ALL_BUTTON_CSS = "my-2 max-w-md"
 	
 	const setFormFields = () => {
@@ -53,7 +59,16 @@ export default function Profile() {
 
 	const handleSave = async () => {
 		if (currentUser && user) {
-			const profile = new User(user.id,fullname,username,currentUser.email,headline,bio,currentUser.link)
+			const profile = new User(
+				user.id,
+				fullname,
+				username,
+				currentUser.email,
+				headline,
+				bio,
+				currentUser.link,
+				profileColor)
+
 			const updatedData = await profile.saveProfile()
 
 			if (updatedData) {
@@ -119,6 +134,11 @@ export default function Profile() {
 						onChange={e => setBio(e.target.value)}
 						className={ALL_BUTTON_CSS}
 					></Input>
+					<p className="font-bold">Profile Card Color: {profileColor}</p>
+					<div className="flex">
+						<HexColorPicker className="my-4 w-1/2" color={profileColor} onChange={setProfileColor} />
+						<div style={{ backgroundColor: `${profileColor}` }} className={`w-1/2 m-3 rounded-2xl`}></div>
+					</div>
 				</div>
 
 				<div>
@@ -127,16 +147,19 @@ export default function Profile() {
 				</div>
 			</div>
 
-			<div className="flex-1 mx-[5vw] mt-5 h-full">
+			<div className="flex-1 mx-[5vw] mt-5">
 				<h1 id="header" className="text-3xl font-bold mb-5">Should look something like...</h1>
 
-				<div className="p-8 bg-gray-900 rounded-xl">
-					<p className="my-2 text-5xl font-bold">{currentUser.username ? currentUser.username : "No username set"}</p>
-					<p className="mb-2 text-2xl italic">{currentUser.fullname ? currentUser.fullname : "No full name set"}</p>
-					<p className="my-2"><strong>currently:</strong> {currentUser.headline ? currentUser.headline : "No headline set"}</p>
-					<p className="my-2"><strong>bio:</strong> {currentUser.bio ? currentUser.bio : "No bio set"}</p>
-				</div>
+				<UserCard user={currentUser} />
+
+				<Button color="primary" className="my-2" onPress={onOpen}>Display Card</Button>
 			</div>
+
+			<ReusableFadeInComponent isOpen={isOpen} onClose={onClose}>
+				<UserCard 
+					user={currentUser}
+				/>
+			</ReusableFadeInComponent>
 		</div>
 	)
 }
