@@ -14,6 +14,7 @@ import mapboxgl from 'mapbox-gl';
 import { useState, useRef, useEffect } from "react";
 import Meet from '@/models/meet'
 import { useAuth } from "@/clients/authContext";
+import Searchbar from "@/components/searchbar";
 
 mapboxgl.accessToken = 'pk.eyJ1Ijoibm5kcHpubiIsImEiOiJjbTZxNmF1NjgxbDV5MmxwemlxOG13OG1lIn0.Akl1Y0JXLXH6eB0R6z9wkQ'
 
@@ -25,7 +26,10 @@ export default function Create() {
 
 	const [title, setTitle] = useState('')
 	const [address, setAddress] = useState('')
-	const [location, setLocation] = useState([-87.616, 41.776]) 
+	const [location, setLocation] = useState<{address: string, coordinates: number[]} | null>({
+		address: "Chicago Default Location",
+		coordinates: [-87.616, 41.776] // Default coordinates
+	});
 	const [body, setBody] = useState('')
 	const [links, setLinks] = useState('')
 	const [imageFiles, setImageFiles] = useState<File[]>([])
@@ -52,19 +56,22 @@ export default function Create() {
 		setDate(today(getLocalTimeZone()))
 		setStartTime(null)
 		setEndTime(null)
-		setLocation([-87.616, 41.776])
+		setLocation({
+			address: "Chicago Default Location",
+			coordinates: [-87.616, 41.776] // Default coordinates
+		})
 
 	}
 	const handleSubmit = async (e:any) => {
 		console.log([title, body, links])
 
-		if (!title || !body || !date || !startTime || !endTime) {
+		if (!title || !body || !date || !startTime || !endTime || !location) {
 			console.log("missing one or more required fields")
 			setIncAlertVisible(true)
 			return
 		}
 
-		const meet = new Meet(user!.id, title, body, links, [-87.616, 41.776])
+		const meet = new Meet(user!.id, title, body, links, location)
 		meet.date = date
 		meet.startTime = startTime
 		meet.endTime = endTime
@@ -93,7 +100,23 @@ export default function Create() {
 						<Textarea minRows={4} maxRows={4} value={body} onChange={e => setBody(e.target.value)} size="md" type="text" />
 						
 						<p className="mt-5 text-xl font-bold">Location</p>
-						<Input value={address} onChange={e => setAddress(e.target.value)}size="md" type="text" />
+						<Searchbar onSelect={(place) => {
+							if (place && place.center) {
+								// Mapbox center is [longitude, latitude]
+								const [lng, lat] = place.center; 
+								
+								setLocation({
+									address: place.place_name,
+									coordinates: place.center
+								}); 
+
+							} else {
+								// Handle unselection (if the user clicks 'Change Location' in the smart component)
+								setLocation(null); // Reset to default or null
+								setAddress('');
+							}
+						}} />
+						{/* <Input value={address} onChange={e => setAddress(e.target.value)}size="md" type="text" /> */}
 						
 						<p className="mt-5 text-xl font-bold">Links (Optional)</p>
 						<Input value={links} onChange={e => setLinks(e.target.value)}size="md" type="text" />
@@ -110,7 +133,7 @@ export default function Create() {
 						onChange={setDate}
     					/>
 
-						<Button color="primary" onPress={() => console.log(date)}>Print date to console</Button>
+						{/* <Button color="primary" onPress={() => console.log(date)}>Print date to console</Button> */}
 					</div>
 
 					<div id="misc" className="flex flex-col w-1/5 ml-10">

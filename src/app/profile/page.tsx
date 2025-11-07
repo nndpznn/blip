@@ -143,7 +143,7 @@ export default function Profile() {
 
 				<div>
 					<Button onPress={handleFlipEdit}>{editing ? "Cancel" : "Edit"}</Button>
-					<Button onPress={handleSave} className="mx-4 bg-red-400 hover:bg-red-500">Save</Button>
+					<Button disabled={!editing} onPress={handleSave} className="mx-4 bg-red-400 disabled:bg-gray-400 hover:bg-red-500">Save</Button>
 				</div>
 			</div>
 

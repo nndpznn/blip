@@ -39,7 +39,7 @@ export default function Searchbar({
 	}, [search]);
 
 	return (
-		<div className="relative w-screen max-w-md p-4">
+		<div className="relative w-screen max-w-md">
 			<div className="relative w-full">
 				<div className="flex items-center">
 					<input

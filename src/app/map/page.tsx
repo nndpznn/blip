@@ -13,7 +13,6 @@ import Link from 'next/link';
 import Image from "next/image";
 
 // customs
-import { Event } from "../../types/event"
 import Searchbar from '@/components/searchbar';
 import { useSupabaseUserMetadata } from '@/hooks/useSupabaseUserMetadata'
 
@@ -78,7 +77,7 @@ export default function Map({ events = [] }: MapProps) {
 		<div className="flex flex-col w-full h-full">
 
 			<div className="flex-1 w-full">
-				<div className="absolute z-10">
+				<div className="absolute z-10 p-4">
 					<Searchbar onSelect={(place) => {
 						const [lng, lat] = place.center;
 						mapRef.current?.flyTo({ center: [lng, lat], zoom: 14 });

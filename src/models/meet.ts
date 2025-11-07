@@ -1,6 +1,11 @@
 import { supabase } from "@/clients/supabaseClient"
 import { CalendarDateTime, Time, parseDate, CalendarDate, toCalendarDate, fromDate } from "@internationalized/date";
 
+interface LocationData {
+    address: string;
+    coordinates: number[]; // [lng, lat]
+}
+
 class Meet {
 	// supabase generates a unique meet ID upon data entry, and can be retrieved later...
 	organizerId: string 
@@ -8,13 +13,13 @@ class Meet {
 	title: string
 	body: string
 	link?: string
-	location: [number, number]
+	location: LocationData;
 	images: string[]
 	date: CalendarDate | null
 	startTime: Time | null
 	endTime: Time | null
   
-	constructor(organizerId: string, title: string, body: string, link: string, location: [number, number]) {
+	constructor(organizerId: string, title: string, body: string, link: string, location: LocationData) {
 	  this.organizerId = organizerId ? organizerId : "unknown"
 	  this.id = 0
 	  this.title = title
