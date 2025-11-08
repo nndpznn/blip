@@ -1,9 +1,11 @@
-@import "mapbox-gl/dist/mapbox-gl.css";
-@import "@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css";
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'mapbox-gl/dist/mapbox-gl.css' layer(base);
+@import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css' layer(base);
+@import "tailwindcss";
 
+@config "../../tailwind.config.ts";
+@plugin './hero';
+@source '../../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}';
+@custom-variant dark (&:is(.dark *));
 
 :root {
   --background: #ffffff;

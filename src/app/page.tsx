@@ -9,8 +9,8 @@ export default function Home() {
   const router = useRouter()
 
   return (
-    <div className="flex flex-col justify-between min-h-screen sm:p-20 font-[var(--font-geist-sans)]">
-      <div id="main-cluster" className="flex flex-col flex-grow items-center justify-center sm:p-20 font-[var(--font-geist-sans)]">
+    <div className="flex flex-col justify-between min-h-screen sm:p-20 font-(--font-geist-sans)">
+      <div id="main-cluster" className="flex flex-col grow items-center justify-center sm:p-20 font-(--font-geist-sans)">
         <main className="flex flex-col gap-8 items-center sm:items-start"> {/* border-b-2 border-red-400 */}
           <Image
             className=""

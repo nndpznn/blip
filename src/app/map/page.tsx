@@ -84,8 +84,8 @@ export default function Map({ events = [] }: MapProps) {
 					}} />
 				</div>
 
-				<div id="map" ref={mapContainerRef} className="flex w-[100vw] h-[70vh] text-center overflow-hidden" />  
-				{/* <div id="mapreplacement" className="flex w-[100vw] h-[70vh] text-center bg-gray-500 overflow-hidden"/> */}
+				<div id="map" ref={mapContainerRef} className="flex w-screen h-[70vh] text-center overflow-hidden" />  
+				{/* <div id="mapreplacement" className="flex w-screen h-[70vh] text-center bg-gray-500 overflow-hidden"/> */}
 			</div>
 
 			<div className="grid grid-cols-3 items-center justify-between">

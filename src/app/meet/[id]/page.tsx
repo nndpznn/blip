@@ -216,7 +216,7 @@ export default function MeetDetail() {
 
 
 					{/* CONTENT */}
-					<p className="text-center break-words mx-12 mt-12">{meet.body}</p>
+					<p className="text-center wrap-break-word mx-12 mt-12">{meet.body}</p>
 
 					<div id="buttoncontainer" className="flex flex-col">
 						<Button color="primary" onPress={() => window.open("https://instagram.com/", "_blank", "noopener,noreferrer")} className="self-center mx-12 my-3" type="button">Instagram</Button>
