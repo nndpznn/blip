@@ -7,16 +7,16 @@ import { Button } from "@heroui/button"
 import { Input, Textarea, TimeInput} from "@heroui/react";
 import {Image} from "@heroui/image";
 import { useRouter, useParams } from 'next/navigation'
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/clients/authContext";
 
 import {Calendar} from '@heroui/calendar'
-import {Time, today, getLocalTimeZone} from "@internationalized/date";
+import {Time, today, getLocalTimeZone, CalendarDate, parseDate} from "@internationalized/date";
 
 import { supabase } from '@/clients/supabaseClient'
-import { parseDate, CalendarDate } from "@internationalized/date";
 import { useSupabaseUserMetadata } from '@/hooks/useSupabaseUserMetadata'
 import { fetchUserByUID } from "@/hooks/fetchUserbyUID";
+import Searchbar from "@/components/searchbar";
 
 import UserCard from "@/components/userCard";
 import { ReusableFadeInComponent } from "@/components/reusableFadeInComponent";
@@ -31,14 +31,18 @@ import {
 } from "@heroui/react";
 
 export default function MeetDetail() {
+	const fileInputRef = useRef<HTMLInputElement | null>(null);
 	const [title, setTitle] = useState('')
 	const [address, setAddress] = useState('')
-	const [location, setLocation] = useState([-87.616, 41.776]) 
+	const [location, setLocation] = useState<{address: string, coordinates: number[]} | null>({
+		address: "Chicago Default Location",
+		coordinates: [-87.616, 41.776] // Default coordinates
+	}); 
 	const [body, setBody] = useState('')
 	const [links, setLinks] = useState('')
-	const [imageFiles, setImageFiles] = useState<string[]>([]) // TAKE ANOTHER LOOK AT THIS/FILES LATER
+	const [imageFiles, setImageFiles] = useState<File[]>([])
 	const [files, setFiles] = useState<File[]>([])
-	const [date, setDate] = useState<any>(null)
+	const [date, setDate] = useState<CalendarDate>(today(getLocalTimeZone()))
 	const [startTime, setStartTime] = useState<Time | null>()
 	const [endTime, setEndTime] = useState<Time | null>()
 	const [organizer, setOrganizer] = useState<User | null>()
@@ -55,6 +59,23 @@ export default function MeetDetail() {
 		}
 	  };
 
+	const handleUploadImagesPrompt = () => {
+		if (fileInputRef.current) {
+			fileInputRef.current.click();
+		}
+	}
+
+	const handleRemoveFile = (fileNameToRemove: string) => {
+		setImageFiles(prevFiles => 
+			prevFiles.filter(file => file.name !== fileNameToRemove)
+		);
+		// To re-enable uploading the same file name later, 
+		// we need to reset the value of the hidden input:
+		if (fileInputRef.current) {
+			fileInputRef.current.value = '';
+		}
+	};
+
 	const handleClear = () => {
 		setTitle('')
 		setAddress('')
@@ -64,7 +85,10 @@ export default function MeetDetail() {
 		setDate(today(getLocalTimeZone()))
 		setStartTime(null)
 		setEndTime(null)
-		setLocation([-87.616, 41.776])
+		setLocation(meet?.location || {
+			address: "Chicago Default Location",
+			coordinates: [-87.616, 41.776] // Default coordinates
+		})
 	}
 
 	const handleFill = () => {
@@ -72,13 +96,16 @@ export default function MeetDetail() {
 		setBody(meet?.body || '')
 		setLinks(meet?.link || '')
 		// setImageFiles(meet?.files || '')
-		setDate(today(getLocalTimeZone()))
+		setDate(meet?.date ? parseDate(meet.date.toString()) : today(getLocalTimeZone()))
 		setStartTime(null)
 		setEndTime(null)
-		setLocation([-87.616, 41.776])
+		setLocation(meet?.location || {
+			address: "Chicago Default Location",
+			coordinates: [-87.616, 41.776] // Default coordinates
+		})
 	}
 
-		const handleEdit = async () => {
+	const handleEdit = async () => {
 		console.log([title, body, links])
 
 		const correctId = parseInt(meetId, 10)
@@ -89,7 +116,11 @@ export default function MeetDetail() {
 			return
 		}
 
-		const meet = new Meet(user!.id, title, body, links, [-87.616, 41.776])
+		const meet = new Meet(user!.id, title, body, links, 
+			{
+			address: "Chicago Default Location",
+			coordinates: [-87.616, 41.776] // Default coordinates
+		})
 		meet.id = correctId
 		meet.date = date
 		meet.startTime = startTime
@@ -162,11 +193,11 @@ export default function MeetDetail() {
 			setTitle(meet?.title || '')
 			setBody(meet?.body || '')
 			setLinks(meet?.link || '')
-			setImageFiles(meet?.images || '') // FIX LATER
-			setDate(today(getLocalTimeZone()))
+			// setImageFiles(meet?.images || '') // FIX LATER
+			setDate(meet?.date ? parseDate(meet.date.toString()) : today(getLocalTimeZone()))
 			setStartTime(meet?.startTime) // FIX LATER
 			setEndTime(meet?.endTime) // FIX LATER
-			setLocation([-87.616, 41.776])
+			setLocation(meet.location)
 		}
 	  }, [meet, isEditOpen])
 
@@ -225,7 +256,7 @@ export default function MeetDetail() {
 				</div>
 
 				{(meet.organizerId == uid) && (
-					<div id="modifycontainer" className="flex sticky bottom-0 justify-between justify-center">
+					<div id="modifycontainer" className="flex sticky bottom-0 justify-between">
 						<Button onPress={onEditOpen} className="mx-8 my-8">Edit</Button>
 						<Button onPress={onDeleteOpen} className="mx-8 my-8">Delete</Button>
 					</div>
@@ -245,7 +276,7 @@ export default function MeetDetail() {
 			</ReusableFadeInComponent>
 
 			{/* DELETE CONFIRM PROTOCOL */}
-			<Drawer className="bg-black" isOpen={isDeleteOpen} onOpenChange={onDeleteOpenChange} size="xs">
+			<Drawer className="bg-black blip-main" isOpen={isDeleteOpen} onOpenChange={onDeleteOpenChange} size="xs">
 				<DrawerContent>
 				{(onClose) => (
 					<>
@@ -269,7 +300,7 @@ export default function MeetDetail() {
 			</Drawer>
 
 			{/* EDIT CONFIRM PROTOCOL */}
-			<Drawer className="bg-black" isOpen={isEditOpen} onOpenChange={onEditOpenChange} size="full">
+			<Drawer className="bg-black blip-main" isOpen={isEditOpen} onOpenChange={onEditOpenChange} size="full">
 				<DrawerContent>
 				{(onClose) => (
 					<>
@@ -279,59 +310,119 @@ export default function MeetDetail() {
 							<div id="fields" className="w-2/5">
 								<p className="text-xl font-bold">Title</p>
 								<Input value={title} onChange={e => setTitle(e.target.value)}size="md" type="text" />
-						
+								
 								<p className="mt-5 text-xl font-bold">Body</p>
 								<Textarea minRows={4} maxRows={4} value={body} onChange={e => setBody(e.target.value)} size="md" type="text" />
-						
+								
 								<p className="mt-5 text-xl font-bold">Location</p>
-								<Input value={address} onChange={e => setAddress(e.target.value)}size="md" type="text" />
-						
+								<Searchbar initialValue={location?.address} onSelect={(place) => {
+									if (place && place.center) {
+										// Mapbox center is [longitude, latitude]
+										const [lng, lat] = place.center; 
+										
+										setLocation({
+											address: place.place_name,
+											coordinates: place.center
+										}); 
+
+									} else {
+										// Handle unselection (if the user clicks 'Change Location' in the smart component)
+										setLocation(null); // Reset to default or null
+										setAddress('');
+									}
+								}} />
+								{/* <Input value={address} onChange={e => setAddress(e.target.value)}size="md" type="text" /> */}
+{/* 								
 								<p className="mt-5 text-xl font-bold">Links (Optional)</p>
-								<Input value={links} onChange={e => setLinks(e.target.value)}size="md" type="text" />
+								<Input value={links} onChange={e => setLinks(e.target.value)}size="md" type="text" /> */}
 							</div>
 
-							<div id="calendar" className="w-1/5 ml-10">
+							<div id="calendar" className="w-2/5 ml-10 align-items-center">
 								<p className="text-xl font-bold">Date</p>
 
 								<Calendar
-    							aria-label="Date (Min Date Value)"
-      							defaultValue={today(getLocalTimeZone())}
-      							minValue={today(getLocalTimeZone())}
-    							/>
+								aria-label="Date (Min Date Value)"
+								defaultValue={today(getLocalTimeZone())}
+								minValue={today(getLocalTimeZone())}
+								value={date}
+								onChange={setDate}
+								/>
+
+								{/* <Button color="primary" onPress={() => console.log(date)}>Print date to console</Button> */}
+							</div>
+
+
+							<div id="misc" className="flex flex-col w-1/5 ml-10">
+								<p className="mt-5 text-xl font-bold">Start Time</p>
+								{/* <TimeInput value={startTime} onChange={setStartTime} label="Start Time" /> */}
+
+								<p className="mt-5 text-xl font-bold">End Time</p>
+								{/* <TimeInput value={endTime} onChange={setEndTime} label="End Time" /> */}
+
+								<p className="mt-5 text-xl font-bold">Upload Images</p>
+
+								<input
+								ref={fileInputRef}
+								className="hidden"
+								type="file"
+								multiple
+								accept="image/*"
+								onChange={handleImageChange}
+								/>
+
+								<Button
+								onPress={handleUploadImagesPrompt}
+								color="primary"
+								className="mt-1"
+								>
+									Upload
+								</Button>
+
+								<div className="mt-3 text-sm text-gray-600">
+									{imageFiles.length > 0 ? (
+									<div>
+										<p className="font-medium text-green-600">
+											{imageFiles.length} file(s) selected:
+										</p>
+										{imageFiles.map((file, index) => (
+											<div 
+												key={file.name + index} 
+												className="flex items-center justify-between p-2 bg-green-50 rounded-lg border border-green-200"
+											>
+												<span className="truncate mr-4">{file.name}</span>
+												<button
+													onClick={() => handleRemoveFile(file.name)}
+													className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition duration-150"
+													aria-label={`Remove file ${file.name}`}
+												>
+													<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+														<path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+													</svg>
+												</button>
+											</div>
+										))}
+									</div>
+									) : (
+									<p className="text-gray-500">
+										Click the button above to select images for upload.
+									</p>
+									)}
+								</div>
+								{/* <p>yes we know this looks not great</p> */}
+							</div>
 						</div>
-
-						<div id="misc" className="w-2/5 ml-10">
-							<p className="mt-5 text-xl font-bold">Start Time</p>
-							{/* <Input value={startTime} onChange={e => setStartTime(e.target.value)}size="md" type="text" /> */}
-							{/* <TimeInput value={startTime} onChange={setStartTime} label="Start Time" /> */}
-
-							<p className="mt-5 text-xl font-bold">End Time</p>
-							{/* <Input value={endTime} onChange={e => setEndTime(e.target.value)}size="md" type="text" /> */}
-							{/* <TimeInput value={endTime} onChange={setEndTime} label="End Time" /> */}
-
-							<p className="mt-5 text-xl font-bold">Upload Images</p>
-
-							<input
-							className="mt-5"
-							type="file"
-							multiple
-							accept="image/*"
-							onChange={handleImageChange}
-							/>
-						</div>
-				</div>
-					</DrawerBody>
-					<DrawerFooter>
-						<Button color="primary" onPress={onClose}>
-						Cancel
-						</Button>
-						<Button color="primary" onPress={handleClear}>
-						Clear
-						</Button>
-						<Button color="primary" onPress={handleEdit}>
-						Edit
-						</Button>
-					</DrawerFooter>
+						</DrawerBody>
+						<DrawerFooter>
+							<Button color="primary" onPress={onClose}>
+							Cancel
+							</Button>
+							<Button color="primary" onPress={handleClear}>
+							Clear
+							</Button>
+							<Button color="primary" onPress={handleEdit}>
+							Edit
+							</Button>
+						</DrawerFooter>
 					</>
 				)}
 				</DrawerContent>

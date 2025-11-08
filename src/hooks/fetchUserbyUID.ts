@@ -7,10 +7,6 @@ export async function fetchUserByUID(uid: string) {
       .select("*")
       .eq('id', uid)
       .single()
-
-    if (error) {
-      throw error
-    }
     
     if (data) {
       return data;

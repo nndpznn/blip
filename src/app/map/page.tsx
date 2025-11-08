@@ -92,7 +92,7 @@ export default function Map({ events = [] }: MapProps) {
 				<div className="col-start-1 justify-self-start">
 					<Button 
 						color="primary" 
-						className="m-4 hover:bg-red-500" 
+						className="m-4 bg-red-400 hover:bg-red-500" 
 						type="button" 
 						onPress={() => router.push("/meet/39")}
 					>example meet</Button>

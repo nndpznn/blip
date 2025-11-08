@@ -4,7 +4,10 @@ import Meet from "@/models/meet"
 import MeetCard from "@/components/meetCard"
 
 export default function Sandbox() {
-	const fakeMeetLol = new Meet("b0268d17-d76e-4585-a032-78f9518b5557","Testmeet","This is a test.","localhost:3000/sandbox",[333,333])
+	const fakeMeetLol = new Meet("b0268d17-d76e-4585-a032-78f9518b5557","Testmeet","This is a test.","localhost:3000/sandbox",{
+			address: "Chicago Default Location",
+			coordinates: [-87.616, 41.776] // Default coordinates
+		})
 	fakeMeetLol.id = 35
 
 	return (

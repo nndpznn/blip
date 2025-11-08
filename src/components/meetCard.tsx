@@ -36,23 +36,40 @@ export default function MeetCard({ meet }: MeetCardProps) {
         <Card
             isPressable
             onPress={() => router.push(`/meet/${meet.id}`)}
-            className="w-full my-2 bg-red-600 min-h-[200px]"
+            className="w-full my-2 bg-red-400 min-h-[200px]"
         >
             <CardBody className="p-0">
                 <div className="flex w-full items-stretch min-h-[200px]">
-                    <div className="w-1/5 bg-white p-2 flex items-center justify-center">
-                        <span className="text-black text-center">lol</span>
+                    <div className="w-1/5 bg-gray-500 p-2 flex items-center justify-center h-full">
+                        {/* <span className="text-black text-center">lol</span> */}
+                        {meet.images && meet.images.length > 0 ? (
+                            <Image 
+                                className="rounded-none w-full h-full object-cover" 
+                                alt={meet.title} 
+                                src={meet.images[0]} 
+                            />
+                        ) : (
+                            <span className="text-black text-center font-bold text-sm">no vis...</span>
+                        )}
                     </div>
 
-                    <div className="flex flex-1 justify-between items-center p-4 text-white">
-                        <p className="text-3xl font-bold">{meet.title}</p>
-                        <div className="text-center text-ellipsis">
-                            <p>{meet.body || "No description provided"}</p>
+                    <div className="flex flex-col flex-1 justify-start p-4 text-white">
+
+                        <div className="flex w-full mb-2">
+                            <div className="w-2/5 pr-4 shrink-0">
+                                <p className="text-2xl font-bold line-clamp-4">{meet.title}</p>
+                            </div>
+                            
+                            <div className="w-3/5 overflow-hidden">
+                                <p className="text-base text-ellipsis line-clamp-4">{meet.body || "No description provided"}</p>
+                            </div>
                         </div>
-                        <div className="text-right text-xl">
+
+                        <div className="text-right text-lg pt-1 self-end mt-auto">
                             <p className="font-semibold">by {username || 'Unknown author'}</p>
-                            <p className="text-medium">{formattedDate} // {meet.location}</p>
+                            <p className="text-medium">{formattedDate} // {meet.location.address}</p>
                         </div>
+
                     </div>
                 </div>
             </CardBody>

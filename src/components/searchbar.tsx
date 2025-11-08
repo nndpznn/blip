@@ -3,10 +3,12 @@ import { useState, useEffect } from "react";
 
 export default function Searchbar({
 	onSelect,
+	initialValue = "",
 }: {
   onSelect: (result: any) => void;
+  initialValue?: string;
 }) {
-	const [search, setSearch] = useState("")
+	const [search, setSearch] = useState(initialValue)
 	const [results, setResults] = useState<any[]>([]);
 
 	useEffect(() => {
@@ -46,10 +48,10 @@ export default function Searchbar({
 						type="text"
 						value={search}
 						placeholder="search an area"
-						className="w-full p-2 bg-black text-gray-200 placeholder-gray-400 border border-gray-700 rounded"
+						className="w-full p-2 bg-black text-gray-200 placeholder-gray-400 border border-gray-700 rounded-tl-lg rounded-bl-lg"
 						onChange={(e) => setSearch(e.target.value)}
 					/>
-					<Button onPress={() => setSearch("")}>clear</Button>
+					<Button radius="none" className="rounded-br-lg rounded-tr-lg"onPress={() => setSearch("")}>clear</Button>
 				</div>
 	
 				{results.length > 0 && (

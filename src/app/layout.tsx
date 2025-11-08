@@ -28,7 +28,7 @@ export default function RootLayout({
 
   return (
     <html lang="en" className="bg-[#0d0d0d]" data-theme="blip-main">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-hidden`} >
+      <body className={`${geistSans.variable} ${geistMono.variable} h-screen antialiased overflow-hidden`} >
         <AuthProvider>
           <Providers>
             <Nav />

@@ -21,6 +21,7 @@ mapboxgl.accessToken = 'pk.eyJ1Ijoibm5kcHpubiIsImEiOiJjbTZxNmF1NjgxbDV5MmxwemlxO
 
 export default function Create() {
 	const router = useRouter()
+	const fileInputRef = useRef<HTMLInputElement | null>(null);
 	const mapContainer = useRef<HTMLDivElement | null>(null);
 	const map = useRef<mapboxgl.Map | null>(null);
 
@@ -85,6 +86,23 @@ export default function Create() {
 		router.push("/seeAllMeets")
 	}
 
+	const handleUploadImagesPrompt = () => {
+		if (fileInputRef.current) {
+			fileInputRef.current.click();
+		}
+	}
+
+	const handleRemoveFile = (fileNameToRemove: string) => {
+		setImageFiles(prevFiles => 
+			prevFiles.filter(file => file.name !== fileNameToRemove)
+		);
+		// To re-enable uploading the same file name later, 
+		// we need to reset the value of the hidden input:
+		if (fileInputRef.current) {
+			fileInputRef.current.value = '';
+		}
+	};
+
 	return (
 		<div className="">
 
@@ -148,13 +166,52 @@ export default function Create() {
 						<p className="mt-5 text-xl font-bold">Upload Images</p>
 
 						<input
-						className="mt-5"
+						ref={fileInputRef}
+						className="hidden"
 						type="file"
 						multiple
 						accept="image/*"
 						onChange={handleImageChange}
 						/>
 
+						<Button
+						onPress={handleUploadImagesPrompt}
+						color="primary"
+						className="mt-1"
+						>
+							Upload
+						</Button>
+
+						<div className="mt-3 text-sm text-gray-600">
+							{imageFiles.length > 0 ? (
+							<div>
+								<p className="font-medium text-green-600">
+									{imageFiles.length} file(s) selected:
+								</p>
+								{imageFiles.map((file, index) => (
+									<div 
+										key={file.name + index} 
+										className="flex items-center justify-between p-2 bg-green-50 rounded-lg border border-green-200"
+									>
+										<span className="truncate mr-4">{file.name}</span>
+										<button
+											onClick={() => handleRemoveFile(file.name)}
+											className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition duration-150"
+											aria-label={`Remove file ${file.name}`}
+										>
+											<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+												<path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+											</svg>
+										</button>
+									</div>
+								))}
+							</div>
+							) : (
+							<p className="text-gray-500">
+								Click the button above to select images for upload.
+							</p>
+							)}
+						</div>
 						{/* <p>yes we know this looks not great</p> */}
 					</div>
 				</div>
