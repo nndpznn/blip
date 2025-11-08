@@ -129,7 +129,7 @@ class Meet {
 			  body: this.body,
 			  location: this.location,
 			  links: this.link,
-			  images: this.images,
+			//   images: this.images,
 			  date: this.date?.toString(),
 			  startTime: this.startTime?.toString(),
 			  endTime: this.endTime?.toString(),
