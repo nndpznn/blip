@@ -1,7 +1,7 @@
 import { supabase } from "@/clients/supabaseClient"
 import { CalendarDateTime, Time, parseDate, CalendarDate, toCalendarDate, fromDate } from "@internationalized/date";
 
-interface LocationData {
+export interface LocationData {
     address: string;
     coordinates: number[]; // [lng, lat]
 }
