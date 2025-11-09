@@ -17,6 +17,7 @@ import { supabase } from '@/clients/supabaseClient'
 import { useSupabaseUserMetadata } from '@/hooks/useSupabaseUserMetadata'
 import { fetchUserByUID } from "@/hooks/fetchUserbyUID";
 import Searchbar from "@/components/searchbar";
+import { LocationData } from "@/models/meet";
 
 import UserCard from "@/components/userCard";
 import { ReusableFadeInComponent } from "@/components/reusableFadeInComponent";
@@ -34,7 +35,7 @@ export default function MeetDetail() {
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
 	const [title, setTitle] = useState('')
 	const [address, setAddress] = useState('')
-	const [location, setLocation] = useState<{address: string, coordinates: number[]} | null>({
+	const [location, setLocation] = useState<LocationData>({
 		address: "Chicago Default Location",
 		coordinates: [-87.616, 41.776] // Default coordinates
 	}); 
@@ -117,10 +118,7 @@ export default function MeetDetail() {
 		}
 
 		const meet = new Meet(user!.id, title, body, links, 
-			{
-			address: "Chicago Default Location",
-			coordinates: [-87.616, 41.776] // Default coordinates
-		})
+			location)
 		meet.id = correctId
 		meet.date = date
 		meet.startTime = startTime
@@ -325,10 +323,6 @@ export default function MeetDetail() {
 											coordinates: place.center
 										}); 
 
-									} else {
-										// Handle unselection (if the user clicks 'Change Location' in the smart component)
-										setLocation(null); // Reset to default or null
-										setAddress('');
 									}
 								}} />
 								{/* <Input value={address} onChange={e => setAddress(e.target.value)}size="md" type="text" /> */}
