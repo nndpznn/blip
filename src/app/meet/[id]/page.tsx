@@ -211,19 +211,6 @@ export default function MeetDetail() {
 		router.push("/seeAllMeets")
 	}
 
-	const getCalendarDateFrom = (datetime: string): CalendarDate | null => {
-		if (!datetime) {
-			console.log("DATETIME NULL")
-			return null;
-		} 
-		try {
-			console.log("getCalendarDateFrom is executing: returns ", parseDate(datetime.split("T")[0]))
-			return parseDate(datetime.split("T")[0]);
-		} catch {
-			return null;
-		}
-	}
-
 	if (!meet || !organizer)
 	return (
 		<div className="flex flex-col justify-center items-center">
@@ -313,7 +300,7 @@ export default function MeetDetail() {
 								<Textarea minRows={4} maxRows={4} value={body} onChange={e => setBody(e.target.value)} size="md" type="text" />
 								
 								<p className="mt-5 text-xl font-bold">Location</p>
-								<Searchbar initialValue={location?.address} onSelect={(place) => {
+								<Searchbar initialValue={meet.location.address} onSelect={(place) => {
 									if (place && place.center) {
 										// Mapbox center is [longitude, latitude]
 										const [lng, lat] = place.center; 
