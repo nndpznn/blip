@@ -99,7 +99,14 @@ export default function Profile() {
 	return (
 		<div className="flex">
 			<div className="flex-1 mx-[5vw] mt-5 h-full">
-				<h1 id="header" className="text-3xl font-bold mb-5">Your profile</h1>
+				<div className="flex mb-5 items-center">
+					<h1 id="header" className="text-3xl font-bold">Your Profile</h1>
+					{editing && (
+						<div className="mx-2 bg-red-400 px-2 py-1 rounded-2xl">
+							<p className="font-bold text-lg">Editing</p>
+						</div>
+					)}
+				</div>
 
 				<div className="w-[1/2]">
 					<Input 

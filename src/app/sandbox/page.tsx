@@ -2,6 +2,7 @@
 
 import Meet from "@/models/meet"
 import MeetCard from "@/components/meetCard"
+import { Button } from "@heroui/button"
 
 export default function Sandbox() {
 	const fakeMeetLol = new Meet("b0268d17-d76e-4585-a032-78f9518b5557","Testmeet","This is a test.","localhost:3000/sandbox",{
@@ -19,6 +20,13 @@ export default function Sandbox() {
 			
 				<MeetCard meet={fakeMeetLol}></MeetCard>
 			
+			</div>
+
+			<div className="mx-[5vw] mt-5">
+				<h1 className="text-xl font-bold mb-5">Testing button style</h1>
+
+				<Button className="mx-2 bg-black backdrop-blur-sm border border-gray-600 hover:bg-gray-700 rounded-2xl">see meets</Button>
+				<Button className="mx-2 bg-white/10 backdrop-blur-sm border border-white/20 shadow-sm hover:shadow-[0_0_5px_rgba(255,255,255,0.8)] rounded-2xl">see meets</Button>
 			</div>
 		</div>
 	)
