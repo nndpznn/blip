@@ -140,16 +140,18 @@ export default function Create() {
 						<Input value={links} onChange={e => setLinks(e.target.value)}size="md" type="text" />
 					</div>
 
-					<div id="calendar" className="w-2/5 ml-10 align-items-center">
-						<p className="text-xl font-bold">Date</p>
+					<div id="calendar" className="w-2/5 ml-10 flex flex-col items-center">
+						<div>
+							<p className="w-full text-left text-xl font-bold">Date</p>
 
-						<Calendar
-    					aria-label="Date (Min Date Value)"
-      					defaultValue={today(getLocalTimeZone())}
-      					minValue={today(getLocalTimeZone())}
-						value={date}
-						onChange={setDate}
-    					/>
+							<Calendar
+							aria-label="Date (Min Date Value)"
+							defaultValue={today(getLocalTimeZone())}
+							minValue={today(getLocalTimeZone())}
+							value={date}
+							onChange={setDate}
+							/>
+						</div>
 
 						{/* <Button color="primary" onPress={() => console.log(date)}>Print date to console</Button> */}
 					</div>

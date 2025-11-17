@@ -18,7 +18,7 @@ const LoginWithGoogle = () => {
 	}
 
 	return (
-		<Button onPress={signInWithGoogle} color="primary" className="mt-10">
+		<Button onPress={signInWithGoogle} className="mt-10 bg-transparent border rounded-4xl hover:bg-gray-900 px-10">
 			Google Sign-In
 		</Button>
 	)

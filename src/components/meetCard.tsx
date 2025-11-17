@@ -36,15 +36,14 @@ export default function MeetCard({ meet }: MeetCardProps) {
         <Card
             isPressable
             onPress={() => router.push(`/meet/${meet.id}`)}
-            className="w-full my-2 bg-red-400 min-h-[200px]"
+            className="my-1 bg-red-400 h-90"
         >
             <CardBody className="p-0">
-                <div className="flex w-full items-stretch min-h-[200px]">
-                    <div className="w-1/5 bg-gray-500 p-2 flex items-center justify-center h-full">
-                        {/* <span className="text-black text-center">lol</span> */}
+                <div className="flex flex-col h-full">
+                    <div className="bg-gray-500 flex items-center justify-center w-full h-3/5 overflow-hidden">
                         {meet.images && meet.images.length > 0 ? (
                             <Image 
-                                className="rounded-none w-full h-full object-cover" 
+                                className="object-cover h-full w-full rounded-none" 
                                 alt={meet.title} 
                                 src={meet.images[0]} 
                             />
@@ -53,21 +52,16 @@ export default function MeetCard({ meet }: MeetCardProps) {
                         )}
                     </div>
 
-                    <div className="flex flex-col flex-1 justify-start p-4 text-white">
+                    <div className="flex flex-col flex-1 justify-start p-4 text-white h-2/5">
 
-                        <div className="flex w-full mb-2">
-                            <div className="w-2/5 pr-4 shrink-0">
-                                <p className="text-2xl font-bold line-clamp-4">{meet.title}</p>
-                            </div>
-                            
-                            <div className="w-3/5 overflow-hidden">
-                                <p className="text-base text-ellipsis line-clamp-4">{meet.body || "No description provided"}</p>
-                            </div>
+                        <div className="flex flex-col w-full mb-2">
+                            <p className="text-2xl font-bold line-clamp-1 text-ellipsis">{meet.title}</p>  
+                            <p className="text-base text-ellipsis line-clamp-1">{meet.body || "No description provided"}</p>
                         </div>
 
-                        <div className="text-right text-lg pt-1 self-end mt-auto">
+                        <div className="text-right text-md pt-1">
                             <p className="font-semibold">by {username || 'Unknown author'}</p>
-                            <p className="text-medium">{formattedDate} // {meet.location.address}</p>
+                            <p className="text-medium line-clamp-1">{formattedDate} // {meet.location.address.split(',')[0]}</p>
                         </div>
 
                     </div>

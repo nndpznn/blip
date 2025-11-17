@@ -1,7 +1,6 @@
 'use client'
 
 import Image from "next/image";
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import LoginWithGoogle from "../components/googleSignin";
 
@@ -10,7 +9,9 @@ export default function Home() {
 
   return (
     <div className="flex flex-col justify-between min-h-screen sm:p-20 font-(--font-geist-sans)">
-      <div id="main-cluster" className="flex flex-col grow items-center justify-center sm:p-20 font-(--font-geist-sans)">
+      <Image alt="blip-bg" src="/assets/blip-bg.png" className="w-screen h-screen fixed top-0 left-0 z-0" width={1} height={1}></Image>
+      
+      <div id="main-cluster" className="z-1 flex flex-col grow items-center justify-center sm:p-20 font-(--font-geist-sans)">
         <main className="flex flex-col gap-8 items-center sm:items-start"> {/* border-b-2 border-red-400 */}
           <Image
             className=""
@@ -36,7 +37,7 @@ export default function Home() {
 
       </div>
 
-      <footer className="flex py-5 gap-6 items-center justify-center mt-auto w-full">
+      <footer className="flex py-5 gap-6 items-center justify-center mt-auto w-full z-1">
         <a
           className="flex items-center gap-2 hover:underline hover:underline-offset-4"
           href="https://github.com/nndpznn/blip"

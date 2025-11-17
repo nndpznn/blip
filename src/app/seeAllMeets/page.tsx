@@ -36,7 +36,7 @@ export default function AllMeets() {
 
 			<h1 id="header" className="text-3xl font-bold mb-2">All Meets</h1>
 
-			<div className="flex-1 min-h-0 px-5 py-5 overflow-y-auto">
+			<div className="flex-1 min-h-0 p-5 grid grid-cols-3 gap-3 overflow-y-scroll">
 				{meets?.map((meet: Meet) => (
 					<MeetCard key={meet.id} meet={meet}/>
 				))}

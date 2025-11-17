@@ -3,14 +3,14 @@
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button } from "@heroui/react"
 import { supabase } from '../clients/supabaseClient'
 import { useRouter, usePathname } from 'next/navigation'
-import LogoutButton from "./logoutButton"
+import { useEffect } from "react"
 import Image from "next/image"
 import '../styles/globals.css'
 
 export default function Nav() {
 	const router = useRouter()
 	const pathname = usePathname()
-	const allButtonClassses = "bg-red-400 hover:bg-red-500"
+	const allButtonClassses = "bg-red-400 hover:bg-red-500 disabled:bg-gray-500"
 
 	const handleLogout = async () => {
 
@@ -23,13 +23,20 @@ export default function Nav() {
 		}
 	}
 
+	const handleBack = () => {
+		if (pathname == "/map") {
+			return
+		}
+		router.back()
+	}
+
 	if (pathname == "/") return null
 	
 	return (
 		<div id="nav" className="grid grid-cols-3 justify-between items-center w-full py-4 border-b-8 border-red-400">
 
 			<div className="col-start-1 justify-self-start flex items-center gap-2 mx-4">
-				<Button color="primary" className={allButtonClassses} type="button" onPress={() => router.back()}>go back</Button>
+				<Button color="primary" className={allButtonClassses} type="button" disabled={pathname == "/map"} onPress={handleBack}>go back</Button>
 				<Button color="primary" className={allButtonClassses} type="button" onPress={() => router.push("/sandbox")}>sandbox</Button>
 			</div>
 
