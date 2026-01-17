@@ -35,6 +35,7 @@ export default function MeetCard({ meet }: MeetCardProps) {
     const [username, setUsername] = useState<String | null>()
     const [attendanceStatus, setAttendanceStatus] = useState(false);
     const [profileId, setProfileId] = useState<string | null>(null);
+    const [attendeeCount, setAttendeeCount] = useState(0);
 
     useEffect(() => {
         const resolveData = async () => {
@@ -53,22 +54,24 @@ export default function MeetCard({ meet }: MeetCardProps) {
 
     useEffect(() => {
         const fetchAttendance = async () => {
-            if (!profileId) return;
-
-            // Query the junction table (meet_attendees)
-            const { count, error } = await supabase
+            // Fetch Total Count For This Meet
+            const { count: total, error: countError } = await supabase
                 .from('meet_attendees')
-                .select('*', { count: 'exact', head: true }) // Fast way to count if a record exists
-                .eq('profile_id', profileId)
+                .select('*', { count: 'exact', head: true })
                 .eq('meet_id', meet.id);
 
-            if (error) {
-                console.error("Error fetching attendance:", error);
-            } else {
-                // If count > 0, the user has a record, meaning they are attending.
-                if (count) {
-                    setAttendanceStatus(count > 0);
-                }
+            if (countError) console.error("Error fetching tally:", countError);
+            else setAttendeeCount(total || 0);
+
+            // Check If Current User Is Attending
+            if (profileId) {
+                const { count: userCount } = await supabase
+                    .from('meet_attendees')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('profile_id', profileId)
+                    .eq('meet_id', meet.id);
+                
+                setAttendanceStatus(userCount > 0);
             }
         };
 
@@ -108,6 +111,7 @@ export default function MeetCard({ meet }: MeetCardProps) {
             console.error("Error updating RSVP:", error);
         } else {
             // Flip the local state to reflect the successful database change
+            setAttendeeCount(prev => attendanceStatus ? prev - 1 : prev + 1);
             setAttendanceStatus(!attendanceStatus);
         }
     };
@@ -155,9 +159,26 @@ export default function MeetCard({ meet }: MeetCardProps) {
 
                         </div>
 
-                        <div className="text-right text-md pt-1">
-                            <p className="font-semibold">by {username || 'Unknown author'}</p>
-                            <p className="text-medium line-clamp-1">{formattedDate} // {meet.location.address.split(',')[0]}</p>
+                        <div className="flex justify-between items-end pt-1">
+                            {/* NEW: Lower Left - Tally Icon & Count */}
+                            <div className="flex items-center">
+                                <Image
+                                    src="https://uxwing.com/wp-content/themes/uxwing/download/checkmark-cross/checkmark-white-icon.png"
+                                    alt="attendees"
+                                    width={20}
+                                    height={20}
+                                    className="rounded-none"
+                                />
+                                <span className="font-bold text-lg leading-none">{attendeeCount}</span>
+                            </div>
+
+                            {/* Existing Lower Right - Author and Date */}
+                            <div className="text-right text-md">
+                                <p className="font-semibold">by {username || 'Unknown author'}</p>
+                                <p className="text-medium line-clamp-1">
+                                    {formattedDate} // {meet.location.address.split(',')[0]}
+                                </p>
+                            </div>
                         </div>
 
                     </div>
