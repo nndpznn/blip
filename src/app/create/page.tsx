@@ -13,11 +13,9 @@ import mapboxgl from 'mapbox-gl';
 
 import { useState, useRef, useEffect } from "react";
 import Meet from '@/models/meet'
+import { LocationData } from "@/models/meet";
 import { useAuth } from "@/clients/authContext";
 import Searchbar from "@/components/searchbar";
-
-mapboxgl.accessToken = 'pk.eyJ1Ijoibm5kcHpubiIsImEiOiJjbTZxNmF1NjgxbDV5MmxwemlxOG13OG1lIn0.Akl1Y0JXLXH6eB0R6z9wkQ'
-
 
 export default function Create() {
 	const router = useRouter()
@@ -27,10 +25,7 @@ export default function Create() {
 
 	const [title, setTitle] = useState('')
 	const [address, setAddress] = useState('')
-	const [location, setLocation] = useState<{address: string, coordinates: number[]} | null>({
-		address: "Chicago Default Location",
-		coordinates: [-87.616, 41.776] // Default coordinates
-	});
+	const [location, setLocation] = useState<LocationData | null>(null);
 	const [body, setBody] = useState('')
 	const [links, setLinks] = useState('')
 	const [imageFiles, setImageFiles] = useState<File[]>([])
@@ -57,10 +52,7 @@ export default function Create() {
 		setDate(today(getLocalTimeZone()))
 		setStartTime(null)
 		setEndTime(null)
-		setLocation({
-			address: "Chicago Default Location",
-			coordinates: [-87.616, 41.776] // Default coordinates
-		})
+		setLocation(null)
 
 	}
 	const handleSubmit = async (e:any) => {
@@ -118,22 +110,36 @@ export default function Create() {
 						<Textarea minRows={4} maxRows={4} value={body} onChange={e => setBody(e.target.value)} size="md" type="text" />
 						
 						<p className="mt-5 text-xl font-bold">Location</p>
-						<Searchbar onSelect={(place) => {
-							if (place && place.center) {
-								// Mapbox center is [longitude, latitude]
-								const [lng, lat] = place.center; 
-								
-								setLocation({
-									address: place.place_name,
-									coordinates: place.center
-								}); 
+						<Searchbar 
+							onSelect={async (suggestion) => {
+								if (!suggestion) return;
 
-							} else {
-								// Handle unselection (if the user clicks 'Change Location' in the smart component)
-								setLocation(null); // Reset to default or null
-								setAddress('');
-							}
-						}} />
+								try {
+									// Use the sessionToken passed from the Searchbar
+									const response = await fetch(
+										`https://api.mapbox.com/search/searchbox/v1/retrieve/${suggestion.mapbox_id}?access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}&session_token=${suggestion.sessionToken}`
+									);
+
+									if (!response.ok) throw new Error("Failed to retrieve location");
+
+									const data = await response.json();
+									const feature = data.features[0];
+
+									setLocation({
+										name: suggestion.name,
+										address: suggestion.full_address || suggestion.name,
+										mapbox_id: suggestion.mapbox_id,
+										coordinates: feature.geometry.coordinates,
+										metadata: {
+											category: suggestion.poi_category || "address",
+											is_poi: !!suggestion.poi_category
+										}
+									});
+								} catch (error) {
+									console.error("Retrieve error:", error);
+								}
+							}} 
+						/>
 						{/* <Input value={address} onChange={e => setAddress(e.target.value)}size="md" type="text" /> */}
 						
 						<p className="mt-5 text-xl font-bold">Links (Optional)</p>

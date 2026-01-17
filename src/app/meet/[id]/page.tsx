@@ -35,10 +35,7 @@ export default function MeetDetail() {
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
 	const [title, setTitle] = useState('')
 	const [address, setAddress] = useState('')
-	const [location, setLocation] = useState<LocationData>({
-		address: "Chicago Default Location",
-		coordinates: [-87.616, 41.776] // Default coordinates
-	}); 
+	const [location, setLocation] = useState<LocationData | null>(null);
 	const [body, setBody] = useState('')
 	const [links, setLinks] = useState('')
 	const [imageFiles, setImageFiles] = useState<File[]>([])
@@ -86,10 +83,7 @@ export default function MeetDetail() {
 		setDate(today(getLocalTimeZone()))
 		setStartTime(null)
 		setEndTime(null)
-		setLocation(meet?.location || {
-			address: "Chicago Default Location",
-			coordinates: [-87.616, 41.776] // Default coordinates
-		})
+		setLocation(meet?.location || null)
 	}
 
 	const handleFill = () => {
@@ -100,10 +94,7 @@ export default function MeetDetail() {
 		setDate(meet?.date ? parseDate(meet.date.toString()) : today(getLocalTimeZone()))
 		setStartTime(null)
 		setEndTime(null)
-		setLocation(meet?.location || {
-			address: "Chicago Default Location",
-			coordinates: [-87.616, 41.776] // Default coordinates
-		})
+		setLocation(meet?.location || null)
 	}
 
 	const handleEdit = async () => {
@@ -111,7 +102,7 @@ export default function MeetDetail() {
 
 		const correctId = parseInt(meetId, 10)
 
-		if (!title || !body || !date || !startTime || !endTime) {
+		if (!title || !body || !date || !startTime || !endTime || !location) {
 			console.log("missing one or more required fields")
 			setIncAlertVisible(true)
 			return
@@ -225,18 +216,20 @@ export default function MeetDetail() {
 				<div className="flex-1">
 					{/* TITLE/HEADING */}
 					<p className="text-center font-bold text-4xl mx-6 mt-2">{meet.title}</p>
-					<p className="text-center text-xl mx-6 mt-2">On {meet.date ? meet.date.toString() : "No date found"}</p>
+					<p className="text-center text-xl mx-6 mt-2">On {meet.date ? meet.date.toString() : "No date found"}, from {meet.startTime?.toString()} to {meet.endTime?.toString()}</p>
 
-					<p className="text-center text-xl mx-6 mt-2">From {meet.startTime?.toString()} to {meet.endTime?.toString()}</p>					
+					<p className="text-center text-xl mx-6 mt-2">{meet.location.address}</p>					
 					<p className="text-center text-xl mx-6 mt-2">Organized by <Button onPress={onUserOpen} className="text-xl">{organizer.username ? organizer.username : organizer.fullname}</Button></p>
 
 
 					{/* CONTENT */}
 					<p className="text-center wrap-break-word mx-12 mt-12">{meet.body}</p>
 
-					<div id="buttoncontainer" className="flex flex-col">
-						<Button color="primary" onPress={() => window.open("https://instagram.com/", "_blank", "noopener,noreferrer")} className="self-center mx-12 my-3" type="button">Instagram</Button>
-						<Button color="primary" onPress={() => window.open("https://tiktok.com/", "_blank", "noopener,noreferrer")} className="self-center mx-12 my-3" type="button">TikTok</Button>
+					<div id="buttoncontainer" className="flex flex-col justify-self-center">
+						{/* <Button color="primary" onPress={() => window.open("https://instagram.com/", "_blank", "noopener,noreferrer")} className="mx-6 my-3" type="button">Instagram</Button>
+						<Button color="primary" onPress={() => window.open("https://tiktok.com/", "_blank", "noopener,noreferrer")} className="mx-6 my-3" type="button">TikTok</Button> */}
+						<Button color="primary" onPress={() => window.open(meet.mapsLink, "_blank", "noopener,noreferrer")} className="mx-6 my-3" type="button">Google Maps</Button>
+						<p>(Make sure to verify the address!)</p>
 					</div>
 				</div>
 
@@ -299,19 +292,37 @@ export default function MeetDetail() {
 								<p className="mt-5 text-xl font-bold">Body</p>
 								<Textarea minRows={4} maxRows={4} value={body} onChange={e => setBody(e.target.value)} size="md" type="text" />
 								
-								<p className="mt-5 text-xl font-bold">Location</p>
-								<Searchbar initialValue={meet.location.address} onSelect={(place) => {
-									if (place && place.center) {
-										// Mapbox center is [longitude, latitude]
-										const [lng, lat] = place.center; 
-										
-										setLocation({
-											address: place.place_name,
-											coordinates: place.center
-										}); 
+								<p className="mt-5 text-xl font-bold">NEW Location (Leave blank if not changing)</p>
+								<Searchbar 
+									onSelect={async (suggestion) => {
+										if (!suggestion) return;
 
-									}
-								}} />
+										try {
+											// Use the sessionToken passed from the Searchbar
+											const response = await fetch(
+												`https://api.mapbox.com/search/searchbox/v1/retrieve/${suggestion.mapbox_id}?access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}&session_token=${suggestion.sessionToken}`
+											);
+
+											if (!response.ok) throw new Error("Failed to retrieve location");
+
+											const data = await response.json();
+											const feature = data.features[0];
+
+											setLocation({
+												name: suggestion.name,
+												address: suggestion.address,
+												mapbox_id: suggestion.mapbox_id,
+												coordinates: feature.geometry.coordinates,
+												metadata: {
+													category: suggestion.poi_category || "address",
+													is_poi: !!suggestion.poi_category
+												}
+											});
+										} catch (error) {
+											console.error("Retrieve error:", error);
+										}
+									}} 
+								/>
 								{/* <Input value={address} onChange={e => setAddress(e.target.value)}size="md" type="text" /> */}
 {/* 								
 								<p className="mt-5 text-xl font-bold">Links (Optional)</p>

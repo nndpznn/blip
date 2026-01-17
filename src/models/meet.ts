@@ -1,9 +1,17 @@
 import { supabase } from "@/clients/supabaseClient"
 import { CalendarDateTime, Time, parseDate, CalendarDate, toCalendarDate, fromDate } from "@internationalized/date";
+import { encodeToGoogleMaps } from "@/util/encodeToGoogleMaps";
+import { encode } from "punycode";
 
 export interface LocationData {
-    address: string;
-    coordinates: number[]; // [lng, lat]
+    name: string;           // e.g., "Whole Foods" or "595 Redwood Highway"
+    address: string;        // The full formatted address string
+    mapbox_id: string | null; // Nullable for your migrated legacy records
+    coordinates: [number, number]; // Strictly a tuple of [lng, lat]
+    metadata?: {
+        category?: string;
+        is_poi: boolean;
+    };
 }
 
 class Meet {
@@ -13,7 +21,8 @@ class Meet {
 	title: string
 	body: string
 	link?: string
-	location: LocationData;
+	location: LocationData
+	mapsLink: string
 	images: string[]
 	date: CalendarDate | null
 	startTime: Time | null
@@ -26,6 +35,7 @@ class Meet {
 	  this.body = body
 	  this.link = link
 	  this.location = location
+	  this.mapsLink = encodeToGoogleMaps(location.name, location.coordinates)
 	  this.images = []
 	  this.date = null
 	  this.startTime = null
@@ -102,6 +112,7 @@ class Meet {
 			  title: this.title,
 			  body: this.body,
 			  location: this.location,
+			  mapsLink: encodeToGoogleMaps(this.location.name, this.location.coordinates),
 			  links: this.link,
 			  images: this.images,
 			  date: this.date?.toString(),
@@ -128,6 +139,7 @@ class Meet {
 			  title: this.title,
 			  body: this.body,
 			  location: this.location,
+			  mapsLink: encodeToGoogleMaps(this.location.name, this.location.coordinates),
 			  links: this.link,
 			//   images: this.images,
 			  date: this.date?.toString(),

@@ -71,7 +71,7 @@ export default function MeetCard({ meet }: MeetCardProps) {
                     .eq('profile_id', profileId)
                     .eq('meet_id', meet.id);
                 
-                setAttendanceStatus(userCount > 0);
+                setAttendanceStatus(userCount ? (userCount > 0) : false);
             }
         };
 
@@ -176,7 +176,7 @@ export default function MeetCard({ meet }: MeetCardProps) {
                             <div className="text-right text-md">
                                 <p className="font-semibold">by {username || 'Unknown author'}</p>
                                 <p className="text-medium line-clamp-1">
-                                    {formattedDate} // {meet.location.address.split(',')[0]}
+                                    {formattedDate} // {meet.location.name}
                                 </p>
                             </div>
                         </div>
