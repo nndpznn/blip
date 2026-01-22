@@ -15,9 +15,9 @@ export default function Searchbar({
     // Search Box API requires a session token for billing efficiency
     const sessionToken = useMemo(() => uuidv4(), []);
 
-	useEffect(() => {
-    console.log("Current Location State:", location);
-}, [location]);
+	// useEffect(() => {
+    //     console.log("Current Location State:", location);
+    // }, [location]);
 
     useEffect(() => {
         const controller = new AbortController();

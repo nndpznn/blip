@@ -4,14 +4,11 @@
 import { Button } from "@heroui/button"
 import { Input, Textarea, Alert, TimeInput} from "@heroui/react";
 import { useRouter } from 'next/navigation'
-import Image from "next/image";
 
 import {Calendar} from '@heroui/calendar'
-import {Time, parseTime, today, getLocalTimeZone} from "@internationalized/date";
+import {Time, today, getLocalTimeZone, CalendarDate} from "@internationalized/date";
 
-import mapboxgl from 'mapbox-gl';
-
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import Meet from '@/models/meet'
 import { LocationData } from "@/models/meet";
 import { useAuth } from "@/clients/authContext";
@@ -20,21 +17,20 @@ import Searchbar from "@/components/searchbar";
 export default function Create() {
 	const router = useRouter()
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
-	const mapContainer = useRef<HTMLDivElement | null>(null);
-	const map = useRef<mapboxgl.Map | null>(null);
+	// const mapContainer = useRef<HTMLDivElement | null>(null);
+	// const map = useRef<mapboxgl.Map | null>(null);
 
 	const [title, setTitle] = useState('')
-	const [address, setAddress] = useState('')
 	const [location, setLocation] = useState<LocationData | null>(null);
 	const [body, setBody] = useState('')
 	const [links, setLinks] = useState('')
 	const [imageFiles, setImageFiles] = useState<File[]>([])
-	const [date, setDate] = useState<any>(null)
+	const [date, setDate] = useState<CalendarDate | null>(null)
 	const [startTime, setStartTime] = useState<Time | null>()
 	const [endTime, setEndTime] = useState<Time | null>()
 
 	const [incAlertVisible, setIncAlertVisible] = useState(false)
-	const { user, loading: authLoading, signOut } = useAuth();
+	const { user } = useAuth();
 
 	const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = e.target.files;
@@ -45,7 +41,6 @@ export default function Create() {
 
 	const handleClear = () => {
 		setTitle('')
-		setAddress('')
 		setBody('')
 		setLinks('')
 		setImageFiles([])
@@ -55,7 +50,7 @@ export default function Create() {
 		setLocation(null)
 
 	}
-	const handleSubmit = async (e:any) => {
+	const handleSubmit = async () => {
 		console.log([title, body, links])
 
 		if (!title || !body || !date || !startTime || !endTime || !location) {
