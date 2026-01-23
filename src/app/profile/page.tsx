@@ -32,6 +32,7 @@ export default function Profile() {
 		setFullname(currentUser.fullname);
 		setHeadline(currentUser.headline);
 		setBio(currentUser.bio);
+		setProfileColor(currentUser.profile_color)
 		}
 	}, [currentUser]);
 
