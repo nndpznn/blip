@@ -1,5 +1,4 @@
 import { supabase } from "@/clients/supabaseClient"
-import { profile } from "console"
 
 class User {
 	id: string

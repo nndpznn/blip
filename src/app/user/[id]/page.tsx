@@ -1,13 +1,11 @@
 'use client'
 
-import { useRouter, useParams } from 'next/navigation'
+// import { useRouter, useParams } from 'next/navigation'
 
 export default function UserDetail() {
 
-	const router = useRouter()
-	const params = useParams<{ id: string }>();
-    const userId = params.id;
-
+	// const params = useParams<{ id: string }>();
+    // const userId = params.id;
 
 	return (
 		<div>

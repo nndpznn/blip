@@ -10,10 +10,13 @@ export async function fetchUserByUID(uid: string) {
     
     if (data) {
       return data;
+    } else if (error) {
+      return error;
     } else {
       console.log('User not found.')
     }
-  } catch (err: any) {
-    console.error('Error fetching user:', err.message)
+
+  } catch (err: unknown) {
+    console.error('Error fetching user:', err)
   }
 }

@@ -2,15 +2,34 @@ import { Button } from "@heroui/react";
 import { useState, useEffect, useMemo } from "react";
 import { v4 as uuidv4 } from 'uuid'; // You may need to install uuid
 
+interface MapboxSuggestion {
+  mapbox_id: string;
+  name: string;
+  full_address: string;
+  poi_category?: string;
+}
+
+export interface SearchResult {
+  name: string;
+  address: string;
+  mapbox_id: string;
+  session_token: string;
+  coordinates: [number, number];
+  metadata: {
+    category: string;
+    is_poi: boolean;
+  };
+}
+
 export default function Searchbar({
     onSelect,
     initialValue = "",
 }: {
-  onSelect: (result: any) => void;
+  onSelect: (result: SearchResult) => void;
   initialValue?: string;
 }) {
     const [search, setSearch] = useState(initialValue);
-    const [results, setResults] = useState<any[]>([]);
+    const [results, setResults] = useState<MapboxSuggestion[]>([]);
     
     // Search Box API requires a session token for billing efficiency
     const sessionToken = useMemo(() => uuidv4(), []);
@@ -82,6 +101,7 @@ export default function Searchbar({
 							name: suggestion.name, // The POI name (e.g., "Whole Foods") or Street Name
 							address: suggestion.full_address,
 							mapbox_id: suggestion.mapbox_id,
+                            session_token: sessionToken,
 							coordinates: feature.geometry.coordinates, // [lng, lat]
 							metadata: {
 								category: suggestion.poi_category || "address",

@@ -9,7 +9,7 @@ export const useSupabaseUserMetadata = () => {
   const [uid, setUid] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
 
-  const { user, loading: userLoading } = useSupabaseUser()
+  const { user } = useSupabaseUser()
 
   useEffect(() => {
     if (user) {

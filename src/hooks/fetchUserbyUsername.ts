@@ -17,7 +17,7 @@ export async function fetchUserByUsername(username: string) {
 	} else {
 	  console.log('User not found.')
 	}
-  } catch (err: any) {
-	console.error('Error fetching user:', err.message)
+  } catch (err: unknown) {
+	console.error('Error fetching user:', err)
   }
 }

@@ -32,7 +32,7 @@ const getCurrentProfileId = async () => {
 
 export default function MeetCard({ meet }: MeetCardProps) {
     const router = useRouter();
-    const [username, setUsername] = useState<String | null>()
+    const [username, setUsername] = useState<string | null>()
     const [attendanceStatus, setAttendanceStatus] = useState(false);
     const [profileId, setProfileId] = useState<string | null>(null);
     const [attendeeCount, setAttendeeCount] = useState(0);
@@ -152,7 +152,7 @@ export default function MeetCard({ meet }: MeetCardProps) {
                                 <p className="text-base text-ellipsis line-clamp-1">{meet.body || "No description provided"}</p>
                             </div>
                             <div className="w-1/5 flex justify-end">
-                                <Button className="w-8" onPress={(e) => {
+                                <Button className="w-8" onPress={() => {
                                     handleRsvpToggle();
                                 }}>{attendanceStatus  ? "Attending!" : "Attend"}</Button>
                             </div>
@@ -176,7 +176,7 @@ export default function MeetCard({ meet }: MeetCardProps) {
                             <div className="text-right text-md">
                                 <p className="font-semibold">by {username || 'Unknown author'}</p>
                                 <p className="text-medium line-clamp-1">
-                                    {formattedDate} // {meet.location.name}
+                                    {formattedDate} | {meet.location.name}
                                 </p>
                             </div>
                         </div>

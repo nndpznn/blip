@@ -4,13 +4,9 @@ import { useEffect, useState } from "react";
 import Meet from "@/models/meet";
 import MeetCard from "@/components/meetCard"
 import { supabase } from "@/clients/supabaseClient";
-import { useRouter } from "next/navigation";
-import { Button } from "@heroui/react";
 
 export default function AllMeets() {
-	const router = useRouter()
-
-	const [fetchError, setFetchError] = useState<any>(null)
+	const [fetchError, setFetchError] = useState<string>("")
 	const [meets, setMeets] = useState<Meet[] | null>(null)
 
 	useEffect(() => {
@@ -20,11 +16,11 @@ export default function AllMeets() {
 		  if (error) {
 			setFetchError('Error fetching meets for this user.')
 			setMeets(null)
-			console.log(error)
+			console.log(fetchError)
 		  }
 		  if (data) {
 			setMeets(data)
-			setFetchError(null)
+			setFetchError("")
 		  }
 		}
 	

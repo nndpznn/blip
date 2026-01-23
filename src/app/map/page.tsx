@@ -8,13 +8,12 @@ import mapboxgl from 'mapbox-gl';
 import { supabase } from '@/clients/supabaseClient';
 
 // components
-import {Button, ButtonGroup} from "@heroui/button";
-import Link from 'next/link';
-import Image from "next/image";
+import {Button } from "@heroui/button";
 
 // customs
 import Searchbar from '@/components/searchbar';
 import { useSupabaseUserMetadata } from '@/hooks/useSupabaseUserMetadata'
+import Meet from '@/models/meet';
 
 interface MapProps {
 	events: Event[]
@@ -23,12 +22,12 @@ interface MapProps {
 export default function Map({ events = [] }: MapProps) {
 	const router = useRouter()
 
-	const { avatarUrl, fullName, loading: metadataLoading } = useSupabaseUserMetadata()
+	const { avatarUrl, fullName } = useSupabaseUserMetadata()
 
 	const mapContainerRef = useRef<HTMLDivElement>(null);
 	const mapRef = useRef<mapboxgl.Map | null>(null);
 	const markersRef = useRef([]);
-	const [meets, setMeets] = useState<any[]>([]);
+	const [meets, setMeets] = useState<Meet[] | null>([]);
 	const [loading, setLoading] = useState(true);
 
 	const init = async () => {
@@ -79,7 +78,7 @@ export default function Map({ events = [] }: MapProps) {
 			<div className="flex-1 w-full">
 				<div className="absolute z-10 p-4">
 					<Searchbar onSelect={(place) => {
-						const [lng, lat] = place.center;
+						const [lng, lat] = place.coordinates;
 						mapRef.current?.flyTo({ center: [lng, lat], zoom: 14 });
 					}} />
 				</div>

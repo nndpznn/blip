@@ -3,7 +3,6 @@
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button } from "@heroui/react"
 import { supabase } from '../clients/supabaseClient'
 import { useRouter, usePathname } from 'next/navigation'
-import { useEffect } from "react"
 import Image from "next/image"
 import '../styles/globals.css'
 

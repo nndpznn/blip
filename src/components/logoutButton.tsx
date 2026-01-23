@@ -4,9 +4,9 @@ import { supabase } from '../clients/supabaseClient';
 import { Button, ButtonProps } from '@heroui/react';
 import { useRouter } from 'next/navigation';
 
-interface LogoutButtonProps extends ButtonProps {}
+// interface LogoutButtonProps extends ButtonProps {}
 
-export default function LogoutButton(props: LogoutButtonProps) {
+export default function LogoutButton(props: ButtonProps) {
 	const router = useRouter();
 
 	const handleLogout = async () => {

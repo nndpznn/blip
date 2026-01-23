@@ -1,11 +1,9 @@
 'use client'
 
 import Image from "next/image";
-import { useRouter } from 'next/navigation';
 import LoginWithGoogle from "../components/googleSignin";
 
 export default function Home() {
-  const router = useRouter()
 
   return (
     <div className="flex flex-col justify-between min-h-screen sm:p-20 font-(--font-geist-sans)">
@@ -22,7 +20,7 @@ export default function Home() {
             priority
           />
 
-          <p className="w-[50vw]">welcome to blip, your new companion for finding nearby cars and coffee events and meets from community leaders. this app came about as a result of the realization that we, as car enthusiasts, have no real central resource to find if there are any nearby/upcoming car enthusiast shows and meets, known to the community as "cars and coffee" events. looking through Reddit threads, Facebook forums, and Instagram pages can be tedious and community centers can be hard to find. we hope that this map can become this central resource for carspotters around the country(but california for now) to rely on to find cool events near them.</p>
+          <p className="w-[50vw]">welcome to blip, your new companion for finding nearby cars and coffee events and meets from community leaders. this app came about as a result of the realization that we, as car enthusiasts, have no real central resource to find if there are any nearby/upcoming car enthusiast shows and meets. looking through Tiktok, Reddit threads, Facebook forums, and Instagram pages can be tedious and community centers can be hard to find. we hope that this map can become this central resource for carspotters around the country(but california for now) to rely on to find cool events near them.</p>
 
         </main>
 
@@ -40,7 +38,7 @@ export default function Home() {
       <footer className="flex py-5 gap-6 items-center justify-center mt-auto w-full z-1">
         <a
           className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://github.com/nndpznn/blip"
+          href="https://ko-fi.com/blip"
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -51,7 +49,7 @@ export default function Home() {
             width={16}
             height={16}
           /> */}
-          documentation
+          support us
         </a>
       </footer>
     </div>

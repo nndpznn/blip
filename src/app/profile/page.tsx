@@ -1,12 +1,10 @@
 'use client'
 
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/clients/authContext";
-import { useSupabaseUserMetadata } from '@/hooks/useSupabaseUserMetadata'
 import { fetchUserByUID } from "@/hooks/fetchUserbyUID";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import User from "@/models/user";
-import { Button, Input, Textarea, useDisclosure } from "@heroui/react"
+import { Button, Input, useDisclosure } from "@heroui/react"
 import { HexColorPicker } from "react-colorful";
 
 import UserCard from "@/components/userCard";
@@ -14,10 +12,9 @@ import { ReusableFadeInComponent } from "@/components/reusableFadeInComponent";
 
 
 export default function Profile() {
-	const router = useRouter()
 	const [currentUser, setCurrentUser] = useState<User | null>()
 	const [editing, setEditing] = useState(false)
-	const { user, loading: authLoading, signOut } = useAuth()
+	const { user } = useAuth()
 	const { isOpen, onOpen, onClose } = useDisclosure();
 
 	const [username, setUsername] = useState('')
@@ -29,14 +26,14 @@ export default function Profile() {
 	
 	const ALL_BUTTON_CSS = "my-2 max-w-md"
 	
-	const setFormFields = () => {
+	const setFormFields = useCallback(() => {
 		if (currentUser) {
 		setUsername(currentUser.username);
 		setFullname(currentUser.fullname);
 		setHeadline(currentUser.headline);
 		setBio(currentUser.bio);
 		}
-	};
+	}, [currentUser]);
 
     useEffect(() => {
         const resolveAuthor = async () => {
@@ -50,7 +47,7 @@ export default function Profile() {
 
     useEffect(() => {
         setFormFields()
-    }, [currentUser])
+    }, [currentUser, setFormFields])
 
 	const handleFlipEdit = () => {
 		setEditing(!editing)
@@ -89,7 +86,7 @@ export default function Profile() {
 			<div className="flex">
 				<div className="flex-1 mx-[5vw] mt-5 h-full">
 					<h1 id="header" className="text-3xl font-bold mb-5">Profile not found</h1>
-					<p className="my-5 text-xl">We can't seem to load your profile. Something may be wrong, but this text box definitely can't diagnose it for you.</p>
+					<p className="my-5 text-xl">We can&apos;t seem to load your profile. Something may be wrong, but this text box definitely can&apos;t diagnose it for you.</p>
 					<p className="my-5 text-xl">Maybe come back later?</p>
 				</div>
 			</div>

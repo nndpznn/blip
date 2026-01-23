@@ -4,7 +4,7 @@ import Meet from "@/models/meet"
 import User from "@/models/user";
 
 import { Button } from "@heroui/button"
-import { Input, Textarea, TimeInput} from "@heroui/react";
+import { Input, Textarea } from "@heroui/react";
 import {Image} from "@heroui/image";
 import { useRouter, useParams } from 'next/navigation'
 import { useEffect, useState, useRef } from "react";
@@ -34,7 +34,6 @@ import {
 export default function MeetDetail() {
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
 	const [title, setTitle] = useState('')
-	const [address, setAddress] = useState('')
 	const [location, setLocation] = useState<LocationData | null>(null);
 	const [body, setBody] = useState('')
 	const [links, setLinks] = useState('')
@@ -45,10 +44,10 @@ export default function MeetDetail() {
 	const [endTime, setEndTime] = useState<Time | null>()
 	const [organizer, setOrganizer] = useState<User | null>()
 
-	const { avatarUrl, uid, fullName, loading: metadataLoading } = useSupabaseUserMetadata()
+	const { uid } = useSupabaseUserMetadata()
 
-	const [incAlertVisible, setIncAlertVisible] = useState(false)
-	const { user, loading: authLoading, signOut } = useAuth();
+	// const [incAlertVisible, setIncAlertVisible] = useState(false)
+	const { user } = useAuth();
 
 	const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = e.target.files;
@@ -76,7 +75,6 @@ export default function MeetDetail() {
 
 	const handleClear = () => {
 		setTitle('')
-		setAddress('')
 		setBody('')
 		setLinks('')
 		setImageFiles([])
@@ -86,16 +84,17 @@ export default function MeetDetail() {
 		setLocation(meet?.location || null)
 	}
 
-	const handleFill = () => {
-		setTitle(meet?.title || '')
-		setBody(meet?.body || '')
-		setLinks(meet?.link || '')
-		// setImageFiles(meet?.files || '')
-		setDate(meet?.date ? parseDate(meet.date.toString()) : today(getLocalTimeZone()))
-		setStartTime(null)
-		setEndTime(null)
-		setLocation(meet?.location || null)
-	}
+	// working on alternative solution to refilling form with data. maybe cancel the edit instead of having to reset
+	// const handleFill = () => {
+	// 	setTitle(meet?.title || '')
+	// 	setBody(meet?.body || '')
+	// 	setLinks(meet?.link || '')
+	// 	// setImageFiles(meet?.files || '')
+	// 	setDate(meet?.date ? parseDate(meet.date.toString()) : today(getLocalTimeZone()))
+	// 	setStartTime(null)
+	// 	setEndTime(null)
+	// 	setLocation(meet?.location || null)
+	// }
 
 	const handleEdit = async () => {
 		console.log([title, body, links])
@@ -104,7 +103,7 @@ export default function MeetDetail() {
 
 		if (!title || !body || !date || !startTime || !endTime || !location) {
 			console.log("missing one or more required fields")
-			setIncAlertVisible(true)
+			// setIncAlertVisible(true)
 			return
 		}
 
@@ -206,7 +205,7 @@ export default function MeetDetail() {
 	return (
 		<div className="flex flex-col justify-center items-center">
 			<p className="text-3xl my-3">...</p>
-			<p className="text-xl my-3">Meet data not found. Maybe it's TOO underground...</p>
+			<p className="text-xl my-3">Meet data not found. Maybe it&apos;s TOO underground...</p>
 		</div>
 	)
 
@@ -300,7 +299,7 @@ export default function MeetDetail() {
 										try {
 											// Use the sessionToken passed from the Searchbar
 											const response = await fetch(
-												`https://api.mapbox.com/search/searchbox/v1/retrieve/${suggestion.mapbox_id}?access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}&session_token=${suggestion.sessionToken}`
+												`https://api.mapbox.com/search/searchbox/v1/retrieve/${suggestion.mapbox_id}?access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}&session_token=${suggestion.session_token}`
 											);
 
 											if (!response.ok) throw new Error("Failed to retrieve location");
@@ -314,8 +313,8 @@ export default function MeetDetail() {
 												mapbox_id: suggestion.mapbox_id,
 												coordinates: feature.geometry.coordinates,
 												metadata: {
-													category: suggestion.poi_category || "address",
-													is_poi: !!suggestion.poi_category
+													category: suggestion.metadata.category || "address",
+													is_poi: !!suggestion.metadata.is_poi
 												}
 											});
 										} catch (error) {

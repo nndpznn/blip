@@ -1,7 +1,6 @@
 import { supabase } from "@/clients/supabaseClient"
-import { CalendarDateTime, Time, parseDate, CalendarDate, toCalendarDate, fromDate } from "@internationalized/date";
+import { Time, parseDate, CalendarDate } from "@internationalized/date";
 import { encodeToGoogleMaps } from "@/util/encodeToGoogleMaps";
-import { encode } from "punycode";
 
 export interface LocationData {
     name: string;           // e.g., "Whole Foods" or "595 Redwood Highway"
@@ -58,7 +57,7 @@ class Meet {
 	static getTimeStringFrom(datetime: string): string | null {
 		if (!datetime || !datetime.includes("T")) return null;
 
-		let timePart = datetime.split("T")[1]?.replace("Z", "") ?? ""; // "4:00:00"
+		const timePart = datetime.split("T")[1]?.replace("Z", "") ?? ""; // "4:00:00"
 		const [hour, minute] = timePart.split(":");
 
 		if (!hour || !minute) return null;
