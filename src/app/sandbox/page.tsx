@@ -1,8 +1,10 @@
-'use client'
+"use client"
 
 import { Button } from "@heroui/button"
+import { useRouter } from 'next/navigation'; 
 
 export default function Sandbox() {
+	const router = useRouter()
 	// const fakeMeetLol = new Meet("b0268d17-d76e-4585-a032-78f9518b5557","Testmeet","This is a test.","localhost:3000/sandbox",{
 	// 		address: "Chicago Default Location",
 	// 		coordinates: [-87.616, 41.776] // Default coordinates
@@ -25,6 +27,11 @@ export default function Sandbox() {
 
 				<Button className="mx-2 bg-black backdrop-blur-sm border border-gray-600 hover:bg-gray-700 rounded-2xl">see meets</Button>
 				<Button className="mx-2 bg-white/10 backdrop-blur-sm border border-white/20 shadow-sm hover:shadow-[0_0_5px_rgba(255,255,255,0.8)] rounded-2xl">see meets</Button>
+				<Button
+					className="mx-2 bg-black backdrop-blur-sm border border-gray-600 hover:bg-gray 700 rounded-2xl"
+					type="button"
+					onPress={() => router.push("/user/id")}
+				>profile page</Button>
 			</div>
 		</div>
 	)
