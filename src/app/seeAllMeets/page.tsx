@@ -28,11 +28,11 @@ export default function AllMeets() {
 	  }, [])
 
 	return (
-		<div className="mx-[5vw] mt-5 flex flex-col h-screen">
+		<div className="mx-[5vw] mt-5 flex flex-col h-[calc(100vh-150px)] overflow-y-auto">
 
-			<h1 id="header" className="text-3xl font-bold mb-2">All Meets</h1>
+			<h1 id="header" className="text-3xl font-bold mb-2">Browse Meets</h1>
 
-			<div className="flex-1 min-h-0 p-5 grid grid-cols-3 gap-3 overflow-y-scroll">
+			<div className="flex-1 p-5 grid grid-cols-3 gap-3">
 				{meets?.map((meet: Meet) => (
 					<MeetCard key={meet.id} meet={meet}/>
 				))}

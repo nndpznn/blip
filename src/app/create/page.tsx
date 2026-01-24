@@ -30,6 +30,7 @@ export default function Create() {
 	const [endTime, setEndTime] = useState<Time | null>()
 
 	const [incAlertVisible, setIncAlertVisible] = useState(false)
+	const [caliAlertVisible, setCaliAlertVisible] = useState(false)
 	const { user } = useAuth();
 
 	const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,6 +58,25 @@ export default function Create() {
 			console.log("missing one or more required fields")
 			setIncAlertVisible(true)
 			return
+		}
+
+		if (title.length > 25) {
+			alert(`Title is too long (${title.length} chars). Limit to 25 characters, please!`)
+			return
+		}
+
+		if (startTime.compare(endTime) >= 0) {
+			alert("Start time is after or at the same time as end time. No time travelers allowed!")
+			return
+		}
+
+		const isCalifornia = location?.address.includes("California") || 
+                        	location?.address.includes(", CA");
+
+		if (!isCalifornia) {
+			// alert("Sorry! We are only hosting meets in California at this time.");
+			setCaliAlertVisible(true)
+			return;
 		}
 
 		const meet = new Meet(user!.id, title, body, links, location)
@@ -98,7 +118,11 @@ export default function Create() {
 
 				<div className="flex mb-5">
 					<div id="fields" className="w-2/5">
-						<p className="text-xl font-bold">Title</p>
+						<div className="flex items-center">
+							<p className="text-xl font-bold">Title</p>
+							<p className="text-md ml-2 font-bold">(25 chars max.)</p>
+						</div>
+					
 						<Input value={title} onChange={e => setTitle(e.target.value)}size="md" type="text" />
 						
 						<p className="mt-5 text-xl font-bold">Body</p>
@@ -112,7 +136,7 @@ export default function Create() {
 								try {
 									// Use the sessionToken passed from the Searchbar
 									const response = await fetch(
-										`https://api.mapbox.com/search/searchbox/v1/retrieve/${suggestion.mapbox_id}?access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}&session_token=${suggestion.sessionToken}`
+										`https://api.mapbox.com/search/searchbox/v1/retrieve/${suggestion.mapbox_id}?access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}&session_token=${suggestion.session_token}`
 									);
 
 									if (!response.ok) throw new Error("Failed to retrieve location");
@@ -122,12 +146,12 @@ export default function Create() {
 
 									setLocation({
 										name: suggestion.name,
-										address: suggestion.full_address || suggestion.name,
+										address: suggestion.address,
 										mapbox_id: suggestion.mapbox_id,
 										coordinates: feature.geometry.coordinates,
 										metadata: {
-											category: suggestion.poi_category || "address",
-											is_poi: !!suggestion.poi_category
+											category: suggestion.metadata.category || "address",
+											is_poi: !!suggestion.metadata.is_poi
 										}
 									});
 								} catch (error) {
@@ -224,6 +248,7 @@ export default function Create() {
 				<Button color="primary" className="mx-3" onPress={handleSubmit}>Submit</Button>
 
 				<Alert className="mt-5" title="Incomplete Meet"  description="Your meet is incomplete. Please fill out the required sections." isVisible={incAlertVisible}  onClose={() => setIncAlertVisible(false)}/>
+				<Alert className="mt-5" title="Meet not in California"  description="Blip meets are limited to California for the time being. Sorry for the inconvenience!" isVisible={caliAlertVisible}  onClose={() => setCaliAlertVisible(false)}/>
 				
 			</div>
 			

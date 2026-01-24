@@ -48,9 +48,12 @@ export default function Searchbar({
       
             // CHANGED: Using searchbox/v1/suggest for POI + Address support
             fetch(
-              `https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(
-                search
-              )}&access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}&session_token=${sessionToken}&limit=5&country=US&bbox=-124.4,32.5,-114.1,42.0`,
+              `https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(search)}` +
+              `&access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}` +
+              `&session_token=${sessionToken}` +
+              `&limit=5` +
+              `&country=US` + 
+              `&bbox=-124.4,32.5,-114.1,42.0`, // <--- This locks it to California
               { signal: controller.signal }
             )
               .then((res) => res.json())

@@ -3,7 +3,7 @@
 // imports
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useRef, useState } from "react";
-import { initMap, addEventMarkers } from "../../api/mapbox";
+import { initMap } from "../../api/mapbox";
 import mapboxgl from 'mapbox-gl';
 import { supabase } from '@/clients/supabaseClient';
 
@@ -15,62 +15,175 @@ import Searchbar from '@/components/searchbar';
 import { useSupabaseUserMetadata } from '@/hooks/useSupabaseUserMetadata'
 import Meet from '@/models/meet';
 
-interface MapProps {
-	events: Event[]
-}
 
-export default function Map({ events = [] }: MapProps) {
+export default function Map() {
 	const router = useRouter()
-
 	const { avatarUrl, fullName } = useSupabaseUserMetadata()
 
 	const mapContainerRef = useRef<HTMLDivElement>(null);
 	const mapRef = useRef<mapboxgl.Map | null>(null);
-	const markersRef = useRef([]);
-	const [meets, setMeets] = useState<Meet[] | null>([]);
+	const [meets, setMeets] = useState<Meet[]>([]);
 	const [loading, setLoading] = useState(true);
 
-	const init = async () => {
-		if (!mapContainerRef.current) return;
-		const map = initMap(mapContainerRef.current.id);
-		mapRef.current = map;
+	useEffect(() => {
+        if (!mapContainerRef.current) return;
+        
+        const map = initMap(mapContainerRef.current.id);
+        mapRef.current = map;
 
-		setLoading(true);
-		try {
-			const { data, error } = await supabase.from('meets').select('*');
-			if (error) {
-				console.error('Error fetching meets:', error);
-			}
-			setMeets(data || []);
-			} catch (error) {
-				console.error('Unexpected error:', error);
-			} finally {
-				setLoading(false);
-		}
-	}
+        // Fetch data
+        const fetchMeets = async () => {
+            const { data, error } = await supabase.from('meets').select('*');
+            if (!error && data) setMeets(data);
+        };
+
+        fetchMeets();
+
+        return () => {
+            if (mapRef.current) mapRef.current.remove();
+        }
+    }, []);
 
 	useEffect(() => {
-		init();
+        const map = mapRef.current;
+        if (!map || meets.length === 0) return;
 
-		return () => {
-			if (mapRef.current) {
-				mapRef.current.remove();
-			}
-		}
-	}, [])
+        // Function to load the data onto the map
+        const loadLayers = () => {
+            // Check if source already exists (prevents duplicate errors during hot reloads)
+            if (map.getSource('meets-source')) {
+                (map.getSource('meets-source') as mapboxgl.GeoJSONSource).setData({
+                    type: 'FeatureCollection',
+                    features: meets.map(m => createFeature(m))
+                });
+                return;
+            }
 
- 	useEffect(() => {
-		if (!mapRef.current) return;
-		
+            // Create GeoJSON Source
+            map.addSource('meets-source', {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',
+                    features: meets.map(m => createFeature(m))
+                },
+                cluster: true, // Enable clustering for a cleaner UI
+                clusterMaxZoom: 14,
+                clusterRadius: 50
+            });
 
-		// Remove old markers
-		// markersRef.current.forEach(marker => marker.remove());
-		markersRef.current = [];
+            // Layer for Clusters (groups of meets)
+            map.addLayer({
+                id: 'clusters',
+                type: 'circle',
+                source: 'meets-source',
+                filter: ['has', 'point_count'],
+                paint: {
+                    'circle-color': '#f87171', // Match your red-400 theme
+                    'circle-radius': [
+                        'step',
+                        ['get', 'point_count'],
+                        20, 100, 30, 750, 40
+                    ]
+                }
+            });
 
-		// if (meets.length > 0) {
-		// 	addEventMarkers(mapRef.current, meets);
-		// }
-  	}, [meets]);
+            // Layer for cluster count text
+            map.addLayer({
+                id: 'cluster-count',
+                type: 'symbol',
+                source: 'meets-source',
+                filter: ['has', 'point_count'],
+                layout: {
+                    'text-field': '{point_count}',
+                    'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+                    'text-size': 12
+                },
+                paint: { 'text-color': '#ffffff' }
+            });
+
+            // Layer for individual meet points
+            map.addLayer({
+                id: 'unclustered-point',
+                type: 'circle',
+                source: 'meets-source',
+                filter: ['!', ['has', 'point_count']],
+                paint: {
+                    'circle-color': '#f87171',
+                    'circle-radius': 8,
+                    'circle-stroke-width': 2,
+                    'circle-stroke-color': '#fff'
+                }
+            });
+
+            // --- INTERACTIONS ---
+
+            // Click on cluster: Zoom in
+            map.on('click', 'clusters', (e) => {
+                const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
+                const clusterId = features[0].properties?.cluster_id;
+                (map.getSource('meets-source') as mapboxgl.GeoJSONSource).getClusterExpansionZoom(
+                    clusterId,
+                    (err, zoom) => {
+                        if (err || zoom === null || zoom === undefined) return;
+                        map.easeTo({
+                            center: (features[0].geometry as any).coordinates,
+                            zoom: zoom
+                        });
+                    }
+                );
+            });
+
+            // Click on point: Show Popup & Navigate
+            map.on('click', 'unclustered-point', (e) => {
+                const coordinates = (e.features![0].geometry as any).coordinates.slice();
+                const props = e.features![0].properties;
+
+                new mapboxgl.Popup({ offset: 15, className: 'dark-popup' })
+                    .setLngLat(coordinates)
+                    .setHTML(`
+                        <div class="p-2 text-black">
+                            <h3 class="font-bold">${props?.title}</h3>
+                            <p class="text-xs">${props?.name}</p>
+                            <button id="popup-btn" class="mt-2 bg-red-400 text-white text-[10px] px-2 py-1 rounded">View Meet</button>
+                        </div>
+                    `)
+                    .addTo(map);
+                
+                // Add event listener to the popup button
+                document.getElementById('popup-btn')?.addEventListener('click', () => {
+                    router.push(`/meet/${props?.id}`);
+                });
+            });
+
+            // Hover effects
+            map.on('mouseenter', 'clusters', () => map.getCanvas().style.cursor = 'pointer');
+            map.on('mouseleave', 'clusters', () => map.getCanvas().style.cursor = '');
+            map.on('mouseenter', 'unclustered-point', () => map.getCanvas().style.cursor = 'pointer');
+            map.on('mouseleave', 'unclustered-point', () => map.getCanvas().style.cursor = '');
+        };
+
+        if (map.isStyleLoaded()) {
+            loadLayers();
+        } else {
+            map.on('load', loadLayers);
+        }
+
+    }, [meets, router]);
+
+    // Helper to transform Meet to GeoJSON Feature
+    const createFeature = (meet: any) => ({
+        type: 'Feature' as const,
+        geometry: {
+            type: 'Point' as const,
+            coordinates: meet.location.coordinates
+        },
+        properties: {
+            id: meet.id,
+            title: meet.title,
+            name: meet.location.name,
+            address: meet.location.address
+        }
+    });
 
 	return (
 		<div className="flex flex-col w-full h-full">
