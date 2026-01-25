@@ -1,26 +1,22 @@
 ## Welcome to blip.
 
-The race might be a drag, but finding them doesn't have to be!
+The race might be a drag, but finding them doesn't have to be.
 
-<img width="1918" alt="blip main map page" src="https://github.com/user-attachments/assets/b85fa111-ec47-427f-9b95-fe26a5495012" />
+<img width="1919" height="910" alt="blip map main page" src="https://github.com/user-attachments/assets/ed420d8b-a28d-46a3-be35-de37424c5d57" />
 
-This app came about as a result of the realization that we, as car enthusiasts, have no real central resource to find if there are any nearby/upcoming car shows, meets, or even "cars and coffee"s! Digging through Reddit threads, Facebook forums, and Instagram pages can be tedious and community centers can be hard to find.
+Welcome to blip, your new companion for finding nearby cars and coffee events and meets from community leaders. This app came about as a result of the realization that we, as car enthusiasts, have no real central resource to find if there are any nearby/upcoming car enthusiast shows and meets. Looking through Tiktok, Reddit threads, Facebook forums, and Instagram pages can be tedious and community centers can be hard to find. We hope that this map can become this central resource for carspotters around the country(but California for now) to rely on to find cool events near them.
 
-We hope that this map can become this central resource for carspotters around the country(but California for now) to rely on to find cool events near them. 
+### State of blip (updated 1/25/2026)
 
-### State of blip (updated 9/15/2025)
-
-As of Monday, 9/15, blip has made great progress but is still missing key functionality regarding the map. It is not yet deployed to Vercel. We expect to have a baseline working version deployed by January.
+As of Sunday, 1/25, blip is certainly on its way!! There is a lot of cleaning up to do regarding user experience flows, code efficiency, etc. but we are extremely proud to share that key functionality is complete. It is not yet deployed to Vercel, but we expect to have a baseline working version deployed by March.
 
 ### To-Dos
 
-Some ideas of possible additions/changes to blip that are in consideration.
+Improvements to blip that are in progress.
 
-- [High Priority] Meets shown on map
-- User profile pages
-- 
-- Google maps links on event posts
-- 
+- Fleshed-out user profile page
+- Logged-out user flow
+- Map page
 
 ### Tech Stack
 
@@ -35,4 +31,4 @@ Some ideas of possible additions/changes to blip that are in consideration.
 
 
 
-Nolan Nguyen & Brenden Dalipe 2025
+Nolan Nguyen & Brenden Dalipe 2025-2026
