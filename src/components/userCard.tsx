@@ -1,9 +1,9 @@
 import{ Button, Card, CardBody } from "@heroui/react";
 import{ useRouter } from "next/navigation";
-import User from "@/models/user";
+import User, { ProfileRow } from "@/models/user";
 
 interface UserCardProps {
-	user: User
+	user: User | ProfileRow
 }
 
 export default function UserCard({ user}: UserCardProps) {

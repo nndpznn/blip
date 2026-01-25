@@ -33,7 +33,7 @@ export const addEventMarkers = (map: mapboxgl.Map, meets: Meet[]) => {
       meets.forEach((meet) => {
         // Parse the location string from Supabase
 		new mapboxgl.Marker({ color: '#FF4500' })
-		.setLngLat([meet.location[0], meet.location[1]])
+		.setLngLat([meet.location.coordinates[0], meet.location.coordinates[1]])
 		.setPopup(new mapboxgl.Popup().setHTML(`<h3>${meet.title}</h3><p>${meet.body}</p>`))
 		.addTo(map);
       });

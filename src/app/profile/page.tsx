@@ -3,7 +3,7 @@
 import { useAuth } from "@/clients/authContext";
 import { fetchUserByUID } from "@/hooks/fetchUserbyUID";
 import { useEffect, useState, useCallback } from "react";
-import User from "@/models/user";
+import User, { ProfileRow } from "@/models/user";
 import { Button, Input, useDisclosure } from "@heroui/react"
 import { HexColorPicker } from "react-colorful";
 
@@ -12,7 +12,7 @@ import { ReusableFadeInComponent } from "@/components/reusableFadeInComponent";
 
 
 export default function Profile() {
-	const [currentUser, setCurrentUser] = useState<User | null>()
+	const [currentUser, setCurrentUser] = useState<ProfileRow | null>(null)
 	const [editing, setEditing] = useState(false)
 	const { user } = useAuth()
 	const { isOpen, onOpen, onClose } = useDisclosure();
@@ -70,15 +70,10 @@ export default function Profile() {
 			const updatedData = await profile.saveProfile()
 
 			if (updatedData) {
-				// Update the state with the new, confirmed data from the database
-				// The structure of updatedData might need adjustment depending on your `select` statement.
-				// Assuming it returns an object with the same keys as your state:
-				setCurrentUser(prevUser => ({
-					...prevUser, // Keep all existing user properties
-					...updatedData, // Overwrite with the new data
-				}));
+				// updatedData is a ProfileRow (plain object), so this works!
+				setCurrentUser(updatedData);
 			}
-			handleFlipEdit()
+			setEditing(false);
 		}
 	}
 
