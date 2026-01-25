@@ -1,5 +1,16 @@
 import { supabase } from "@/clients/supabaseClient"
 
+export interface ProfileRow {
+    id: string;
+    fullname: string;
+    username: string;
+	email: string;
+    headline: string;
+    bio: string;
+    link: string;
+    profile_color: string;
+}
+
 class User {
 	id: string
 	fullname: string
@@ -23,29 +34,30 @@ class User {
 	  this.profile_color = profile_color
 	}
 
-	async saveProfile(): Promise<any|null> {
+	async saveProfile(): Promise<ProfileRow|null> {
 		const { data, error } = await supabase
 		  .from('profiles')
-		  .update([
-			{
+		  .update({
 				fullname: this.fullname,
 				username: this.username,
 				headline: this.headline,
 				bio: this.bio,
 				link: this.link,
 				profile_color: this.profile_color
-			}
-		  ]).eq("id", this.id)
-		  .select("*");
-	
+		  })
+		  .eq("id", this.id)
+		  .select("*")
+
 		if (error) {
-		  console.error("Error saving profile data:", error);
-		  return;
+			console.error("Error saving profile data:", error);
+			return null;
 		}
 		
-		console.log("Profile data edited:", data);
-		return data[0]
-	  }
-  }
+		if (!data || data.length === 0) return null;
+
+		console.log("Profile data edited:", data[0]);
+		return data[0];
+	}
+}
   
   export default User

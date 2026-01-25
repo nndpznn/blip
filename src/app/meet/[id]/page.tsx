@@ -218,7 +218,7 @@ export default function MeetDetail() {
 					<p className="text-center text-xl mx-6 mt-2">On {meet.date ? meet.date.toString() : "No date found"}, from {meet.startTime?.toString()} to {meet.endTime?.toString()}</p>
 
 					<p className="text-center text-xl mx-6 mt-2">{meet.location.address}</p>					
-					<p className="text-center text-xl mx-6 mt-2">Organized by <Button onPress={onUserOpen} className="text-xl">{organizer.username ? organizer.username : organizer.fullname}</Button></p>
+					<p className="text-center text-xl mx-6 mt-2">Organized by <Button onPress={onUserOpen} style={{ backgroundColor: organizer.profile_color || "#ff0000" }} className="text-xl">{organizer.username ? organizer.username : organizer.fullname}</Button></p>
 
 
 					{/* CONTENT */}

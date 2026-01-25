@@ -8,7 +8,8 @@ import mapboxgl from 'mapbox-gl';
 import { supabase } from '@/clients/supabaseClient';
 
 // components
-import {Button } from "@heroui/button";
+import { Button } from "@heroui/button";
+import { Point } from 'geojson';
 
 // customs
 import Searchbar from '@/components/searchbar';
@@ -18,12 +19,12 @@ import Meet from '@/models/meet';
 
 export default function Map() {
 	const router = useRouter()
-	const { avatarUrl, fullName } = useSupabaseUserMetadata()
+	const { fullName } = useSupabaseUserMetadata()
+	// can also access avatarUrl
 
 	const mapContainerRef = useRef<HTMLDivElement>(null);
 	const mapRef = useRef<mapboxgl.Map | null>(null);
 	const [meets, setMeets] = useState<Meet[]>([]);
-	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
         if (!mapContainerRef.current) return;
@@ -120,40 +121,70 @@ export default function Map() {
             // Click on cluster: Zoom in
             map.on('click', 'clusters', (e) => {
                 const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
+
+				if (!features.length) return;
+
                 const clusterId = features[0].properties?.cluster_id;
-                (map.getSource('meets-source') as mapboxgl.GeoJSONSource).getClusterExpansionZoom(
-                    clusterId,
-                    (err, zoom) => {
-                        if (err || zoom === null || zoom === undefined) return;
-                        map.easeTo({
-                            center: (features[0].geometry as any).coordinates,
-                            zoom: zoom
-                        });
-                    }
-                );
+				if (typeof clusterId === 'number') {
+						const source = map.getSource('meets-source') as mapboxgl.GeoJSONSource;
+						
+						source.getClusterExpansionZoom(
+							clusterId,
+							(err, zoom) => {
+								// 3. Zoom safety check
+								if (err || typeof zoom !== 'number') return;
+
+								// 4. Type cast geometry to Point to access coordinates safely
+								const geometry = features[0].geometry as Point;
+
+								map.easeTo({
+									center: geometry.coordinates as [number, number],
+									zoom: zoom
+								});
+							}
+						);
+					}
             });
 
             // Click on point: Show Popup & Navigate
             map.on('click', 'unclustered-point', (e) => {
-                const coordinates = (e.features![0].geometry as any).coordinates.slice();
-                const props = e.features![0].properties;
+				if (!e.features || e.features.length === 0) return;
 
-                new mapboxgl.Popup({ offset: 15, className: 'dark-popup' })
-                    .setLngLat(coordinates)
-                    .setHTML(`
-                        <div class="p-2 text-black">
-                            <h3 class="font-bold">${props?.title}</h3>
-                            <p class="text-xs">${props?.name}</p>
-                            <button id="popup-btn" class="mt-2 bg-red-400 text-white text-[10px] px-2 py-1 rounded">View Meet</button>
-                        </div>
-                    `)
-                    .addTo(map);
-                
-                // Add event listener to the popup button
-                document.getElementById('popup-btn')?.addEventListener('click', () => {
-                    router.push(`/meet/${props?.id}`);
-                });
-            });
+			const feature = e.features[0];
+			const geometry = feature.geometry as Point;
+			const props = feature.properties;
+
+			// 2. Safely extract and type the coordinates
+			// .slice() is good practice to prevent accidental mutation
+			const coordinates = [...geometry.coordinates] as [number, number];
+
+			// 3. Create the Popup
+			new mapboxgl.Popup({ offset: 15, className: 'dark-popup' })
+				.setLngLat(coordinates)
+				.setHTML(`
+					<div class="p-2 text-black">
+						<h3 class="font-bold">${props?.title || 'Untitled Meet'}</h3>
+						<p class="text-xs">${props?.name || ''}</p>
+						<button id="popup-btn" class="mt-2 bg-red-400 text-white text-[10px] px-2 py-1 rounded hover:bg-red-500 transition-colors">
+							View Meet
+						</button>
+					</div>
+				`)
+				.addTo(map);
+			
+			// 4. Use a small timeout or event delegation to ensure the button exists in the DOM
+			// Mapbox popups are injected into the DOM asynchronously.
+			setTimeout(() => {
+				const btn = document.getElementById('popup-btn');
+				if (btn) {
+					btn.onclick = () => {
+						if (props?.id) {
+							router.push(`/meet/${props.id}`);
+						}
+					};
+				}
+			}, 0);
+		});
 
             // Hover effects
             map.on('mouseenter', 'clusters', () => map.getCanvas().style.cursor = 'pointer');
@@ -171,7 +202,7 @@ export default function Map() {
     }, [meets, router]);
 
     // Helper to transform Meet to GeoJSON Feature
-    const createFeature = (meet: any) => ({
+    const createFeature = (meet: Meet) => ({
         type: 'Feature' as const,
         geometry: {
             type: 'Point' as const,
