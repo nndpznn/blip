@@ -6,7 +6,7 @@ const LoginWithGoogle = () => {
 		const { error } = await supabase.auth.signInWithOAuth({
 			provider: 'google',
 			options: {
-				redirectTo: `https://useblip.vercel.app/map`,
+				redirectTo: `localhost:3000/map`,
 			},
 		});
 

@@ -2,8 +2,11 @@
 
 import Image from "next/image";
 import LoginWithGoogle from "../components/googleSignin";
+import { Button } from "@heroui/button";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
+  const router = useRouter()
 
   return (
     <div className="flex flex-col justify-between min-h-screen sm:p-20 font-(--font-geist-sans)">
@@ -30,8 +33,10 @@ export default function Home() {
         >
           open blip
         </Link> */}
-
-        <LoginWithGoogle />
+        <div>
+          <LoginWithGoogle />
+          <Button onPress={() => router.push("/map")}>open blip</Button>
+        </div>
 
       </div>
 
