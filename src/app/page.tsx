@@ -16,6 +16,11 @@ export default function Home() {
         redirectTo: `${window.location.origin}/map`, // Or just /map
       },
     })
+
+    if (error) {
+      console.log(error)
+      return
+    }
   }
 
   return (
