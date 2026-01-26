@@ -1,9 +1,9 @@
 'use client'
 
 import Image from "next/image";
-import LoginWithGoogle from "../components/googleSignin";
-import { Button } from "@heroui/button";
 import { useRouter } from "next/navigation";
+import { CredentialResponse, GoogleLogin } from '@react-oauth/google'
+import { supabase } from '../clients/supabaseClient';
 
 export default function Home() {
   const router = useRouter()
@@ -34,8 +34,34 @@ export default function Home() {
           open blip
         </Link> */}
         <div>
-          <LoginWithGoogle />
-          <Button onPress={() => router.push("/map")}>open blip</Button>
+          {/* <LoginWithGoogle /> */}
+          {/* <Button onPress={() => router.push("/map")}>open blip</Button> */}
+          <GoogleLogin
+            useOneTap={false}
+            size="large"
+            type="standard"
+            // style={{ width: '300px', height: '50px' }}
+            onSuccess={async (credentialResponse: CredentialResponse) => {
+              console.info('CREDENTIAL RESPONSE JWT TOKEN: ', JSON.stringify(credentialResponse, null, 2))
+
+              if (!credentialResponse.credential) throw new Error('No credential found in response')
+
+              // Sign in to Supabase with the Google credential
+              // https://supabase.com/docs/guides/auth/social-login/auth-google#using-personalized-sign-in-buttons-one-tap-or-automatic-signin
+              const supabaseResponse = await supabase.auth.signInWithIdToken({
+                provider: 'google',
+                token: credentialResponse.credential,
+              })
+
+              console.info('SUPABASE signInWithIdToken RESPONSE: ', supabaseResponse)
+              console.info('routing to map...')
+
+              router.push('/map')
+            }}
+            onError={() => {
+              console.info('Login Failed')
+            }}
+          />
         </div>
 
       </div>
