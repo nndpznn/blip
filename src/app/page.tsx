@@ -4,9 +4,19 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { CredentialResponse, GoogleLogin } from '@react-oauth/google'
 import { supabase } from '../clients/supabaseClient';
+import { Button } from "@heroui/button";
 
 export default function Home() {
   const router = useRouter()
+
+  const signInWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/map`, // Or just /map
+      },
+    })
+  }
 
   return (
     <div className="flex flex-col justify-between min-h-screen sm:p-20 font-(--font-geist-sans)">
@@ -33,13 +43,14 @@ export default function Home() {
         >
           open blip
         </Link> */}
-        <div>
-          {/* <LoginWithGoogle /> */}
-          {/* <Button onPress={() => router.push("/map")}>open blip</Button> */}
+        <div className="my-6">
+          <Button className="my-2" onPress={signInWithGoogle}>Sign in with Google</Button>
+
           <GoogleLogin
             useOneTap={false}
             size="large"
             type="standard"
+            use_fedcm_for_prompt={true}
             // style={{ width: '300px', height: '50px' }}
             onSuccess={async (credentialResponse: CredentialResponse) => {
               console.info('CREDENTIAL RESPONSE JWT TOKEN: ', JSON.stringify(credentialResponse, null, 2))
