@@ -1,13 +1,10 @@
 'use client'
 
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { CredentialResponse, GoogleLogin } from '@react-oauth/google'
 import { supabase } from '../clients/supabaseClient';
 import { Button } from "@heroui/button";
 
 export default function Home() {
-  const router = useRouter()
 
   const signInWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -24,8 +21,8 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col justify-between min-h-screen sm:p-20 font-(--font-geist-sans)">
-      <Image alt="blip-bg" src="/assets/blip-bg.png" className="w-screen h-screen fixed top-0 left-0 z-0" width={1} height={1}></Image>
+    <div className="flex flex-col justify-between min-h-screen sm:p-10 font-(--font-geist-sans)">
+      <Image alt="blip-bg" src="/assets/blip-bg.png" className="w-screen fixed top-0 left-0 z-0" width={1} height={1}></Image>
       
       <div id="main-cluster" className="z-1 flex flex-col grow items-center justify-center sm:p-20 font-(--font-geist-sans)">
         <main className="flex flex-col gap-8 items-center sm:items-start"> {/* border-b-2 border-red-400 */}
@@ -51,7 +48,7 @@ export default function Home() {
         <div className="my-6">
           <Button className="my-2" onPress={signInWithGoogle}>Sign in with Google</Button>
 
-          <GoogleLogin
+          {/* <GoogleLogin
             useOneTap={false}
             size="large"
             type="standard"
@@ -77,7 +74,7 @@ export default function Home() {
             onError={() => {
               console.info('Login Failed')
             }}
-          />
+          /> */}
         </div>
 
       </div>

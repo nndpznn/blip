@@ -12,6 +12,7 @@ import { useAuth } from "@/clients/authContext";
 
 import {Calendar} from '@heroui/calendar'
 import {Time, today, getLocalTimeZone, CalendarDate, parseDate} from "@internationalized/date";
+import { to12Hour } from "@/util/politeTimeString";
 
 import { supabase } from '@/clients/supabaseClient'
 import { useSupabaseUserMetadata } from '@/hooks/useSupabaseUserMetadata'
@@ -215,7 +216,13 @@ export default function MeetDetail() {
 				<div className="flex-1">
 					{/* TITLE/HEADING */}
 					<p className="text-center font-bold text-4xl mx-6 mt-2">{meet.title}</p>
-					<p className="text-center text-xl mx-6 mt-2">On {meet.date ? meet.date.toString() : "No date found"}, from {meet.startTime?.toString()} to {meet.endTime?.toString()}</p>
+
+					<p className="text-center text-xl mx-6 mt-2">On { meet.date ? meet.date.toString() : "No date found"}, 
+						from {meet.startTime ? to12Hour(meet.startTime)  : "???"} to {meet.endTime ? to12Hour(meet.endTime) : "???"}
+					</p>
+					{/* <p className="text-center text-xl mx-6 mt-2">On { meet.date ? meet.date.toString() : "No date found"}, 
+						from {meet.startTime ? meet.startTime.toString()  : "???"} to {meet.endTime ? meet.endTime.toString() : "???"}
+					</p> */}
 
 					<p className="text-center text-xl mx-6 mt-2">{meet.location.address}</p>					
 					<p className="text-center text-xl mx-6 mt-2">Organized by <Button onPress={onUserOpen} style={{ backgroundColor: organizer.profile_color || "#ff0000" }} className="text-xl">{organizer.username ? organizer.username : organizer.fullname}</Button></p>
@@ -225,9 +232,7 @@ export default function MeetDetail() {
 					<p className="text-center wrap-break-word mx-12 mt-12">{meet.body}</p>
 
 					<div id="buttoncontainer" className="flex flex-col justify-self-center">
-						{/* <Button color="primary" onPress={() => window.open("https://instagram.com/", "_blank", "noopener,noreferrer")} className="mx-6 my-3" type="button">Instagram</Button>
-						<Button color="primary" onPress={() => window.open("https://tiktok.com/", "_blank", "noopener,noreferrer")} className="mx-6 my-3" type="button">TikTok</Button> */}
-						<Button color="primary" onPress={() => window.open(meet.mapsLink, "_blank", "noopener,noreferrer")} className="mx-6 my-3" type="button">Google Maps</Button>
+						<Button color="primary" onPress={() => window.open(meet.mapsLink, "_blank", "noopener,noreferrer")} className="mx-6 my-3 bg-red-400 hover:bg-red-500" type="button">Google Maps</Button>
 						<p>(Make sure to verify the address!)</p>
 					</div>
 				</div>

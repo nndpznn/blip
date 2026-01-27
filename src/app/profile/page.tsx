@@ -134,16 +134,34 @@ export default function Profile() {
 						onChange={e => setBio(e.target.value)}
 						className={ALL_BUTTON_CSS}
 					></Input>
-					<p className="font-bold">Profile Card Color: {profileColor}</p>
+					<Input 
+						isReadOnly={!editing}
+						label="profile card color" 
+						placeholder="type something..." 
+						value={profileColor}
+						onChange={e => setProfileColor(e.target.value)}
+						className={ALL_BUTTON_CSS}
+					></Input>
 					<div className="flex">
-						<HexColorPicker className="my-4 w-1/2" color={profileColor} onChange={setProfileColor} />
-						<div style={{ backgroundColor: `${profileColor}` }} className={`w-1/2 m-3 rounded-2xl`}></div>
+						<HexColorPicker 
+							className="my-4 w-1/2" 
+							color={profileColor} 
+							onChange={(newColor) => {
+								if (editing) {
+								setProfileColor(newColor);
+								}
+							}}
+							 />
+						<div style={{ backgroundColor: `${profileColor}` }} className={`w-2/5 m-3 rounded-2xl`}></div>
 					</div>
 				</div>
 
 				<div>
 					<Button onPress={handleFlipEdit}>{editing ? "Cancel" : "Edit"}</Button>
-					<Button disabled={!editing} onPress={handleSave} className="mx-4 bg-red-400 disabled:bg-gray-400 hover:bg-red-500">Save</Button>
+					{(editing) && (
+						<Button disabled={!editing} onPress={handleSave} className="mx-4 bg-red-400 disabled:bg-gray-400 hover:bg-red-500">Save</Button>
+					)}
+					
 				</div>
 			</div>
 

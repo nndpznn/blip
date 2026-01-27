@@ -120,7 +120,7 @@ export default function Create() {
 					<div id="fields" className="w-2/5">
 						<div className="flex items-center">
 							<p className="text-xl font-bold">Title</p>
-							<p className="text-md ml-2 font-bold">(25 chars max.)</p>
+							<p className="text-md ml-2 font-bold">(25 chars. max)</p>
 						</div>
 					
 						<Input value={title} onChange={e => setTitle(e.target.value)}size="md" type="text" />
