@@ -9,29 +9,30 @@ export const useSupabaseUser = () => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    let mounted = true
+
     const fetchUser = async () => {
       const response: UserResponse = await supabase.auth.getUser()
-      const user = response.data.user
-
-      setUser(user)
-      setLoading(false)
-
-      const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-        console.info('useSupabaseUser hook > onAuthStateChange > event: ', event)
-        // const response: UserResponse = await supabase.auth.getUser() // tried to use secure getUser but hangs?
-        // const user = response.data.user
-
-        setUser(session?.user ?? null) // original copilot code (but session is not secure?)
-        setUser(user)
+      if (mounted) {
+        setUser(response.data.user)
         setLoading(false)
-      })
-
-      return () => {
-        authListener?.subscription.unsubscribe()
       }
     }
 
     fetchUser()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.info('useSupabaseUser hook > onAuthStateChange > event: ', event)
+      if (mounted) {
+        setUser(session?.user ?? null)
+        setLoading(false)
+      }
+    })
+
+    return () => {
+      mounted = false
+      subscription?.unsubscribe()
+    }
   }, [])
 
   return { user, loading }

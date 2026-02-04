@@ -8,21 +8,21 @@ import { supabase } from '@/clients/supabaseClient'
 
 interface MeetCardProps {
     meet: Meet;
+    /** When provided (e.g. from list page batch fetch), no per-card DB calls for attendance/organizer. */
+    profileId?: string | null;
+    organizerName?: string | null;
+    attendeeCount?: number;
+    attendanceStatus?: boolean;
 }
 
 const getCurrentProfileId = async () => {
-    // 1. Get the user from Supabase Auth
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
-
-    // 2. Fetch the corresponding profile_id from your profiles table
-    // Assumes your profiles table has a column linking back to the auth user ID.
     const { data: profile, error } = await supabase
         .from('profiles')
         .select('id')
-        .eq('id', user.id) // Assuming your profiles.id is the auth.user.id
+        .eq('id', user.id)
         .single();
-    
     if (error || !profile) {
         console.error("Error fetching profile ID:", error);
         return null;
@@ -30,53 +30,68 @@ const getCurrentProfileId = async () => {
     return profile.id;
 };
 
-export default function MeetCard({ meet }: MeetCardProps) {
+export default function MeetCard({
+    meet,
+    profileId: profileIdProp,
+    organizerName: organizerNameProp,
+    attendeeCount: attendeeCountProp,
+    attendanceStatus: attendanceStatusProp,
+}: MeetCardProps) {
     const router = useRouter();
-    const [username, setUsername] = useState<string | null>()
-    const [attendanceStatus, setAttendanceStatus] = useState(false);
-    const [profileId, setProfileId] = useState<string | null>(null);
-    const [attendeeCount, setAttendeeCount] = useState(0);
+    const preloaded =
+        attendeeCountProp !== undefined &&
+        attendanceStatusProp !== undefined &&
+        profileIdProp !== undefined;
+
+    const [username, setUsername] = useState<string | null>(organizerNameProp ?? null);
+    const [attendanceStatus, setAttendanceStatus] = useState(attendanceStatusProp ?? false);
+    const [profileId, setProfileId] = useState<string | null>(profileIdProp ?? null);
+    const [attendeeCount, setAttendeeCount] = useState(attendeeCountProp ?? 0);
 
     useEffect(() => {
-        const resolveData = async () => {
-            // Resolve Meet Author
-            const user = await fetchUserByUID(meet.organizerId)
-            if (user) {
-                setUsername(user.fullname)
-            }
-            
-            // Get Current User Profile ID
-            const currentProfileId = await getCurrentProfileId();
-            setProfileId(currentProfileId);
+        if (organizerNameProp !== undefined) {
+            setUsername(organizerNameProp);
+            return;
         }
-        resolveData()
-    }, [meet.organizerId]);
+        const resolveAuthor = async () => {
+            const user = await fetchUserByUID(meet.organizerId);
+            if (user) setUsername(user.fullname);
+        };
+        resolveAuthor();
+    }, [meet.organizerId, organizerNameProp]);
 
     useEffect(() => {
+        if (profileIdProp !== undefined) {
+            setProfileId(profileIdProp);
+            return;
+        }
+        getCurrentProfileId().then(setProfileId);
+    }, [profileIdProp]);
+
+    useEffect(() => {
+        if (preloaded) {
+            setAttendeeCount(attendeeCountProp ?? 0);
+            setAttendanceStatus(attendanceStatusProp ?? false);
+            return;
+        }
         const fetchAttendance = async () => {
-            // Fetch Total Count For This Meet
             const { count: total, error: countError } = await supabase
                 .from('meet_attendees')
                 .select('*', { count: 'exact', head: true })
                 .eq('meet_id', meet.id);
-
             if (countError) console.error("Error fetching tally:", countError);
-            else setAttendeeCount(total || 0);
-
-            // Check If Current User Is Attending
+            else setAttendeeCount(total ?? 0);
             if (profileId) {
                 const { count: userCount } = await supabase
                     .from('meet_attendees')
                     .select('*', { count: 'exact', head: true })
                     .eq('profile_id', profileId)
                     .eq('meet_id', meet.id);
-                
-                setAttendanceStatus(userCount ? (userCount > 0) : false);
+                setAttendanceStatus(userCount ? userCount > 0 : false);
             }
         };
-
         fetchAttendance();
-    }, [profileId, meet.id]);
+    }, [preloaded, profileId, meet.id, attendeeCountProp, attendanceStatusProp]);
 
     const handleRsvpToggle = async () => {
         if (!profileId) {

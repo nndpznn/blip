@@ -1,6 +1,7 @@
 'use client'
 
 import { useAuth } from "@/clients/authContext";
+import { supabase } from "@/clients/supabaseClient";
 import { fetchUserByUID } from "@/hooks/fetchUserbyUID";
 import { useEffect, useState, useCallback } from "react";
 import User, { ProfileRow } from "@/models/user";
@@ -23,6 +24,7 @@ export default function Profile() {
 	const [bio, setBio] = useState('')
 
 	const [profileColor, setProfileColor] = useState('')
+	const [usernameTakenWarning, setUsernameTakenWarning] = useState<string | null>(null)
 	
 	const ALL_BUTTON_CSS = "my-2 max-w-md"
 	
@@ -53,14 +55,29 @@ export default function Profile() {
 	const handleFlipEdit = () => {
 		setEditing(!editing)
 		setFormFields()
+		setUsernameTakenWarning(null)
 	}
 
 	const handleSave = async () => {
 		if (currentUser && user) {
+			setUsernameTakenWarning(null)
+
+			// Check if username is already taken by another user
+			const { data: existingUser } = await supabase
+				.from('profiles')
+				.select('id')
+				.eq('username', username.trim())
+				.maybeSingle()
+
+			if (existingUser && existingUser.id !== user.id) {
+				setUsernameTakenWarning(`Username "${username.trim()}" is already taken. Please choose a different one.`)
+				return
+			}
+
 			const profile = new User(
 				user.id,
 				fullname,
-				username,
+				username.trim(),
 				currentUser.email,
 				headline,
 				bio,
@@ -107,8 +124,14 @@ export default function Profile() {
 						label="username"
 						placeholder="type something..."
 						value={username}
-						onChange={e => setUsername(e.target.value)}
+						onChange={e => {
+							setUsername(e.target.value)
+							setUsernameTakenWarning(null)
+						}}
 						className={ALL_BUTTON_CSS}
+						isInvalid={!!usernameTakenWarning}
+						color={usernameTakenWarning ? "danger" : "default"}
+						errorMessage={usernameTakenWarning ?? undefined}
 					></Input>
 					<Input 
 						isReadOnly={!editing}
