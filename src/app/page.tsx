@@ -7,17 +7,12 @@ import { Button } from "@heroui/button";
 export default function Home() {
 
   const signInWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
+    await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/map`, // Or just /map
       },
     })
-
-    if (error) {
-      console.log(error)
-      return
-    }
   }
 
   return (
@@ -47,34 +42,6 @@ export default function Home() {
         </Link> */}
         <div className="my-6">
           <Button className="my-2" onPress={signInWithGoogle}>Sign in with Google</Button>
-
-          {/* <GoogleLogin
-            useOneTap={false}
-            size="large"
-            type="standard"
-            use_fedcm_for_prompt={true}
-            // style={{ width: '300px', height: '50px' }}
-            onSuccess={async (credentialResponse: CredentialResponse) => {
-              console.info('CREDENTIAL RESPONSE JWT TOKEN: ', JSON.stringify(credentialResponse, null, 2))
-
-              if (!credentialResponse.credential) throw new Error('No credential found in response')
-
-              // Sign in to Supabase with the Google credential
-              // https://supabase.com/docs/guides/auth/social-login/auth-google#using-personalized-sign-in-buttons-one-tap-or-automatic-signin
-              const supabaseResponse = await supabase.auth.signInWithIdToken({
-                provider: 'google',
-                token: credentialResponse.credential,
-              })
-
-              console.info('SUPABASE signInWithIdToken RESPONSE: ', supabaseResponse)
-              console.info('routing to map...')
-
-              router.push('/map')
-            }}
-            onError={() => {
-              console.info('Login Failed')
-            }}
-          /> */}
         </div>
 
       </div>
@@ -86,13 +53,6 @@ export default function Home() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          {/* <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          /> */}
           support us
         </a>
       </footer>
