@@ -147,7 +147,7 @@ export default function MeetCard({
         >
             <CardBody className="p-0">
                 <div className="flex flex-col h-full">
-                    <div className="bg-gray-500 flex items-center justify-center w-full h-3/5 overflow-hidden">
+                    <div className="bg-gray-500 flex items-center justify-center w-full h-3/5 overflow-hidden relative">
                         {meet.images && meet.images.length > 0 ? (
                             <Image 
                                 className="object-cover h-full w-full rounded-none" 
@@ -155,7 +155,19 @@ export default function MeetCard({
                                 src={meet.images[0]} 
                             />
                         ) : (
-                            <span className="text-black text-center font-bold text-sm">no vis...</span>
+                            <>
+                                <div className="absolute inset-0 w-full h-full z-0">
+                                    <Image 
+                                        className="object-cover w-full h-full rounded-none" 
+                                        alt="no image background" 
+                                        src="/assets/blip-bg.png"
+                                        removeWrapper={true}
+                                    />
+                                </div>
+                                <div className="absolute inset-0 flex items-center justify-center z-10">
+                                    <span className="text-white text-center font-bold text-2xl bg-black/30 px-3 py-1 rounded">no image provided</span>
+                                </div>
+                            </>
                         )}
                     </div>
 

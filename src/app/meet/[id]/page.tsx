@@ -147,6 +147,8 @@ export default function MeetDetail() {
     const meetId = params.id;
 
 	const [meet, setMeet] = useState<Meet | null>(null)
+	const [attendanceStatus, setAttendanceStatus] = useState(false)
+	const [attendeeCount, setAttendeeCount] = useState(0)
 
 	// Fetching project information from Supabase based on page ID.
 	useEffect(() => {
@@ -177,6 +179,34 @@ export default function MeetDetail() {
 	}, [meet])
 
 	useEffect(() => {
+		const fetchAttendance = async () => {
+			if (!meet || !uid) return
+
+			// Get total attendee count
+			const { count: total, error: countError } = await supabase
+				.from('meet_attendees')
+				.select('*', { count: 'exact', head: true })
+				.eq('meet_id', meet.id)
+			
+			if (countError) {
+				console.error("Error fetching attendee count:", countError)
+			} else {
+				setAttendeeCount(total ?? 0)
+			}
+
+			// Check if current user is attending
+			const { count: userCount } = await supabase
+				.from('meet_attendees')
+				.select('*', { count: 'exact', head: true })
+				.eq('profile_id', uid)
+				.eq('meet_id', meet.id)
+			
+			setAttendanceStatus(userCount ? userCount > 0 : false)
+		}
+		fetchAttendance()
+	}, [meet, uid])
+
+	useEffect(() => {
 
 		if (isEditOpen && meet) {
 			setTitle(meet?.title || '')
@@ -201,6 +231,44 @@ export default function MeetDetail() {
 }
 		router.push("/seeAllMeets")
 	}
+
+	const handleRsvpToggle = async () => {
+		if (!uid || !meet) {
+			console.warn("User not logged in or meet not loaded. Cannot RSVP.");
+			return;
+		}
+
+		let error = null;
+
+		if (attendanceStatus) {
+			// User is attending, so they want to un-RSVP (DELETE the record)
+			const { error: deleteError } = await supabase
+				.from('meet_attendees')
+				.delete()
+				.eq('profile_id', uid)
+				.eq('meet_id', meet.id);
+			error = deleteError;
+		} else {
+			// User is not attending, so they want to RSVP (INSERT a new record)
+			const { error: insertError } = await supabase
+				.from('meet_attendees')
+				.insert([
+					{ 
+						profile_id: uid, 
+						meet_id: meet.id,
+					}
+				]);
+			error = insertError;
+		}
+
+		if (error) {
+			console.error("Error updating RSVP:", error);
+		} else {
+			// Flip the local state to reflect the successful database change
+			setAttendeeCount(prev => attendanceStatus ? prev - 1 : prev + 1);
+			setAttendanceStatus(!attendanceStatus);
+		}
+	};
 
 	if (!meet || !organizer)
 	return (
@@ -246,7 +314,32 @@ export default function MeetDetail() {
 						</div>
 					</div>
 
-					<p className="text-center text-xl mx-6 mt-2">Organized by <Button onPress={onUserOpen} style={{ backgroundColor: organizer.profile_color || "#ff0000" }} className="text-xl">{organizer.username ? organizer.username : organizer.fullname}</Button></p>
+					<div className="flex items-center justify-center mx-6 mt-2 gap-2">
+						<p className="text-xl">Organized by</p>
+						<Button onPress={onUserOpen} style={{ backgroundColor: organizer.profile_color || "#ff0000" }} className="text-xl">{organizer.username ? organizer.username : organizer.fullname}</Button>
+						<div className="flex items-center gap-2 ml-auto">
+							<Button 
+								onPress={handleRsvpToggle}
+								className={`px-4 py-1 transition-colors text-xl ${
+									attendanceStatus 
+										? "bg-red-400 hover:bg-red-500 text-white" 
+										: "bg-gray-500 hover:bg-gray-600 text-white"
+								}`}
+							>
+								{attendanceStatus ? "Attending!" : "Attend"}
+							</Button>
+							<div className="flex items-center gap-1">
+								<Image
+									src="https://uxwing.com/wp-content/themes/uxwing/download/checkmark-cross/checkmark-white-icon.png"
+									alt="attendees"
+									width={16}
+									height={16}
+									className="rounded-none"
+								/>
+								<span className="font-bold text-base text-white">{attendeeCount}</span>
+							</div>
+						</div>
+					</div>
 
 
 					{/* CONTENT */}

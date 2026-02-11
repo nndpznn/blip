@@ -17,7 +17,7 @@ export default function Home() {
 
   return (
     <div className="flex flex-col justify-between min-h-screen sm:p-10 font-(--font-geist-sans)">
-      <Image alt="blip-bg" src="/assets/blip-bg.png" className="w-screen fixed top-0 left-0 z-0" width={1} height={1}></Image>
+      <Image alt="blip-bg" src="/assets/blip-bg.png" className="fixed top-0 left-0 w-full h-full object-cover z-0" fill={true} sizes="100vw" style={{objectFit: 'cover'}}></Image>
       
       <div id="main-cluster" className="z-1 flex flex-col grow items-center justify-center sm:p-20 font-(--font-geist-sans)">
         <main className="flex flex-col gap-8 items-center sm:items-start"> {/* border-b-2 border-red-400 */}
