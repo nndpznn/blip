@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Meet from "@/models/meet";
 import MeetCard from "@/components/meetCard"
 import { supabase } from "@/clients/supabaseClient";
+import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button, Checkbox } from "@heroui/react";
 
 /** Maps meet id -> attendee count (from batch fetch). */
 type AttendeeCountMap = Record<number, number>;
@@ -12,6 +13,38 @@ type AttendingSet = Set<number>;
 /** Maps organizer profile id -> display name. */
 type OrganizerNameMap = Record<string, string>;
 
+type SortOption = "newest" | "oldest" | "upcoming" | "furthest";
+
+const SORT_LABELS: Record<SortOption, string> = {
+	newest: "Newest first",
+	oldest: "Oldest first",
+	upcoming: "Upcoming first",
+	furthest: "Furthest first",
+};
+
+/** Raw meet row from Supabase may use date/startTime or date/start_time (strings). */
+type MeetRow = { date?: string | null; startTime?: string | null; start_time?: string | null; created_at?: string };
+
+function getMeetDateTime(meet: MeetRow): Date | null {
+	const dateStr = meet.date != null ? String(meet.date) : null;
+	if (!dateStr) return null;
+	const timeStr = meet.startTime ?? meet.start_time;
+	let iso = dateStr;
+	if (timeStr) {
+		const t = String(timeStr).replace("Z", "");
+		iso = dateStr.includes("T") ? dateStr : `${dateStr}T${t.length <= 5 ? t + ":00" : t}`;
+	} else if (!dateStr.includes("T")) {
+		iso = `${dateStr}T23:59:59`;
+	}
+	const d = new Date(iso);
+	return isNaN(d.getTime()) ? null : d;
+}
+
+function isMeetInFuture(meet: Meet): boolean {
+	const d = getMeetDateTime(meet as unknown as MeetRow);
+	return d != null && d.getTime() > Date.now();
+}
+
 export default function AllMeets() {
 	const [fetchError, setFetchError] = useState<string>("")
 	const [meets, setMeets] = useState<Meet[] | null>(null)
@@ -19,6 +52,8 @@ export default function AllMeets() {
 	const [attendeeCountByMeet, setAttendeeCountByMeet] = useState<AttendeeCountMap>({})
 	const [attendingMeetIds, setAttendingMeetIds] = useState<AttendingSet>(new Set())
 	const [organizerNames, setOrganizerNames] = useState<OrganizerNameMap>({})
+	const [sortOrder, setSortOrder] = useState<SortOption>("newest")
+	const [futureOnly, setFutureOnly] = useState(false)
 
 	useEffect(() => {
 		const load = async () => {
@@ -81,13 +116,63 @@ export default function AllMeets() {
 		load()
 	}, [])
 
+	const displayedMeets = useMemo(() => {
+		if (!meets) return null;
+		let list = futureOnly ? meets.filter(isMeetInFuture) : meets;
+		// Treat null meet time as end of list for time-based sorts
+		const getSortTime = (meet: Meet) => getMeetDateTime(meet as unknown as MeetRow)?.getTime() ?? (sortOrder === "upcoming" ? Infinity : -Infinity);
+		list = [...list].sort((a, b) => {
+			if (sortOrder === "newest" || sortOrder === "oldest") {
+				const aCt = (a as { created_at?: string }).created_at ?? "";
+				const bCt = (b as { created_at?: string }).created_at ?? "";
+				return sortOrder === "oldest" ? aCt.localeCompare(bCt) : bCt.localeCompare(aCt);
+			}
+			const aT = getSortTime(a);
+			const bT = getSortTime(b);
+			return sortOrder === "upcoming" ? aT - bT : bT - aT;
+		});
+		return list;
+	}, [meets, sortOrder, futureOnly]);
+
 	return (
 		<div className="mx-[5vw] mt-5 flex flex-col h-[calc(100vh-150px)]">
 
-			<h1 id="header" className="text-3xl font-bold mb-2">Browse Meets</h1>
+			<div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+				<h1 id="header" className="text-3xl font-bold">Browse Meets</h1>
+				<div className="flex items-center gap-3">
+					<Dropdown className="blip-main">
+						<DropdownTrigger>
+							<Button variant="bordered" endContent={<span className="text-default-400" aria-hidden>▼</span>}>
+								{SORT_LABELS[sortOrder]}
+							</Button>
+						</DropdownTrigger>
+						<DropdownMenu
+							aria-label="Sort meets"
+							selectedKeys={new Set([sortOrder])}
+							selectionMode="single"
+							onSelectionChange={(keys) => {
+								const key = Array.from(keys)[0] as SortOption;
+								if (key) setSortOrder(key);
+							}}
+						>
+							<DropdownItem key="newest">{SORT_LABELS.newest}</DropdownItem>
+							<DropdownItem key="oldest">{SORT_LABELS.oldest}</DropdownItem>
+							<DropdownItem key="upcoming">{SORT_LABELS.upcoming}</DropdownItem>
+							<DropdownItem key="furthest">{SORT_LABELS.furthest}</DropdownItem>
+						</DropdownMenu>
+					</Dropdown>
+					<Checkbox
+						isSelected={futureOnly}
+						onValueChange={setFutureOnly}
+						aria-label="Show only future meets"
+					>
+						Future meets only
+					</Checkbox>
+				</div>
+			</div>
 
-			<div className="flex-1 p-5 grid grid-cols-3 gap-3 overflow-y-auto">
-				{meets?.map((meet: Meet) => {
+			<div className="flex-1 p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 overflow-y-auto">
+				{displayedMeets?.map((meet: Meet) => {
 					const organizerId = (meet as { organizerId?: string; organizer_id?: string }).organizerId ?? (meet as { organizerId?: string; organizer_id?: string }).organizer_id
 					return (
 						<MeetCard
