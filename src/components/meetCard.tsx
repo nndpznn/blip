@@ -15,6 +15,29 @@ interface MeetCardProps {
     attendanceStatus?: boolean;
 }
 
+/** Raw meet row from Supabase may use date/startTime or date/start_time (strings). */
+type MeetRow = { date?: string | null; startTime?: string | null; start_time?: string | null; created_at?: string };
+
+function getMeetDateTime(meet: MeetRow): Date | null {
+	const dateStr = meet.date != null ? String(meet.date) : null;
+	if (!dateStr) return null;
+	const timeStr = meet.startTime ?? meet.start_time;
+	let iso = dateStr;
+	if (timeStr) {
+		const t = String(timeStr).replace("Z", "");
+		iso = dateStr.includes("T") ? dateStr : `${dateStr}T${t.length <= 5 ? t + ":00" : t}`;
+	} else if (!dateStr.includes("T")) {
+		iso = `${dateStr}T23:59:59`;
+	}
+	const d = new Date(iso);
+	return isNaN(d.getTime()) ? null : d;
+}
+
+function isMeetInFuture(meet: Meet): boolean {
+	const d = getMeetDateTime(meet as unknown as MeetRow);
+	return d != null && d.getTime() > Date.now();
+}
+
 const getCurrentProfileId = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
@@ -138,12 +161,15 @@ export default function MeetCard({
     })
     : 'No date found';
 
+    const isPast = !isMeetInFuture(meet);
+    const cardBgColor = isPast ? "bg-gray-500" : "bg-red-400";
+
     return (
         <Card
             isPressable
             as="div"
             onPress={() => router.push(`/meet/${meet.id}`)}
-            className="my-1 bg-red-400 h-90"
+            className={`my-1 ${cardBgColor} h-90`}
         >
             <CardBody className="p-0">
                 <div className="flex flex-col h-full">
@@ -179,7 +205,7 @@ export default function MeetCard({
                                 <p className="text-base text-ellipsis line-clamp-1">{meet.body || "No description provided"}</p>
                             </div>
                             <div className="w-1/5 flex justify-end">
-                                <Button className="w-8" onPress={() => {
+                                <Button disabled={isPast} className="w-8" onPress={() => {
                                     handleRsvpToggle();
                                 }}>{attendanceStatus  ? "Attending!" : "Attend"}</Button>
                             </div>

@@ -53,7 +53,7 @@ export default function AllMeets() {
 	const [attendingMeetIds, setAttendingMeetIds] = useState<AttendingSet>(new Set())
 	const [organizerNames, setOrganizerNames] = useState<OrganizerNameMap>({})
 	const [sortOrder, setSortOrder] = useState<SortOption>("newest")
-	const [futureOnly, setFutureOnly] = useState(false)
+	const [showPast, setShowPast] = useState(false)
 
 	useEffect(() => {
 		const load = async () => {
@@ -118,7 +118,7 @@ export default function AllMeets() {
 
 	const displayedMeets = useMemo(() => {
 		if (!meets) return null;
-		let list = futureOnly ? meets.filter(isMeetInFuture) : meets;
+		let list = showPast ? meets : meets.filter(isMeetInFuture);
 		// Treat null meet time as end of list for time-based sorts
 		const getSortTime = (meet: Meet) => getMeetDateTime(meet as unknown as MeetRow)?.getTime() ?? (sortOrder === "upcoming" ? Infinity : -Infinity);
 		list = [...list].sort((a, b) => {
@@ -132,7 +132,7 @@ export default function AllMeets() {
 			return sortOrder === "upcoming" ? aT - bT : bT - aT;
 		});
 		return list;
-	}, [meets, sortOrder, futureOnly]);
+	}, [meets, sortOrder, showPast]);
 
 	return (
 		<div className="mx-[5vw] mt-5 flex flex-col h-[calc(100vh-150px)]">
@@ -162,11 +162,11 @@ export default function AllMeets() {
 						</DropdownMenu>
 					</Dropdown>
 					<Checkbox
-						isSelected={futureOnly}
-						onValueChange={setFutureOnly}
-						aria-label="Show only future meets"
+						isSelected={showPast}
+						onValueChange={setShowPast}
+						aria-label="Show past meets"
 					>
-						Future meets only
+						Show past meets
 					</Checkbox>
 				</div>
 			</div>
