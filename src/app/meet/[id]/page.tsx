@@ -32,6 +32,10 @@ import {
   DrawerBody,
   DrawerFooter,
   useDisclosure,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
 } from "@heroui/react";
 
 export default function MeetDetail() {
@@ -279,14 +283,29 @@ export default function MeetDetail() {
 	)
 
 	return (
-		<div className="flex justify-between">
-			<div className="flex flex-col w-1/3 h-screen border-r-4 border-red-400">
-				<div className="flex-1">
-					{/* TITLE/HEADING */}
-					<p className="text-center font-bold text-4xl mx-6 mt-2">{meet.title}</p>
+		<div className="flex flex-1 w-full h-full min-h-[calc(100vh-8rem)]">
+			<div className="flex flex-col w-1/3 h-full min-h-0 overflow-hidden border-r-4 border-red-400">
+				<div className="flex-1 min-h-0 overflow-y-auto">
+					{/* TITLE/HEADING + OPTIONS DROPDOWN */}
+					<div className="flex items-center justify-between gap-2 mx-6 my-4">
+						<p className="font-bold text-4xl flex-1">{meet.title}</p>
+						{(meet.organizerId == uid) && (
+							<Dropdown className="blip-main" placement="bottom-end">
+								<DropdownTrigger>
+									<Button isIconOnly variant="light" size="sm" aria-label="Meet options" className="shrink-0 text-foreground-500">
+										<span className="text-xl leading-none">⋯</span>
+									</Button>
+								</DropdownTrigger>
+								<DropdownMenu aria-label="Meet actions">
+									<DropdownItem key="edit" onPress={onEditOpen}>Edit</DropdownItem>
+									<DropdownItem key="delete" onPress={onDeleteOpen} className="text-danger" color="danger">Delete</DropdownItem>
+								</DropdownMenu>
+							</Dropdown>
+						)}
+					</div>
 
 					{/* Compact date, time & location block */}
-					<div className="mx-6 mt-4 px-4 py-3 rounded-lg bg-white/5 border border-white/10">
+					<div className="mx-6 px-4 py-3 rounded-lg bg-white/5 border border-white/10">
 						<div className="flex flex-wrap items-center justify-start gap-x-2 gap-y-1 text-base text-foreground/90">
 							<CalendarIcon className="shrink-0 size-4 text-red-400/80" />
 							<span className="font-medium">
@@ -310,19 +329,30 @@ export default function MeetDetail() {
 						</div>
 						<div className="mt-2 flex items-center justify-start gap-1.5 text-sm text-foreground/80">
 							<MapPinIcon className="shrink-0 size-4 text-red-400/80" />
-							<span className="line-clamp-2">{meet.location.address}</span>
+							<span className="line-clamp-2 hover:underline hover:cursor-pointer" onClick={() => window.open(meet.mapsLink, "_blank", "noopener,noreferrer")}>{meet.location.address}</span>
 						</div>
 					</div>
 
-					<div className="flex items-center justify-center mx-6 mt-2 gap-2">
-						<p className="text-xl">Organized by</p>
-						<Button onPress={onUserOpen} style={{ backgroundColor: organizer.profile_color || "#ff0000" }} className="text-xl">{organizer.username ? organizer.username : organizer.fullname}</Button>
-						<div className="flex items-center gap-2 ml-auto">
-							<Button 
+					{/* CONTENT */}
+					<p className="text-center wrap-break-word mx-12 mt-12">{meet.body}</p>
+
+					<p className="text-center my-3">(Make sure to verify the address!)</p>
+				</div>
+
+				{/* Bottom toolbar: organized by + attending */}
+				<div className="shrink-0 mx-6 mb-6 px-4 py-3 rounded-lg bg-white/5 border border-white/10">
+					<div className="flex flex-wrap items-center justify-between gap-3">
+						<div className="flex items-center gap-2">
+							<span className="text-sm text-foreground/80">Organized by</span>
+							<Button onPress={onUserOpen} size="sm" style={{ backgroundColor: organizer.profile_color || "#ff0000" }}>{organizer.username ? organizer.username : organizer.fullname}</Button>
+						</div>
+						<div className="flex items-center gap-2">
+							<Button
 								onPress={handleRsvpToggle}
-								className={`px-4 py-1 transition-colors text-xl ${
-									attendanceStatus 
-										? "bg-red-400 hover:bg-red-500 text-white" 
+								size="sm"
+								className={`px-4 transition-colors ${
+									attendanceStatus
+										? "bg-red-400 hover:bg-red-500 text-white"
 										: "bg-gray-500 hover:bg-gray-600 text-white"
 								}`}
 							>
@@ -336,32 +366,22 @@ export default function MeetDetail() {
 									height={16}
 									className="rounded-none"
 								/>
-								<span className="font-bold text-base text-white">{attendeeCount}</span>
+								<span className="font-bold text-sm text-white">{attendeeCount}</span>
 							</div>
 						</div>
 					</div>
-
-
-					{/* CONTENT */}
-					<p className="text-center wrap-break-word mx-12 mt-12">{meet.body}</p>
-
-					<div id="buttoncontainer" className="flex flex-col justify-self-center">
-						<Button color="primary" onPress={() => window.open(meet.mapsLink, "_blank", "noopener,noreferrer")} className="mx-6 my-3 bg-red-400 hover:bg-red-500" type="button">Google Maps</Button>
-						<p>(Make sure to verify the address!)</p>
-					</div>
 				</div>
-
-				{(meet.organizerId == uid) && (
-					<div id="modifycontainer" className="flex sticky bottom-0 justify-between">
-						<Button onPress={onEditOpen} className="mx-8 my-8">Edit</Button>
-						<Button onPress={onDeleteOpen} className="mx-8 my-8">Delete</Button>
-					</div>
-				)}
 			</div>
 
 			{/* TO ADD: GALLERY FUNCTIONALITY */}
-			<div className="w-2/3 h-screen border-l-4 border-red-400">
-				{meet.images && (<Image className="rounded-none w-fit object-cover" alt="test" src={meet.images[0]} ></Image>)}
+			<div className="flex flex-col w-2/3 h-full min-h-0 overflow-hidden border-l-4 border-red-400">
+				<div className="flex-1 min-h-0 h-full w-full bg-white/5 flex items-center justify-center">
+					{meet.images ? (
+						<Image className="rounded-none" alt="Meet" src={meet.images[0]} />
+					) : (
+						<span className="text-foreground-500 text-sm">No image</span>
+					)}
+				</div>
 			</div>
 			
 

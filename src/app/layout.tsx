@@ -31,13 +31,17 @@ export default function RootLayout({
 
   return (
     <html lang="en" className="bg-[#0d0d0d]" data-theme="blip-main">
-      <body className={`${geistSans.variable} ${geistMono.variable} h-screen antialiased overflow-hidden`} >
+      <body className={`${geistSans.variable} ${geistMono.variable} flex flex-col h-screen antialiased overflow-hidden`} >
         <AuthProvider>
           <Providers>
-            <Nav />
-            <main className="blip-main" >
-              {children}
-            </main>
+            <div className="flex flex-col h-screen min-h-0 overflow-hidden">
+              <div className="shrink-0">
+                <Nav />
+              </div>
+              <main className="blip-main flex flex-col flex-1 min-h-0 overflow-hidden" >
+                {children}
+              </main>
+            </div>
           </Providers>
         </AuthProvider>
         

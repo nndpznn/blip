@@ -171,9 +171,9 @@ export default function MeetCard({
             onPress={() => router.push(`/meet/${meet.id}`)}
             className={`my-1 ${cardBgColor} h-90`}
         >
-            <CardBody className="p-0">
-                <div className="flex flex-col h-full">
-                    <div className="bg-gray-500 flex items-center justify-center w-full h-3/5 overflow-hidden relative">
+            <CardBody className="p-0 h-full min-h-0">
+                <div className="flex flex-col h-full min-h-0">
+                    <div className="bg-gray-500 flex items-center justify-center w-full h-3/5 min-h-0 overflow-hidden relative shrink-0">
                         {meet.images && meet.images.length > 0 ? (
                             <Image 
                                 className="object-cover h-full w-full rounded-none" 
@@ -182,7 +182,7 @@ export default function MeetCard({
                             />
                         ) : (
                             <>
-                                <div className="absolute inset-0 w-full h-full z-0">
+                                <div className="absolute inset-0 z-0">
                                     <Image 
                                         className="object-cover w-full h-full rounded-none" 
                                         alt="no image background" 
