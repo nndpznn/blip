@@ -6,9 +6,9 @@ The race might be a drag, but finding them doesn't have to be.
 
 Welcome to blip, your new companion for finding nearby cars and coffee events and meets from community leaders. This app came about as a result of the realization that we, as car enthusiasts, have no real central resource to find if there are any nearby/upcoming car enthusiast shows and meets. Looking through Tiktok, Reddit threads, Facebook forums, and Instagram pages can be tedious and community centers can be hard to find. We hope that this map can become this central resource for carspotters around the country(but California for now) to rely on to find cool events near them.
 
-### State of blip (updated 1/25/2026)
+### State of blip (updated 2/12/2026)
 
-As of Sunday, 1/25, blip is certainly on its way!! There is a lot of cleaning up to do regarding user experience flows, code efficiency, etc. but we are extremely proud to share that key functionality is complete. It is not yet deployed to Vercel, but we expect to have a baseline working version deployed by March.
+As of Thursday, 2/12, blip is certainly on its way!! There is a lot of cleaning up to do regarding user experience flows, code efficiency, etc. but we are extremely proud to share that key functionality is complete. The map displays meets, and meets contain all necessary information to roll up in style. A beta version has been deployed to Vercel, but we are working on the next major update slated for March. Stay tuned!
 
 ### To-Dos
 
