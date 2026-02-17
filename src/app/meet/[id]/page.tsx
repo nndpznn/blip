@@ -374,8 +374,8 @@ export default function MeetDetail() {
 			</div>
 
 			{/* TO ADD: GALLERY FUNCTIONALITY */}
-			<div className="flex flex-col w-2/3 h-full min-h-0 overflow-hidden border-l-4 border-red-400">
-				<div className="flex-1 min-h-0 h-full w-full bg-white/5 flex items-center justify-center">
+			<div className="flex flex-col w-2/3 h-full min-h-0 overflow-hidden border-l-4 border-red-400 items-center justify-center">
+				<div className="flex-1 w-[60vw] flex items-center justify-center">
 					{meet.images ? (
 						<Image className="rounded-none" alt="Meet" src={meet.images[0]} />
 					) : (

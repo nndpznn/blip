@@ -24,3 +24,31 @@ main {
   margin: 0;
   padding: 0;
 }
+
+/* Modern scrollbar: no gray track, fades when not in use */
+.scrollbar-modern {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+/* WebKit: transparent by default, only visible on hover/scroll (disappears after use) */
+.scrollbar-modern::-webkit-scrollbar {
+  width: 15px;
+}
+.scrollbar-modern::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-modern::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 4px;
+}
+.scrollbar-modern:hover::-webkit-scrollbar-thumb,
+.scrollbar-modern:focus-within::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+.scrollbar-modern:hover::-webkit-scrollbar-thumb:hover,
+.scrollbar-modern:focus-within::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+.scrollbar-modern:hover {
+  --scrollbar-fix: ; /* Safari: invalidate styles so thumb appears on hover */
+}

@@ -5,7 +5,6 @@ import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button } from "@
 import { supabase } from '../clients/supabaseClient'
 import { useRouter, usePathname } from 'next/navigation'
 import Image from "next/image"
-import { ChevronLeftIcon } from "@/assets/ChevronLeftIcon"
 import '../styles/globals.css'
 
 export default function Nav() {
@@ -28,13 +27,6 @@ export default function Nav() {
 			console.log('Successfully signed out')
 			router.push('/')
 		}
-	}
-
-	const handleBack = () => {
-		if (pathname == "/map") {
-			return
-		}
-		router.back()
 	}
 
 	const hideNav = path !== null && (path === "/" || path === "/loginrequired")

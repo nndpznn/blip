@@ -46,7 +46,7 @@ export default function Profile() {
             }
         }
         resolveAuthor()
-    }, [user])
+    }, [user?.id])
 
     useEffect(() => {
         setFormFields()

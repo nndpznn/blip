@@ -171,7 +171,7 @@ export default function AllMeets() {
 				</div>
 			</div>
 
-			<div className="flex-1 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-3 overflow-y-auto">
+			<div className="scrollbar-modern flex-1 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 overflow-y-auto">
 				{displayedMeets?.map((meet: Meet) => {
 					const organizerId = (meet as { organizerId?: string; organizer_id?: string }).organizerId ?? (meet as { organizerId?: string; organizer_id?: string }).organizer_id
 					return (
