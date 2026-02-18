@@ -106,10 +106,10 @@ export default function AllMeets() {
 			if (organizerIds.length > 0) {
 				const { data: profiles } = await supabase
 					.from('profiles')
-					.select('id, fullname')
+					.select('id, username')
 					.in('id', organizerIds)
 				const nameMap: OrganizerNameMap = {}
-				if (profiles) for (const p of profiles) nameMap[p.id] = p.fullname ?? 'Unknown author'
+				if (profiles) for (const p of profiles) nameMap[p.id] = p.username ?? 'Unknown author'
 				setOrganizerNames(nameMap)
 			}
 		}
@@ -135,7 +135,7 @@ export default function AllMeets() {
 	}, [meets, sortOrder, showPast]);
 
 	return (
-		<div className="mx-[5vw] mt-5 flex flex-col h-[calc(100vh-150px)]">
+		<div className="mx-[5vw] mt-5 flex flex-col h-[calc(100vh-170px)]">
 
 			<div className="flex flex-wrap items-center justify-between gap-3 mb-2">
 				<h1 id="header" className="text-3xl font-bold">Browse Meets</h1>
@@ -171,7 +171,7 @@ export default function AllMeets() {
 				</div>
 			</div>
 
-			<div className="scrollbar-modern flex-1 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 overflow-y-auto">
+			<div className="scrollbar-modern flex-1 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 overflow-y-auto pb-4">
 				{displayedMeets?.map((meet: Meet) => {
 					const organizerId = (meet as { organizerId?: string; organizer_id?: string }).organizerId ?? (meet as { organizerId?: string; organizer_id?: string }).organizer_id
 					return (

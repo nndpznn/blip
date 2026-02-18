@@ -25,6 +25,13 @@ import { ReusableFadeInComponent } from "@/components/reusableFadeInComponent";
 import { CalendarIcon } from "@/assets/CalendarIcon";
 import { MapPinIcon } from "@/assets/MapPinIcon";
 
+const formatAddress = (address: string) => {
+	if (address.includes(', United States')) {
+		return address.slice(0, address.lastIndexOf(', United States'));
+	}
+	return address;
+};
+
 import {
   Drawer,
   DrawerContent,
@@ -329,14 +336,12 @@ export default function MeetDetail() {
 						</div>
 						<div className="mt-2 flex items-center justify-start gap-1.5 text-sm text-foreground/80">
 							<MapPinIcon className="shrink-0 size-4 text-red-400/80" />
-							<span className="line-clamp-2 hover:underline hover:cursor-pointer" onClick={() => window.open(meet.mapsLink, "_blank", "noopener,noreferrer")}>{meet.location.address}</span>
+							<span className="line-clamp-2 hover:underline hover:cursor-pointer" onClick={() => window.open(meet.mapsLink, "_blank", "noopener,noreferrer")}>{formatAddress(meet.location.address)}</span>
 						</div>
 					</div>
 
 					{/* CONTENT */}
 					<p className="text-center wrap-break-word mx-12 mt-12">{meet.body}</p>
-
-					<p className="text-center my-3">(Make sure to verify the address!)</p>
 				</div>
 
 				{/* Bottom toolbar: organized by + attending */}

@@ -78,7 +78,7 @@ export default function MeetCard({
         }
         const resolveAuthor = async () => {
             const user = await fetchUserByUID(meet.organizerId);
-            if (user) setUsername(user.fullname);
+            if (user) setUsername(user.username);
         };
         resolveAuthor();
     }, [meet.organizerId, organizerNameProp]);
