@@ -4,14 +4,14 @@ import Meet from "@/models/meet"
 import User from "@/models/user";
 
 import { Button } from "@heroui/button"
-import { Input, Textarea } from "@heroui/react";
+import { Input, Textarea, TimeInput } from "@heroui/react";
 import {Image} from "@heroui/image";
 import { useRouter, useParams } from 'next/navigation'
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/clients/authContext";
 
 import {Calendar} from '@heroui/calendar'
-import {Time, today, getLocalTimeZone, CalendarDate, parseDate} from "@internationalized/date";
+import { Time, today, getLocalTimeZone, CalendarDate, parseDate, parseTime } from "@internationalized/date";
 import { to12Hour } from "@/util/politeTimeString";
 
 import { supabase } from '@/clients/supabaseClient'
@@ -51,8 +51,8 @@ export default function MeetDetail() {
 	const [location, setLocation] = useState<LocationData | null>(null);
 	const [body, setBody] = useState('')
 	const [links, setLinks] = useState('')
-	const [imageFiles, setImageFiles] = useState<File[]>([])
-	const [files, setFiles] = useState<File[]>([])
+	const [existingImageUrls, setExistingImageUrls] = useState<string[]>([])
+	const [newImageFiles, setNewImageFiles] = useState<File[]>([])
 	const [date, setDate] = useState<CalendarDate>(today(getLocalTimeZone()))
 	const [startTime, setStartTime] = useState<Time | null>()
 	const [endTime, setEndTime] = useState<Time | null>()
@@ -66,36 +66,44 @@ export default function MeetDetail() {
 	const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = e.target.files;
 		if (files) {
-		  setFiles(Array.from(files)); // Convert FileList to an array
+		  setNewImageFiles(prev => [...prev, ...Array.from(files)]);
 		}
-	  };
-
-	const handleUploadImagesPrompt = () => {
-		if (fileInputRef.current) {
-			fileInputRef.current.click();
-		}
-	}
-
-	const handleRemoveFile = (fileNameToRemove: string) => {
-		setImageFiles(prevFiles => 
-			prevFiles.filter(file => file.name !== fileNameToRemove)
-		);
-		// To re-enable uploading the same file name later, 
-		// we need to reset the value of the hidden input:
 		if (fileInputRef.current) {
 			fileInputRef.current.value = '';
 		}
 	};
 
-	const handleClear = () => {
-		setTitle('')
-		setBody('')
-		setLinks('')
-		setImageFiles([])
-		setDate(today(getLocalTimeZone()))
-		setStartTime(null)
-		setEndTime(null)
-		setLocation(meet?.location || null)
+	const handleUploadImagesPrompt = () => {
+		if (fileInputRef.current) {
+			fileInputRef.current.click();
+		}
+	};
+
+	const handleRemoveExistingImage = (indexToRemove: number) => {
+		setExistingImageUrls(prev => prev.filter((_, i) => i !== indexToRemove));
+	};
+
+	const handleRemoveNewFile = (fileNameToRemove: string) => {
+		setNewImageFiles(prev => prev.filter(file => file.name !== fileNameToRemove));
+		if (fileInputRef.current) {
+			fileInputRef.current.value = '';
+		}
+	};
+
+	const handleClear = (meetData: Meet | null) => {
+		if (!meetData) return
+		setTitle(meetData.title || '')
+		setBody(meetData.body || '')
+		setLinks((meetData as { links?: string; link?: string }).links ?? meetData.link ?? '')
+		setExistingImageUrls(meetData.images ?? [])
+		setNewImageFiles([])
+		setDate(meetData.date ? parseDate(meetData.date.toString()) : today(getLocalTimeZone()))
+		setStartTime(meetData.startTime != null ? (typeof meetData.startTime === 'string' ? parseTime(meetData.startTime) : meetData.startTime) : null)
+		setEndTime(meetData.endTime != null ? (typeof meetData.endTime === 'string' ? parseTime(meetData.endTime) : meetData.endTime) : null)
+		setLocation(meetData.location)
+		if (fileInputRef.current) {
+			fileInputRef.current.value = ''
+		}
 	}
 
 	// working on alternative solution to refilling form with data. maybe cancel the edit instead of having to reset
@@ -117,23 +125,23 @@ export default function MeetDetail() {
 
 		if (!title || !body || !date || !startTime || !endTime || !location) {
 			console.log("missing one or more required fields")
-			// setIncAlertVisible(true)
 			return
 		}
 
-		const meet = new Meet(user!.id, title, body, links, 
-			location)
-		meet.id = correctId
-		meet.date = date
-		meet.startTime = startTime
-		meet.endTime = endTime
+		const meetToSave = new Meet(user!.id, title, body, links, location)
+		meetToSave.id = correctId
+		meetToSave.date = date
+		meetToSave.startTime = startTime
+		meetToSave.endTime = endTime
 
-		await meet.uploadImages(files)
+		// Keep existing URLs (user may have removed some) and upload new files
+		meetToSave.images = [...existingImageUrls]
+		const newUrls = await meetToSave.uploadImages(newImageFiles)
+		meetToSave.images = [...existingImageUrls, ...newUrls]
 
-		await meet.saveEditDatabase()
+		await meetToSave.saveEditDatabase()
 
-		console.log('form data submitted successfully.', meet)
-
+		console.log('form data submitted successfully.', meetToSave)
 		router.push("/seeAllMeets")
 	}
 
@@ -222,11 +230,12 @@ export default function MeetDetail() {
 		if (isEditOpen && meet) {
 			setTitle(meet?.title || '')
 			setBody(meet?.body || '')
-			setLinks(meet?.link || '')
-			// setImageFiles(meet?.images || '') // FIX LATER
+			setLinks((meet as { links?: string; link?: string }).links ?? meet?.link ?? '')
+			setExistingImageUrls(meet?.images ?? [])
+			setNewImageFiles([])
 			setDate(meet?.date ? parseDate(meet.date.toString()) : today(getLocalTimeZone()))
-			setStartTime(meet?.startTime) // FIX LATER
-			setEndTime(meet?.endTime) // FIX LATER
+			setStartTime(meet?.startTime != null ? (typeof meet.startTime === 'string' ? parseTime(meet.startTime) : meet.startTime) : null)
+			setEndTime(meet?.endTime != null ? (typeof meet.endTime === 'string' ? parseTime(meet.endTime) : meet.endTime) : null)
 			setLocation(meet.location)
 		}
 	  }, [meet, isEditOpen])
@@ -489,10 +498,10 @@ export default function MeetDetail() {
 
 							<div id="misc" className="flex flex-col w-1/5 ml-10">
 								<p className="mt-5 text-xl font-bold">Start Time</p>
-								{/* <TimeInput value={startTime} onChange={setStartTime} label="Start Time" /> */}
+								<TimeInput value={startTime} onChange={setStartTime} label="Start Time" />
 
 								<p className="mt-5 text-xl font-bold">End Time</p>
-								{/* <TimeInput value={endTime} onChange={setEndTime} label="End Time" /> */}
+								<TimeInput value={endTime} onChange={setEndTime} label="End Time" />
 
 								<p className="mt-5 text-xl font-bold">Upload Images</p>
 
@@ -513,34 +522,69 @@ export default function MeetDetail() {
 									Upload
 								</Button>
 
-								<div className="mt-3 text-sm text-gray-600">
-									{imageFiles.length > 0 ? (
-									<div>
-										<p className="font-medium text-green-600">
-											{imageFiles.length} file(s) selected:
-										</p>
-										{imageFiles.map((file, index) => (
-											<div 
-												key={file.name + index} 
-												className="flex items-center justify-between p-2 bg-green-50 rounded-lg border border-green-200"
-											>
-												<span className="truncate mr-4">{file.name}</span>
-												<button
-													onClick={() => handleRemoveFile(file.name)}
-													className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition duration-150"
-													aria-label={`Remove file ${file.name}`}
-												>
-													<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-														<path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-													</svg>
-												</button>
+								<div className="mt-3 text-sm text-gray-600 space-y-3">
+									{existingImageUrls.length > 0 && (
+										<div>
+											<p className="font-medium text-foreground-700 mb-1">Current images</p>
+											<div className="flex flex-wrap gap-2">
+												{existingImageUrls.map((url, index) => (
+													<div
+														key={`${url}-${index}`}
+														className="relative inline-block rounded-lg border border-default-200 overflow-hidden"
+													>
+														<Image
+															src={url}
+															alt="Meet"
+															className="h-16 w-16 object-cover rounded-lg"
+															width={64}
+															height={64}
+														/>
+														<button
+															type="button"
+															onClick={(e) => {
+																e.preventDefault()
+																e.stopPropagation()
+																handleRemoveExistingImage(index)
+															}}
+															className="absolute top-0.5 right-0.5 z-10 p-1 rounded-full bg-black/70 text-white hover:bg-red-500 transition shrink-0"
+															aria-label="Remove image"
+														>
+															<svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+																<path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+															</svg>
+														</button>
+													</div>
+												))}
 											</div>
-										))}
-									</div>
-									) : (
-									<p className="text-gray-500">
-										Click the button above to select images for upload.
-									</p>
+										</div>
+									)}
+									{newImageFiles.length > 0 && (
+										<div>
+											<p className="font-medium text-green-600 mb-1">{newImageFiles.length} new file(s) to upload</p>
+											{newImageFiles.map((file, index) => (
+												<div
+													key={file.name + index}
+													className="flex items-center justify-between p-2 bg-green-50 rounded-lg border border-green-200 mt-1"
+												>
+													<span className="truncate mr-4">{file.name}</span>
+													<button
+														type="button"
+														onClick={() => handleRemoveNewFile(file.name)}
+														className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition duration-150"
+														aria-label={`Remove file ${file.name}`}
+													>
+														<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+															<path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+														</svg>
+													</button>
+												</div>
+											))}
+										</div>
+									)}
+									{existingImageUrls.length === 0 && newImageFiles.length === 0 && (
+										<p className="text-gray-500">
+											No images. Click Upload to add current or new images.
+										</p>
 									)}
 								</div>
 								{/* <p>yes we know this looks not great</p> */}
@@ -551,11 +595,11 @@ export default function MeetDetail() {
 							<Button color="primary" onPress={onClose}>
 							Cancel
 							</Button>
-							<Button color="primary" onPress={handleClear}>
-							Clear
+							<Button color="primary" onPress={() => handleClear(meet)}>
+								Restore
 							</Button>
 							<Button color="primary" onPress={handleEdit}>
-							Edit
+							Confirm
 							</Button>
 						</DrawerFooter>
 					</>

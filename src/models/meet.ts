@@ -68,37 +68,38 @@ class Meet {
 
 	// END DATE TIME STUFF
 
-	async uploadImages(files: File[]): Promise<void> {
+	async uploadImages(files: File[]): Promise<string[]> {
 		const uploadedImageUrls: string[] = [];
-	
+
 		for (const file of files) {
 		  const fileExt = file.name.split('.').pop(); // Get file extension
 		  const fileName = `${Date.now()}.${fileExt}`; // Create a unique filename
-	
+
 		  // Upload the image to Supabase Storage
 		  const { data, error } = await supabase
 			.storage
 			.from('images') // Use your bucket name
 			.upload(fileName, file);
-	
+
 		  if (error) {
 			console.error("Error uploading image:", error);
 			continue;
 		  }
-	
+
 		  // Get the public URL of the uploaded image
 		  const imageUrl = supabase
 			.storage
 			.from('images')
 			.getPublicUrl(data?.path || '')
 			.data.publicUrl;
-	
+
 		  if (imageUrl) {
 			uploadedImageUrls.push(imageUrl);
 		  }
 		}
-	
-		this.images = uploadedImageUrls; // Save the URLs to the images array
+
+		this.images = uploadedImageUrls; // Save the URLs to the images array (for create flow)
+		return uploadedImageUrls;
 	  }
 
 
@@ -140,7 +141,7 @@ class Meet {
 			  location: this.location,
 			  mapsLink: encodeToGoogleMaps(this.location.name, this.location.coordinates),
 			  links: this.link,
-			//   images: this.images,
+			  images: this.images,
 			  date: this.date?.toString(),
 			  startTime: this.startTime?.toString(),
 			  endTime: this.endTime?.toString(),
