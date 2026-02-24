@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "migrate:meet-images": "tsx scripts/migrate-meet-images.ts"
   },
   "dependencies": {
     "@heroui/button": "^2.2.27",
@@ -38,6 +39,8 @@
     "eslint-config-next": "15.1.6",
     "eslint-plugin-react-hooks": "^7.0.1",
     "postcss": "^8.5.6",
-    "typescript": "^5"
+    "typescript": "^5",
+    "dotenv": "^16.4.5",
+    "tsx": "^4.19.2"
   }
 }

@@ -74,12 +74,13 @@ class Meet {
 		for (const file of files) {
 		  const fileExt = file.name.split('.').pop(); // Get file extension
 		  const fileName = `${Date.now()}.${fileExt}`; // Create a unique filename
+		  const filePath = `meetImages/${this.organizerId}/${fileName}`;
 
 		  // Upload the image to Supabase Storage
 		  const { data, error } = await supabase
 			.storage
-			.from('images') // Use your bucket name
-			.upload(fileName, file);
+			.from('images')
+			.upload(filePath, file);
 
 		  if (error) {
 			console.error("Error uploading image:", error);

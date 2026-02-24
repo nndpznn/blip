@@ -240,16 +240,38 @@ export default function MeetDetail() {
 		}
 	  }, [meet, isEditOpen])
 
+	/** Get storage path from a Supabase public URL (e.g. .../object/public/images/meetImages/foo.jpg -> meetImages/foo.jpg) */
+	const getStoragePathFromPublicUrl = (publicUrl: string, bucket: string): string | null => {
+		const prefix = `/object/public/${bucket}/`;
+		const i = publicUrl.indexOf(prefix);
+		if (i === -1) return null;
+		return publicUrl.slice(i + prefix.length);
+	};
+
 	const onDelete = async (idToDelete: number) => {
-		console.log(`ID: ${idToDelete}`)
-		const {data, error} = await supabase.from('meets').delete().eq("id",idToDelete)
+		// Delete meet images from Supabase storage by URL
+		const imageUrls = meet?.images ?? [];
+		if (imageUrls.length > 0) {
+			const bucket = 'images';
+			const paths = imageUrls
+				.map((url) => getStoragePathFromPublicUrl(url, bucket))
+				.filter((path): path is string => path != null);
+			if (paths.length > 0) {
+				const { error: storageError } = await supabase.storage.from(bucket).remove(paths);
+				if (storageError) {
+					console.error("Error deleting meet images from storage:", storageError);
+				}
+			}
+		}
+
+		const { data, error } = await supabase.from('meets').delete().eq("id", idToDelete);
 
 		if (error) {
 			console.error("Error deleting data:", error);
 		} else {
 			console.log("Data deleted successfully:", data);
-}
-		router.push("/seeAllMeets")
+		}
+		router.push("/seeAllMeets");
 	}
 
 	const handleRsvpToggle = async () => {
@@ -389,7 +411,7 @@ export default function MeetDetail() {
 
 			{/* TO ADD: GALLERY FUNCTIONALITY */}
 			<div className="flex flex-col w-2/3 h-full min-h-0 overflow-hidden border-l-4 border-red-400 items-center justify-center">
-				<div className="flex-1 w-[60vw] flex items-center justify-center">
+				<div className="flex-1 w-[60vw] max-h-[60vh] flex items-center justify-center">
 					{meet.images ? (
 						<Image className="rounded-none" alt="Meet" src={meet.images[0]} />
 					) : (
