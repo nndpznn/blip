@@ -5,6 +5,7 @@ import { Card, CardBody, Button } from "@heroui/react";
 import { fetchUserByUID } from "@/hooks/fetchUserbyUID";
 import {Image} from "@heroui/image";
 import { supabase } from '@/clients/supabaseClient'
+import { usePageAccent } from "@/contexts/PageAccentContext";
 
 interface MeetCardProps {
     meet: Meet;
@@ -61,6 +62,7 @@ export default function MeetCard({
     attendanceStatus: attendanceStatusProp,
 }: MeetCardProps) {
     const router = useRouter();
+    const { accentColor } = usePageAccent();
     const preloaded =
         attendeeCountProp !== undefined &&
         attendanceStatusProp !== undefined &&
@@ -162,7 +164,8 @@ export default function MeetCard({
     : 'No date found';
 
     const isPast = !isMeetInFuture(meet);
-    const cardBgColor = isPast ? "bg-gray-500" : "bg-red-400";
+    const cardBgColor = isPast ? "bg-gray-500" : (accentColor ? "" : "bg-red-400");
+    const cardStyle = !isPast && accentColor ? { backgroundColor: accentColor } : undefined;
 
     return (
         <Card
@@ -170,6 +173,7 @@ export default function MeetCard({
             as="div"
             onPress={() => router.push(`/meet/${meet.id}`)}
             className={`my-1 ${cardBgColor} h-90`}
+            style={cardStyle}
         >
             <CardBody className="p-0 h-full min-h-0">
                 <div className="flex flex-col h-full min-h-0">

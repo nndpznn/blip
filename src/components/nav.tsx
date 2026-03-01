@@ -11,7 +11,7 @@ export default function Nav() {
 	const router = useRouter()
 	const pathname = usePathname()
 	const [path, setPath] = useState<string | null>(null)
-	const allButtonClassses = "bg-red-400 hover:bg-red-500 disabled:bg-gray-500"
+	const allButtonClassses = "bg-[var(--page-accent)] hover:bg-[var(--page-accent-hover)] disabled:bg-gray-500"
 
 	// Only use pathname for visibility after mount so server and client first paint match (avoids hydration error)
 	useEffect(() => {
@@ -34,7 +34,7 @@ export default function Nav() {
 	return (
 		<div
 			id="nav"
-			className={`grid grid-cols-3 justify-between items-center w-full py-4 border-b-8 border-red-400 ${hideNav ? "hidden" : ""}`}
+			className={`grid grid-cols-3 justify-between items-center w-full py-4 border-b-8 border-b-[var(--page-accent)] ${hideNav ? "hidden" : ""}`}
 			aria-hidden={hideNav ? true : undefined}
 		>
 

@@ -4,6 +4,7 @@ import { Providers } from "@/components/providers";
 import "@/styles/globals.css";
 import Nav from "@/components/nav";
 import { AuthProvider } from '../clients/authContext';
+import { PageAccentProvider } from "@/contexts/PageAccentContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,14 +35,14 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} flex flex-col h-screen antialiased overflow-hidden`} >
         <AuthProvider>
           <Providers>
-            <div className="flex flex-col h-screen min-h-0 overflow-hidden">
+            <PageAccentProvider>
               <div className="shrink-0">
                 <Nav />
               </div>
               <main className="blip-main flex flex-col flex-1 min-h-0 overflow-hidden" >
                 {children}
               </main>
-            </div>
+            </PageAccentProvider>
           </Providers>
         </AuthProvider>
         

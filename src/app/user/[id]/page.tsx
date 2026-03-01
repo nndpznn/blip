@@ -9,6 +9,7 @@ import { useEffect, useState, useMemo } from "react";
 
 import { supabase } from '@/clients/supabaseClient'
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button, Checkbox } from "@heroui/react";
+import { usePageAccent } from "@/contexts/PageAccentContext";
 
 /** Maps meet id -> attendee count (from batch fetch). */
 type AttendeeCountMap = Record<number, number>;
@@ -51,6 +52,7 @@ export default function UserDetail() {
 
 	const params = useParams<{ id: string }>();
     const userId = params.id;
+	const { setAccentColor } = usePageAccent();
 
 	const [user, setUser] = useState<User | null>(null)
 	const [fetchError, setFetchError] = useState<string>("")
@@ -76,6 +78,14 @@ export default function UserDetail() {
 	
 		fetchData()
 	}, [userId])
+
+	// Sync page accent to this user's profile color when viewing their page; clear when leaving
+	useEffect(() => {
+		if (user?.profile_color) {
+			setAccentColor(user.profile_color)
+		}
+		return () => setAccentColor(null)
+	}, [user?.profile_color, setAccentColor])
 
 	useEffect(() => {
 		const load = async () => {
