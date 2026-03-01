@@ -68,51 +68,51 @@ export default function MeetCard({
         attendanceStatusProp !== undefined &&
         profileIdProp !== undefined;
 
-    const [username, setUsername] = useState<string | null>(organizerNameProp ?? null);
-    const [attendanceStatus, setAttendanceStatus] = useState(attendanceStatusProp ?? false);
-    const [profileId, setProfileId] = useState<string | null>(profileIdProp ?? null);
-    const [attendeeCount, setAttendeeCount] = useState(attendeeCountProp ?? 0);
+    const [resolvedUsername, setResolvedUsername] = useState<string | null>(null);
+    const [resolvedProfileId, setResolvedProfileId] = useState<string | null>(null);
+    const [resolvedAttendeeCount, setResolvedAttendeeCount] = useState(0);
+    const [resolvedAttendanceStatus, setResolvedAttendanceStatus] = useState(false);
+    const [attendanceOverride, setAttendanceOverride] = useState<{ count: number; attending: boolean } | null>(null);
+
+    const username = organizerNameProp ?? resolvedUsername;
+    const profileId = profileIdProp ?? resolvedProfileId;
+    const attendeeCount = attendanceOverride
+        ? attendanceOverride.count
+        : (preloaded ? (attendeeCountProp ?? 0) : resolvedAttendeeCount);
+    const attendanceStatus = attendanceOverride
+        ? attendanceOverride.attending
+        : (preloaded ? (attendanceStatusProp ?? false) : resolvedAttendanceStatus);
 
     useEffect(() => {
-        if (organizerNameProp !== undefined) {
-            setUsername(organizerNameProp);
-            return;
-        }
+        if (organizerNameProp !== undefined) return;
         const resolveAuthor = async () => {
             const user = await fetchUserByUID(meet.organizerId);
-            if (user) setUsername(user.username);
+            if (user) setResolvedUsername(user.username);
         };
         resolveAuthor();
     }, [meet.organizerId, organizerNameProp]);
 
     useEffect(() => {
-        if (profileIdProp !== undefined) {
-            setProfileId(profileIdProp);
-            return;
-        }
-        getCurrentProfileId().then(setProfileId);
+        if (profileIdProp !== undefined) return;
+        getCurrentProfileId().then(setResolvedProfileId);
     }, [profileIdProp]);
 
     useEffect(() => {
-        if (preloaded) {
-            setAttendeeCount(attendeeCountProp ?? 0);
-            setAttendanceStatus(attendanceStatusProp ?? false);
-            return;
-        }
+        if (preloaded) return;
         const fetchAttendance = async () => {
             const { count: total, error: countError } = await supabase
                 .from('meet_attendees')
                 .select('*', { count: 'exact', head: true })
                 .eq('meet_id', meet.id);
             if (countError) console.error("Error fetching tally:", countError);
-            else setAttendeeCount(total ?? 0);
+            else setResolvedAttendeeCount(total ?? 0);
             if (profileId) {
                 const { count: userCount } = await supabase
                     .from('meet_attendees')
                     .select('*', { count: 'exact', head: true })
                     .eq('profile_id', profileId)
                     .eq('meet_id', meet.id);
-                setAttendanceStatus(userCount ? userCount > 0 : false);
+                setResolvedAttendanceStatus(userCount ? userCount > 0 : false);
             }
         };
         fetchAttendance();
@@ -150,9 +150,14 @@ export default function MeetCard({
         if (error) {
             console.error("Error updating RSVP:", error);
         } else {
-            // Flip the local state to reflect the successful database change
-            setAttendeeCount(prev => attendanceStatus ? prev - 1 : prev + 1);
-            setAttendanceStatus(!attendanceStatus);
+            const newCount = attendanceStatus ? attendeeCount - 1 : attendeeCount + 1;
+            const newAttending = !attendanceStatus;
+            if (preloaded) {
+                setAttendanceOverride({ count: newCount, attending: newAttending });
+            } else {
+                setResolvedAttendeeCount(newCount);
+                setResolvedAttendanceStatus(newAttending);
+            }
         }
     };
 

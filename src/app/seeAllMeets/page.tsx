@@ -171,6 +171,10 @@ export default function AllMeets() {
 				</div>
 			</div>
 
+			{fetchError && (
+				<div className="text-red-500 text-center py-2" role="alert">{fetchError}</div>
+			)}
+
 			<div className="scrollbar-modern flex-1 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 overflow-y-auto pb-4">
 				{displayedMeets?.map((meet: Meet) => {
 					const organizerId = (meet as { organizerId?: string; organizer_id?: string }).organizerId ?? (meet as { organizerId?: string; organizer_id?: string }).organizer_id

@@ -51,21 +51,20 @@ export interface MeetPopupProps {
 
 export default function MeetPopup({ meets, onViewMeet }: MeetPopupProps) {
 	const [currentIndex, setCurrentIndex] = useState(0);
-	const [organizerUsername, setOrganizerUsername] = useState<string | null>(null);
+	const [resolvedOrganizerUsername, setResolvedOrganizerUsername] = useState<string | null>(null);
 	const total = meets.length;
 	const meet = meets[currentIndex];
 
+	const organizerUsername = meet?.organizerId ? resolvedOrganizerUsername : null;
+
 	useEffect(() => {
-		if (!meet?.organizerId) {
-			setOrganizerUsername(null);
-			return;
-		}
+		if (!meet?.organizerId) return;
 		let cancelled = false;
 		fetchUserByUID(meet.organizerId).then((user) => {
 			if (!cancelled && user && typeof user === 'object' && 'username' in user) {
-				setOrganizerUsername(String((user as { username?: string }).username ?? ''));
-			} else {
-				setOrganizerUsername(null);
+				setResolvedOrganizerUsername(String((user as { username?: string }).username ?? ''));
+			} else if (!cancelled) {
+				setResolvedOrganizerUsername(null);
 			}
 		});
 		return () => { cancelled = true; };

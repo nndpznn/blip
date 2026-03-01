@@ -28,13 +28,14 @@ export default function Profile() {
 	
 	const ALL_BUTTON_CSS = "my-2 max-w-md"
 	
-	const setFormFields = useCallback(() => {
-		if (currentUser) {
-		setUsername(currentUser.username);
-		setFullname(currentUser.fullname);
-		setHeadline(currentUser.headline);
-		setBio(currentUser.bio);
-		setProfileColor(currentUser.profile_color)
+	const setFormFields = useCallback((data?: ProfileRow | null) => {
+		const u = data ?? currentUser
+		if (u) {
+			setUsername(u.username);
+			setFullname(u.fullname);
+			setHeadline(u.headline);
+			setBio(u.bio);
+			setProfileColor(u.profile_color)
 		}
 	}, [currentUser]);
 
@@ -43,14 +44,13 @@ export default function Profile() {
             if (user) {
                 const data = await fetchUserByUID(user.id)
                 setCurrentUser(data)
+                setFormFields(data)
             }
         }
         resolveAuthor()
-    }, [user?.id])
-
-    useEffect(() => {
-        setFormFields()
-    }, [currentUser, setFormFields])
+        // Omit setFormFields: including it would re-run whenever currentUser changes (it's in setFormFields's deps), resetting the form while editing.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user])
 
 	const handleFlipEdit = () => {
 		setEditing(!editing)
@@ -89,6 +89,7 @@ export default function Profile() {
 			if (updatedData) {
 				// updatedData is a ProfileRow (plain object), so this works!
 				setCurrentUser(updatedData);
+				setFormFields(updatedData);
 			}
 			setEditing(false);
 		}

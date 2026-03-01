@@ -233,9 +233,7 @@ export default function UserDetail() {
 							)}
 
 							<div className="scrollbar-modern flex-1 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 overflow-y-auto">
-								{displayedMeets?.map((meet: Meet) => {
-									const organizerId = (meet as { organizerId?: string; organizer_id?: string }).organizerId ?? (meet as { organizerId?: string; organizer_id?: string }).organizer_id
-									return (
+								{displayedMeets?.map((meet: Meet) => (
 										<MeetCard
 											key={meet.id}
 											meet={meet}
@@ -244,8 +242,7 @@ export default function UserDetail() {
 											attendeeCount={attendeeCountByMeet[meet.id] ?? 0}
 											attendanceStatus={attendingMeetIds.has(meet.id)}
 										/>
-									)
-								})}
+									))}
 							</div>
 						</div>
 					</div>
