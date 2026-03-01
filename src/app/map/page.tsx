@@ -119,6 +119,8 @@ export default function Map() {
 
             // --- INTERACTIONS ---
 
+            const round5 = (n: number) => Math.round(n * 1e5) / 1e5;
+
             // Shared: show popup for a list of meets at given coordinates (used for point clicks)
             const showMeetsPopup = (meetsToShow: Meet[], coordinates: [number, number]) => {
 				if (meetsToShow.length === 0) return;
@@ -139,55 +141,76 @@ export default function Map() {
 				popup.addTo(map);
 			};
 
-            // Click on cluster: fit map to show all meets in the cluster (no popup — no meet at centroid)
+            // Click on cluster: zoom and/or show popup depending on count and locations
             map.on('click', 'clusters', (e) => {
                 const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
-				if (!features.length) return;
+                if (!features.length) return;
 
                 const clusterProps = features[0].properties;
                 const clusterId = clusterProps?.cluster_id;
                 const pointCount = typeof clusterProps?.point_count === 'number' ? clusterProps.point_count : 0;
 
-				if (typeof clusterId === 'number' && pointCount > 0) {
-					const source = map.getSource('meets-source') as mapboxgl.GeoJSONSource;
-					source.getClusterLeaves(clusterId, pointCount, 0, (err, leaves) => {
-						if (err || !leaves?.length) return;
-						const coords = leaves.map((f) => (f.geometry as Point).coordinates);
-						const lngs = coords.map((c) => c[0]);
-						const lats = coords.map((c) => c[1]);
-						const sw: [number, number] = [Math.min(...lngs), Math.min(...lats)];
-						const ne: [number, number] = [Math.max(...lngs), Math.max(...lats)];
-						const bounds = new mapboxgl.LngLatBounds(sw, ne);
-						// If single point, expand bounds slightly so zoom isn't maxed in
-						if (sw[0] === ne[0] && sw[1] === ne[1]) {
-							bounds.extend([sw[0] - 0.01, sw[1] - 0.01]);
-							bounds.extend([ne[0] + 0.01, ne[1] + 0.01]);
-						}
-						map.fitBounds(bounds, { padding: 60, maxZoom: 14, duration: 400 });
-					});
-				}
+                if (typeof clusterId !== 'number' || pointCount === 0) return;
+
+                const source = map.getSource('meets-source') as mapboxgl.GeoJSONSource;
+                source.getClusterLeaves(clusterId, pointCount, 0, (err, leaves) => {
+                    if (err || !leaves?.length) return;
+
+                    const coords = leaves.map((f) => (f.geometry as Point).coordinates);
+                    const meetIds = leaves.map((f) => f.properties?.id).filter((id): id is number => id != null);
+                    const meetsToShow = meetIds
+                        .map((id) => meets.find((m) => m.id === id))
+                        .filter((m): m is Meet => m != null);
+                    if (meetsToShow.length === 0) return;
+
+                    const lngs = coords.map((c) => c[0]);
+                    const lats = coords.map((c) => c[1]);
+                    const sw: [number, number] = [Math.min(...lngs), Math.min(...lats)];
+                    const ne: [number, number] = [Math.max(...lngs), Math.max(...lats)];
+                    const bounds = new mapboxgl.LngLatBounds(sw, ne);
+                    const center: [number, number] = [coords[0][0], coords[0][1]];
+                    const allSameLocation = coords.every(
+                        (c) => round5(c[0]) === round5(center[0]) && round5(c[1]) === round5(center[1])
+                    );
+
+                    if (meetsToShow.length === 1) {
+                        // (a) Single ping: zoom to point, then open detail carousel
+                        map.easeTo({ center, zoom: 14, duration: 400 });
+                        map.once('moveend', () => showMeetsPopup(meetsToShow, center));
+                    } else if (allSameLocation) {
+                        // (c) 2+ pings at exact same location: zoom and open carousel to page between them
+                        map.easeTo({ center, zoom: 14, duration: 400 });
+                        map.once('moveend', () => showMeetsPopup(meetsToShow, center));
+                    } else {
+                        // (b) 2+ pings in region: fitBounds so user can click individual points
+                        if (sw[0] === ne[0] && sw[1] === ne[1]) {
+                            bounds.extend([sw[0] - 0.01, sw[1] - 0.01]);
+                            bounds.extend([ne[0] + 0.01, ne[1] + 0.01]);
+                        }
+                        map.fitBounds(bounds, { padding: 60, maxZoom: 14, duration: 400 });
+                    }
+                });
             });
 
             // Click on point: show popup for meets at this location
             map.on('click', 'unclustered-point', (e) => {
-				if (!e.features || e.features.length === 0) return;
+                if (!e.features || e.features.length === 0) return;
 
-				const feature = e.features[0];
-				const geometry = feature.geometry as Point;
-				const coordinates = [...geometry.coordinates] as [number, number];
+                const feature = e.features[0];
+                const geometry = feature.geometry as Point;
+                const coordinates = [...geometry.coordinates] as [number, number];
 
-				const round5 = (n: number) => Math.round(n * 1e5) / 1e5;
-				const [clng, clat] = coordinates;
-				const meetsAtLocation = meets.filter(
-					(m) =>
-						round5(m.location.coordinates[0]) === round5(clng) &&
-						round5(m.location.coordinates[1]) === round5(clat)
-				);
-				if (meetsAtLocation.length === 0) return;
+                const [clng, clat] = coordinates;
+                const meetsAtLocation = meets.filter(
+                    (m) =>
+                        round5(m.location.coordinates[0]) === round5(clng) &&
+                        round5(m.location.coordinates[1]) === round5(clat)
+                );
+                if (meetsAtLocation.length === 0) return;
 
-				map.easeTo({ center: coordinates, zoom: 14 });
-				showMeetsPopup(meetsAtLocation, coordinates);
-			});
+                map.easeTo({ center: coordinates, zoom: 14 });
+                showMeetsPopup(meetsAtLocation, coordinates);
+            });
 
             // Hover effects
             map.on('mouseenter', 'clusters', () => map.getCanvas().style.cursor = 'pointer');
