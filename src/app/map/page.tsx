@@ -27,6 +27,21 @@ export default function Map() {
 	const mapRef = useRef<mapboxgl.Map | null>(null);
 	const [meets, setMeets] = useState<Meet[]>([]);
 
+	// Helper to transform Meet to GeoJSON Feature (must be declared before use in effects)
+	const createFeature = (meet: Meet) => ({
+		type: 'Feature' as const,
+		geometry: {
+			type: 'Point' as const,
+			coordinates: meet.location.coordinates
+		},
+		properties: {
+			id: meet.id,
+			title: meet.title,
+			name: meet.location.name,
+			address: meet.location.address
+		}
+	});
+
 	useEffect(() => {
         if (!mapContainerRef.current) return;
         
@@ -226,21 +241,6 @@ export default function Map() {
         }
 
     }, [meets, router]);
-
-    // Helper to transform Meet to GeoJSON Feature
-    const createFeature = (meet: Meet) => ({
-        type: 'Feature' as const,
-        geometry: {
-            type: 'Point' as const,
-            coordinates: meet.location.coordinates
-        },
-        properties: {
-            id: meet.id,
-            title: meet.title,
-            name: meet.location.name,
-            address: meet.location.address
-        }
-    });
 
 	return (
 		<div className="flex flex-col w-full h-full">
