@@ -5,24 +5,48 @@ import { Card, CardBody, Button } from "@heroui/react";
 import { fetchUserByUID } from "@/hooks/fetchUserbyUID";
 import {Image} from "@heroui/image";
 import { supabase } from '@/clients/supabaseClient'
+import { usePageAccent } from "@/contexts/PageAccentContext";
 
 interface MeetCardProps {
     meet: Meet;
+    /** When provided (e.g. from list page batch fetch), no per-card DB calls for attendance/organizer. */
+    profileId?: string | null;
+    organizerName?: string | null;
+    attendeeCount?: number;
+    attendanceStatus?: boolean;
+}
+
+/** Raw meet row from Supabase may use date/startTime or date/start_time (strings). */
+type MeetRow = { date?: string | null; startTime?: string | null; start_time?: string | null; created_at?: string };
+
+function getMeetDateTime(meet: MeetRow): Date | null {
+	const dateStr = meet.date != null ? String(meet.date) : null;
+	if (!dateStr) return null;
+	const timeStr = meet.startTime ?? meet.start_time;
+	let iso = dateStr;
+	if (timeStr) {
+		const t = String(timeStr).replace("Z", "");
+		iso = dateStr.includes("T") ? dateStr : `${dateStr}T${t.length <= 5 ? t + ":00" : t}`;
+	} else if (!dateStr.includes("T")) {
+		iso = `${dateStr}T23:59:59`;
+	}
+	const d = new Date(iso);
+	return isNaN(d.getTime()) ? null : d;
+}
+
+function isMeetInFuture(meet: Meet): boolean {
+	const d = getMeetDateTime(meet as unknown as MeetRow);
+	return d != null && d.getTime() > Date.now();
 }
 
 const getCurrentProfileId = async () => {
-    // 1. Get the user from Supabase Auth
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
-
-    // 2. Fetch the corresponding profile_id from your profiles table
-    // Assumes your profiles table has a column linking back to the auth user ID.
     const { data: profile, error } = await supabase
         .from('profiles')
         .select('id')
-        .eq('id', user.id) // Assuming your profiles.id is the auth.user.id
+        .eq('id', user.id)
         .single();
-    
     if (error || !profile) {
         console.error("Error fetching profile ID:", error);
         return null;
@@ -30,53 +54,69 @@ const getCurrentProfileId = async () => {
     return profile.id;
 };
 
-export default function MeetCard({ meet }: MeetCardProps) {
+export default function MeetCard({
+    meet,
+    profileId: profileIdProp,
+    organizerName: organizerNameProp,
+    attendeeCount: attendeeCountProp,
+    attendanceStatus: attendanceStatusProp,
+}: MeetCardProps) {
     const router = useRouter();
-    const [username, setUsername] = useState<string | null>()
-    const [attendanceStatus, setAttendanceStatus] = useState(false);
-    const [profileId, setProfileId] = useState<string | null>(null);
-    const [attendeeCount, setAttendeeCount] = useState(0);
+    const { accentColor } = usePageAccent();
+    const preloaded =
+        attendeeCountProp !== undefined &&
+        attendanceStatusProp !== undefined &&
+        profileIdProp !== undefined;
+
+    const [resolvedUsername, setResolvedUsername] = useState<string | null>(null);
+    const [resolvedProfileId, setResolvedProfileId] = useState<string | null>(null);
+    const [resolvedAttendeeCount, setResolvedAttendeeCount] = useState(0);
+    const [resolvedAttendanceStatus, setResolvedAttendanceStatus] = useState(false);
+    const [attendanceOverride, setAttendanceOverride] = useState<{ count: number; attending: boolean } | null>(null);
+
+    const username = organizerNameProp ?? resolvedUsername;
+    const profileId = profileIdProp ?? resolvedProfileId;
+    const attendeeCount = attendanceOverride
+        ? attendanceOverride.count
+        : (preloaded ? (attendeeCountProp ?? 0) : resolvedAttendeeCount);
+    const attendanceStatus = attendanceOverride
+        ? attendanceOverride.attending
+        : (preloaded ? (attendanceStatusProp ?? false) : resolvedAttendanceStatus);
 
     useEffect(() => {
-        const resolveData = async () => {
-            // Resolve Meet Author
-            const user = await fetchUserByUID(meet.organizerId)
-            if (user) {
-                setUsername(user.fullname)
-            }
-            
-            // Get Current User Profile ID
-            const currentProfileId = await getCurrentProfileId();
-            setProfileId(currentProfileId);
-        }
-        resolveData()
-    }, [meet.organizerId]);
+        if (organizerNameProp !== undefined) return;
+        const resolveAuthor = async () => {
+            const user = await fetchUserByUID(meet.organizerId);
+            if (user) setResolvedUsername(user.username);
+        };
+        resolveAuthor();
+    }, [meet.organizerId, organizerNameProp]);
 
     useEffect(() => {
+        if (profileIdProp !== undefined) return;
+        getCurrentProfileId().then(setResolvedProfileId);
+    }, [profileIdProp]);
+
+    useEffect(() => {
+        if (preloaded) return;
         const fetchAttendance = async () => {
-            // Fetch Total Count For This Meet
             const { count: total, error: countError } = await supabase
                 .from('meet_attendees')
                 .select('*', { count: 'exact', head: true })
                 .eq('meet_id', meet.id);
-
             if (countError) console.error("Error fetching tally:", countError);
-            else setAttendeeCount(total || 0);
-
-            // Check If Current User Is Attending
+            else setResolvedAttendeeCount(total ?? 0);
             if (profileId) {
                 const { count: userCount } = await supabase
                     .from('meet_attendees')
                     .select('*', { count: 'exact', head: true })
                     .eq('profile_id', profileId)
                     .eq('meet_id', meet.id);
-                
-                setAttendanceStatus(userCount ? (userCount > 0) : false);
+                setResolvedAttendanceStatus(userCount ? userCount > 0 : false);
             }
         };
-
         fetchAttendance();
-    }, [profileId, meet.id]);
+    }, [preloaded, profileId, meet.id, attendeeCountProp, attendanceStatusProp]);
 
     const handleRsvpToggle = async () => {
         if (!profileId) {
@@ -110,9 +150,14 @@ export default function MeetCard({ meet }: MeetCardProps) {
         if (error) {
             console.error("Error updating RSVP:", error);
         } else {
-            // Flip the local state to reflect the successful database change
-            setAttendeeCount(prev => attendanceStatus ? prev - 1 : prev + 1);
-            setAttendanceStatus(!attendanceStatus);
+            const newCount = attendanceStatus ? attendeeCount - 1 : attendeeCount + 1;
+            const newAttending = !attendanceStatus;
+            if (preloaded) {
+                setAttendanceOverride({ count: newCount, attending: newAttending });
+            } else {
+                setResolvedAttendeeCount(newCount);
+                setResolvedAttendanceStatus(newAttending);
+            }
         }
     };
 
@@ -123,16 +168,21 @@ export default function MeetCard({ meet }: MeetCardProps) {
     })
     : 'No date found';
 
+    const isPast = !isMeetInFuture(meet);
+    const cardBgColor = isPast ? "bg-gray-500" : (accentColor ? "" : "bg-red-400");
+    const cardStyle = !isPast && accentColor ? { backgroundColor: accentColor } : undefined;
+
     return (
         <Card
             isPressable
             as="div"
             onPress={() => router.push(`/meet/${meet.id}`)}
-            className="my-1 bg-red-400 h-90"
+            className={`my-1 ${cardBgColor} h-90`}
+            style={cardStyle}
         >
-            <CardBody className="p-0">
-                <div className="flex flex-col h-full">
-                    <div className="bg-gray-500 flex items-center justify-center w-full h-3/5 overflow-hidden">
+            <CardBody className="p-0 h-full min-h-0">
+                <div className="flex flex-col h-full min-h-0">
+                    <div className="bg-gray-500 flex items-center justify-center w-full h-3/5 min-h-0 overflow-hidden relative shrink-0">
                         {meet.images && meet.images.length > 0 ? (
                             <Image 
                                 className="object-cover h-full w-full rounded-none" 
@@ -140,7 +190,19 @@ export default function MeetCard({ meet }: MeetCardProps) {
                                 src={meet.images[0]} 
                             />
                         ) : (
-                            <span className="text-black text-center font-bold text-sm">no vis...</span>
+                            <>
+                                <div className="absolute inset-0 z-0">
+                                    <Image 
+                                        className="object-cover w-full h-full rounded-none" 
+                                        alt="no image background" 
+                                        src="/assets/blip-bg.png"
+                                        removeWrapper={true}
+                                    />
+                                </div>
+                                <div className="absolute inset-0 flex items-center justify-center z-10">
+                                    <span className="text-white text-center font-bold text-2xl bg-black/30 px-3 py-1 rounded">no image provided</span>
+                                </div>
+                            </>
                         )}
                     </div>
 
@@ -152,7 +214,7 @@ export default function MeetCard({ meet }: MeetCardProps) {
                                 <p className="text-base text-ellipsis line-clamp-1">{meet.body || "No description provided"}</p>
                             </div>
                             <div className="w-1/5 flex justify-end">
-                                <Button className="w-8" onPress={() => {
+                                <Button disabled={isPast} className="w-8" onPress={() => {
                                     handleRsvpToggle();
                                 }}>{attendanceStatus  ? "Attending!" : "Attend"}</Button>
                             </div>

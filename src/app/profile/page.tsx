@@ -1,6 +1,7 @@
 'use client'
 
 import { useAuth } from "@/clients/authContext";
+import { supabase } from "@/clients/supabaseClient";
 import { fetchUserByUID } from "@/hooks/fetchUserbyUID";
 import { useEffect, useState, useCallback } from "react";
 import User, { ProfileRow } from "@/models/user";
@@ -23,16 +24,18 @@ export default function Profile() {
 	const [bio, setBio] = useState('')
 
 	const [profileColor, setProfileColor] = useState('')
+	const [usernameTakenWarning, setUsernameTakenWarning] = useState<string | null>(null)
 	
 	const ALL_BUTTON_CSS = "my-2 max-w-md"
 	
-	const setFormFields = useCallback(() => {
-		if (currentUser) {
-		setUsername(currentUser.username);
-		setFullname(currentUser.fullname);
-		setHeadline(currentUser.headline);
-		setBio(currentUser.bio);
-		setProfileColor(currentUser.profile_color)
+	const setFormFields = useCallback((data?: ProfileRow | null) => {
+		const u = data ?? currentUser
+		if (u) {
+			setUsername(u.username);
+			setFullname(u.fullname);
+			setHeadline(u.headline);
+			setBio(u.bio);
+			setProfileColor(u.profile_color)
 		}
 	}, [currentUser]);
 
@@ -41,26 +44,40 @@ export default function Profile() {
             if (user) {
                 const data = await fetchUserByUID(user.id)
                 setCurrentUser(data)
+                setFormFields(data)
             }
         }
         resolveAuthor()
+        // Omit setFormFields: including it would re-run whenever currentUser changes (it's in setFormFields's deps), resetting the form while editing.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user])
-
-    useEffect(() => {
-        setFormFields()
-    }, [currentUser, setFormFields])
 
 	const handleFlipEdit = () => {
 		setEditing(!editing)
 		setFormFields()
+		setUsernameTakenWarning(null)
 	}
 
 	const handleSave = async () => {
 		if (currentUser && user) {
+			setUsernameTakenWarning(null)
+
+			// Check if username is already taken by another user
+			const { data: existingUser } = await supabase
+				.from('profiles')
+				.select('id')
+				.eq('username', username.trim())
+				.maybeSingle()
+
+			if (existingUser && existingUser.id !== user.id) {
+				setUsernameTakenWarning(`Username "${username.trim()}" is already taken. Please choose a different one.`)
+				return
+			}
+
 			const profile = new User(
 				user.id,
 				fullname,
-				username,
+				username.trim(),
 				currentUser.email,
 				headline,
 				bio,
@@ -72,6 +89,7 @@ export default function Profile() {
 			if (updatedData) {
 				// updatedData is a ProfileRow (plain object), so this works!
 				setCurrentUser(updatedData);
+				setFormFields(updatedData);
 			}
 			setEditing(false);
 		}
@@ -107,8 +125,14 @@ export default function Profile() {
 						label="username"
 						placeholder="type something..."
 						value={username}
-						onChange={e => setUsername(e.target.value)}
+						onChange={e => {
+							setUsername(e.target.value)
+							setUsernameTakenWarning(null)
+						}}
 						className={ALL_BUTTON_CSS}
+						isInvalid={!!usernameTakenWarning}
+						color={usernameTakenWarning ? "danger" : "default"}
+						errorMessage={usernameTakenWarning ?? undefined}
 					></Input>
 					<Input 
 						isReadOnly={!editing}

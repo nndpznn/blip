@@ -244,7 +244,7 @@ export default function Create() {
 				</div>
 
 				<Button color="primary" className="mx-3 bg-primary-700" onPress={handleClear}>Clear</Button>
-				<Button color="primary" isDisabled={true} className="mx-3">Save Draft</Button>
+				{/* <Button color="primary" isDisabled={true} className="mx-3">Save Draft</Button> */}
 				<Button color="primary" className="mx-3" onPress={handleSubmit}>Submit</Button>
 
 				<Alert className="mt-5" title="Incomplete Meet"  description="Your meet is incomplete. Please fill out the required sections." isVisible={incAlertVisible}  onClose={() => setIncAlertVisible(false)}/>
