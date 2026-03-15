@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Meet from '@/models/meet';
 import { fetchUserByUID } from '@/hooks/fetchUserbyUID';
 
