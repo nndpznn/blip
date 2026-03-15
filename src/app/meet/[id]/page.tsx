@@ -322,11 +322,11 @@ export default function MeetDetail() {
 
 	return (
 		<div className="flex flex-1 w-full h-full min-h-[calc(100vh-8rem)]">
-			<div className="flex flex-col w-1/3 h-full min-h-0 overflow-hidden border-r-4 border-red-400">
+			<div className="flex flex-col w-[380px] shrink-0 h-full min-h-0 overflow-hidden border-r-4 border-red-400">
 				<div className="flex-1 min-h-0 overflow-y-auto">
 					{/* TITLE/HEADING + OPTIONS DROPDOWN */}
-					<div className="flex items-center justify-between gap-2 mx-6 my-4">
-						<p className="font-bold text-4xl flex-1">{meet.title}</p>
+					<div className="flex items-center justify-between gap-2 mx-6 my-4 min-w-0">
+						<p className="font-bold text-4xl flex-1 min-w-0 break-words">{meet.title}</p>
 						{(meet.organizerId == uid) && (
 							<Dropdown className="blip-main" placement="bottom-end">
 								<DropdownTrigger>
@@ -410,7 +410,7 @@ export default function MeetDetail() {
 			</div>
 
 			{/* TO ADD: GALLERY FUNCTIONALITY */}
-			<div className="flex flex-col w-2/3 h-full min-h-0 overflow-hidden border-l-4 border-red-400 items-center justify-center">
+			<div className="flex flex-col flex-1 min-w-0 h-full min-h-0 overflow-hidden border-l-4 border-red-400 items-center justify-center">
 				<div className="flex-1 w-[60vw] max-h-[60vh] flex items-center justify-center">
 					{meet.images ? (
 						<Image className="rounded-none" alt="Meet" src={meet.images[0]} />
