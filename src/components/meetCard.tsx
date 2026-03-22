@@ -191,7 +191,7 @@ export default function MeetCard({
                 base: "!bg-transparent border-none shadow-none ring-0 outline-none",
             }}
         >
-            <CardBody className="!m-0 !min-h-0 !w-full !flex-1 !overflow-hidden !p-0 !shadow-none !ring-0 !bg-transparent">
+            <CardBody className="m-0! min-h-0! w-full! flex-1! overflow-hidden! p-0! shadow-none! ring-0! bg-transparent!">
                 {/* Full-bleed layer — no side rail so the image spans the full card width */}
                 <div
                     className={`flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-none ${cardBgColor}`}
