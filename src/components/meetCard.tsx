@@ -1,11 +1,15 @@
 import Meet from '@/models/meet';
+import Link from "next/link";
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from "react";
+import { useEffect, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { Card, CardBody, Button } from "@heroui/react";
 import { fetchUserByUID } from "@/hooks/fetchUserbyUID";
-import {Image} from "@heroui/image";
+import { Image } from "@heroui/image";
 import { supabase } from '@/clients/supabaseClient'
 import { usePageAccent } from "@/contexts/PageAccentContext";
+
+/** Matches prior `h-90` intent (22.5rem) so grid cards stay a consistent size. */
+const CARD_HEIGHT_CLASS = "h-[22.5rem]";
 
 interface MeetCardProps {
     meet: Meet;
@@ -169,80 +173,131 @@ export default function MeetCard({
     : 'No date found';
 
     const isPast = !isMeetInFuture(meet);
-    const cardBgColor = isPast ? "bg-gray-500" : (accentColor ? "" : "bg-red-400");
+    const cardBgColor = isPast ? "bg-gray-600" : (accentColor ? "" : "bg-red-400");
     const cardStyle = !isPast && accentColor ? { backgroundColor: accentColor } : undefined;
+
+    const stopCardPress = (e: MouseEvent | KeyboardEvent) => {
+        e.stopPropagation();
+    };
 
     return (
         <Card
             isPressable
             as="div"
+            shadow="none"
             onPress={() => router.push(`/meet/${meet.id}`)}
-            className={`my-1 ${cardBgColor} h-90`}
-            style={cardStyle}
+            className={`my-1 ${CARD_HEIGHT_CLASS} w-full overflow-hidden rounded-xl border-0 bg-transparent p-0 ring-0 outline-none`}
+            classNames={{
+                base: "!bg-transparent border-none shadow-none ring-0 outline-none",
+            }}
         >
-            <CardBody className="p-0 h-full min-h-0">
-                <div className="flex flex-col h-full min-h-0">
-                    <div className="bg-gray-500 flex items-center justify-center w-full h-3/5 min-h-0 overflow-hidden relative shrink-0">
-                        {meet.images && meet.images.length > 0 ? (
-                            <Image 
-                                className="object-cover h-full w-full rounded-none" 
-                                alt={meet.title} 
-                                src={meet.images[0]} 
-                            />
-                        ) : (
-                            <>
-                                <div className="absolute inset-0 z-0">
-                                    <Image 
-                                        className="object-cover w-full h-full rounded-none" 
-                                        alt="no image background" 
+            <CardBody className="m-0! min-h-0! w-full! flex-1! overflow-hidden! p-0! shadow-none! ring-0! bg-transparent!">
+                {/* Full-bleed layer — no side rail so the image spans the full card width */}
+                <div
+                    className={`flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-none ${cardBgColor}`}
+                    style={cardStyle}
+                >
+                        {/* Image: no radius — only the Card clips top corners; bottom edge stays square vs body */}
+                        <div className="relative h-3/5 min-h-0 w-full shrink-0 overflow-hidden rounded-none bg-black">
+                            {meet.images && meet.images.length > 0 ? (
+                                <Image
+                                    removeWrapper
+                                    disableSkeleton
+                                    alt={meet.title}
+                                    src={meet.images[0]}
+                                    className="absolute inset-0 size-full min-h-full min-w-full rounded-none object-cover object-center"
+                                />
+                            ) : (
+                                <>
+                                    <Image
+                                        removeWrapper
+                                        disableSkeleton
+                                        alt=""
                                         src="/assets/blip-bg.png"
-                                        removeWrapper={true}
+                                        className="absolute inset-0 z-0 size-full min-h-full min-w-full rounded-none object-cover object-center"
                                     />
-                                </div>
-                                <div className="absolute inset-0 flex items-center justify-center z-10">
-                                    <span className="text-white text-center font-bold text-2xl bg-black/30 px-3 py-1 rounded">no image provided</span>
-                                </div>
-                            </>
-                        )}
-                    </div>
-
-                    <div className="flex flex-col flex-1 justify-start p-4 text-white h-2/5">
-
-                        <div className="flex w-full mb-2">
-                            <div className="w-4/5">
-                                <p className="text-2xl font-bold line-clamp-1 text-ellipsis">{meet.title}</p>  
-                                <p className="text-base text-ellipsis line-clamp-1">{meet.body || "No description provided"}</p>
-                            </div>
-                            <div className="w-1/5 flex justify-end">
-                                <Button disabled={isPast} className="w-8" onPress={() => {
-                                    handleRsvpToggle();
-                                }}>{attendanceStatus  ? "Attending!" : "Attend"}</Button>
-                            </div>
-
+                                    <div className="absolute inset-0 z-10 flex items-center justify-center px-2">
+                                        <span className="rounded-md bg-black/45 px-2 py-1 text-center text-[10px] font-semibold uppercase tracking-wide text-white/95">
+                                            No image
+                                        </span>
+                                    </div>
+                                </>
+                            )}
                         </div>
 
-                        <div className="flex justify-between items-end pt-1">
-                            {/* NEW: Lower Left - Tally Icon & Count */}
-                            <div className="flex items-center">
+                    {/* Text & actions — bottom cluster is mt-auto so it stays anchored regardless of description height */}
+                    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-3 text-white">
+                        <div className="flex min-h-0 shrink-0 flex-col gap-1.5">
+                            <div className="flex w-full min-w-0 items-start justify-between gap-2">
+                                <div className="min-w-0 flex-1">
+                                    <h3 className="line-clamp-2 text-[15px] font-semibold leading-snug tracking-tight">
+                                        {meet.title}
+                                    </h3>
+                                    <p className="min-h-10 line-clamp-2 text-xs leading-relaxed text-white/85">
+                                        {meet.body?.trim() ? meet.body : "No description provided"}
+                                    </p>
+                                </div>
+                                <span
+                                    className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                                        isPast ? "bg-black/25 text-white/80" : "bg-white/20 text-white"
+                                    }`}
+                                >
+                                    {isPast ? "Past" : "Upcoming"}
+                                </span>
+                            </div>
+
+                            <p className="line-clamp-1 text-[11px] text-white/75">
+                                {formattedDate}
+                                <span className="text-white/40"> · </span>
+                                {meet.location.name}
+                            </p>
+                        </div>
+
+                        <div className="mt-auto flex min-h-0 min-w-0 shrink-0 items-center gap-2 pt-1.5 text-xs">
+                            <div className="flex min-h-0 min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
+                                <span className="shrink-0 text-white/60">Host</span>
+                                <Link
+                                    href={`/user/${meet.organizerId}`}
+                                    onClick={stopCardPress}
+                                    onKeyDown={stopCardPress}
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                    className="min-w-0 truncate rounded-md bg-white/15 px-1.5 py-0.5 font-medium text-white underline-offset-2 transition hover:bg-white/25 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                                >
+                                    {username || "Unknown"}
+                                </Link>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-1 text-white/90">
                                 <Image
                                     src="https://uxwing.com/wp-content/themes/uxwing/download/checkmark-cross/checkmark-white-icon.png"
-                                    alt="attendees"
-                                    width={20}
-                                    height={20}
-                                    className="rounded-none"
+                                    alt=""
+                                    width={14}
+                                    height={14}
+                                    className="shrink-0 opacity-90"
                                 />
-                                <span className="font-bold text-lg leading-none">{attendeeCount}</span>
+                                <span className="font-semibold tabular-nums">{attendeeCount}</span>
+                                <span className="text-white/60">attending</span>
                             </div>
-
-                            {/* Existing Lower Right - Author and Date */}
-                            <div className="text-right text-md">
-                                <p className="font-semibold">by {username || 'Unknown author'}</p>
-                                <p className="text-medium line-clamp-1">
-                                    {formattedDate} | {meet.location.name}
-                                </p>
+                            <div
+                                onClick={stopCardPress}
+                                onKeyDown={stopCardPress}
+                                onPointerDown={(e) => e.stopPropagation()}
+                                className="shrink-0"
+                            >
+                                <Button
+                                    size="sm"
+                                    radius="md"
+                                    className="h-7 min-h-7 min-w-0 px-2.5 text-xs font-semibold"
+                                    color="default"
+                                    variant="flat"
+                                    isDisabled={isPast}
+                                    onPress={() => {
+                                        handleRsvpToggle();
+                                    }}
+                                >
+                                    {attendanceStatus ? "Attending" : "Attend"}
+                                </Button>
                             </div>
                         </div>
-
                     </div>
                 </div>
             </CardBody>
