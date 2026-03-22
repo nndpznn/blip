@@ -215,7 +215,7 @@ export default function Create() {
 							{imageFiles.length > 0 ? (
 							<div>
 								<p className="font-medium text-green-600">
-									{imageFiles.length} file(s) selected:
+									{imageFiles.length} file(s) selected (top = thumbnail):
 								</p>
 								{imageFiles.map((entry, index) => (
 									<div 

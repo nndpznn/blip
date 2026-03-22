@@ -391,8 +391,8 @@ export default function MeetDetail() {
 						{(meet.organizerId == uid) && (
 							<Dropdown className="blip-main shrink-0" placement="bottom-end">
 								<DropdownTrigger>
-									<Button isIconOnly variant="light" size="sm" aria-label="Meet options" className="text-foreground-500">
-										<span className="text-xl leading-none">⋯</span>
+									<Button isIconOnly variant="light" size="sm" aria-label="Meet options" className="text-white min-w-8">
+										<span className="text-xl leading-none text-white">⋯</span>
 									</Button>
 								</DropdownTrigger>
 								<DropdownMenu aria-label="Meet actions">
@@ -609,7 +609,7 @@ export default function MeetDetail() {
 									{imageSlots.length > 0 && (
 										<div>
 											<p className="font-medium text-foreground-700 mb-1">
-												Images
+												Images (top = thumbnail)
 											</p>
 											<div className="flex flex-col gap-2">
 												{imageSlots.map((slot, index) => (
