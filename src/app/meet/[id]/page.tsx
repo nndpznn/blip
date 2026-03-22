@@ -4,10 +4,24 @@ import Meet from "@/models/meet"
 import User from "@/models/user";
 
 import { Button } from "@heroui/button"
-import { Input, Textarea, TimeInput } from "@heroui/react";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerBody,
+  DrawerFooter,
+  useDisclosure,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+  Input,
+  Textarea,
+  TimeInput,
+} from "@heroui/react";
 import {Image} from "@heroui/image";
 import { useRouter, useParams } from 'next/navigation'
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/clients/authContext";
 
 import {Calendar} from '@heroui/calendar'
@@ -19,6 +33,7 @@ import { useSupabaseUserMetadata } from '@/hooks/useSupabaseUserMetadata'
 import { fetchUserByUID } from "@/hooks/fetchUserbyUID";
 import Searchbar from "@/components/searchbar";
 import { LocationData } from "@/models/meet";
+import { moveItemDown, moveItemUp } from "@/util/reorderArray";
 
 import UserCard from "@/components/userCard";
 import { ReusableFadeInComponent } from "@/components/reusableFadeInComponent";
@@ -32,18 +47,40 @@ const formatAddress = (address: string) => {
 	return address;
 };
 
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerBody,
-  DrawerFooter,
-  useDisclosure,
-  Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem,
-} from "@heroui/react";
+/** Last path segment of a stored image URL (upload filename), for display in the edit drawer. */
+function fileLabelFromImageUrl(url: string): string {
+	try {
+		const path = new URL(url).pathname;
+		const segments = path.split("/").filter(Boolean);
+		return segments.length > 0 ? segments[segments.length - 1] : url;
+	} catch {
+		const i = url.lastIndexOf("/");
+		return i >= 0 ? url.slice(i + 1) : url;
+	}
+}
+
+/** Ordered slots for edit: existing URLs and new files can be interleaved (first = thumbnail). */
+export type MeetEditImageSlot =
+	| { type: "existing"; url: string }
+	| { type: "pending"; id: string; file: File };
+
+function PendingImagePreview({ file }: { file: File }) {
+	const objectUrl = useMemo(() => URL.createObjectURL(file), [file]);
+	useEffect(() => {
+		return () => {
+			URL.revokeObjectURL(objectUrl);
+		};
+	}, [objectUrl]);
+	return (
+		<Image
+			src={objectUrl}
+			alt=""
+			className="h-16 w-16 object-cover rounded-lg"
+			width={64}
+			height={64}
+		/>
+	);
+}
 
 export default function MeetDetail() {
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -51,8 +88,7 @@ export default function MeetDetail() {
 	const [location, setLocation] = useState<LocationData | null>(null);
 	const [body, setBody] = useState('')
 	const [links, setLinks] = useState('')
-	const [existingImageUrls, setExistingImageUrls] = useState<string[]>([])
-	const [newImageFiles, setNewImageFiles] = useState<File[]>([])
+	const [imageSlots, setImageSlots] = useState<MeetEditImageSlot[]>([])
 	const [date, setDate] = useState<CalendarDate>(today(getLocalTimeZone()))
 	const [startTime, setStartTime] = useState<Time | null>()
 	const [endTime, setEndTime] = useState<Time | null>()
@@ -66,10 +102,17 @@ export default function MeetDetail() {
 	const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = e.target.files;
 		if (files) {
-		  setNewImageFiles(prev => [...prev, ...Array.from(files)]);
+			setImageSlots((prev) => [
+				...prev,
+				...Array.from(files).map((file) => ({
+					type: "pending" as const,
+					id: crypto.randomUUID(),
+					file,
+				})),
+			]);
 		}
 		if (fileInputRef.current) {
-			fileInputRef.current.value = '';
+			fileInputRef.current.value = "";
 		}
 	};
 
@@ -79,14 +122,10 @@ export default function MeetDetail() {
 		}
 	};
 
-	const handleRemoveExistingImage = (indexToRemove: number) => {
-		setExistingImageUrls(prev => prev.filter((_, i) => i !== indexToRemove));
-	};
-
-	const handleRemoveNewFile = (fileNameToRemove: string) => {
-		setNewImageFiles(prev => prev.filter(file => file.name !== fileNameToRemove));
+	const handleRemoveSlot = (indexToRemove: number) => {
+		setImageSlots((prev) => prev.filter((_, i) => i !== indexToRemove));
 		if (fileInputRef.current) {
-			fileInputRef.current.value = '';
+			fileInputRef.current.value = "";
 		}
 	};
 
@@ -95,8 +134,9 @@ export default function MeetDetail() {
 		setTitle(meetData.title || '')
 		setBody(meetData.body || '')
 		setLinks((meetData as { links?: string; link?: string }).links ?? meetData.link ?? '')
-		setExistingImageUrls(meetData.images ?? [])
-		setNewImageFiles([])
+		setImageSlots(
+			(meetData.images ?? []).map((url) => ({ type: "existing" as const, url })),
+		)
 		setDate(meetData.date ? parseDate(meetData.date.toString()) : today(getLocalTimeZone()))
 		setStartTime(meetData.startTime != null ? (typeof meetData.startTime === 'string' ? parseTime(meetData.startTime) : meetData.startTime) : null)
 		setEndTime(meetData.endTime != null ? (typeof meetData.endTime === 'string' ? parseTime(meetData.endTime) : meetData.endTime) : null)
@@ -121,7 +161,10 @@ export default function MeetDetail() {
 	const handleEdit = async () => {
 		console.log([title, body, links])
 
-		const correctId = parseInt(meetId, 10)
+		if (!meet) {
+			console.log("meet not loaded; cannot save")
+			return
+		}
 
 		if (!title || !body || !date || !startTime || !endTime || !location) {
 			console.log("missing one or more required fields")
@@ -129,20 +172,37 @@ export default function MeetDetail() {
 		}
 
 		const meetToSave = new Meet(user!.id, title, body, links, location)
-		meetToSave.id = correctId
+		// Use the id from the loaded row — parseInt(meetId) breaks UUID ids (e.g. parseInt("550e8400-...", 10) === 550).
+		meetToSave.id = meet.id
+		// Keep organizer exactly as stored (camelCase or snake_case from Supabase) so UPDATE matches RLS / row.
+		const orgRow = meet as { organizerId?: string; organizer_id?: string };
+		meetToSave.organizerId = orgRow.organizerId ?? orgRow.organizer_id ?? user!.id
 		meetToSave.date = date
 		meetToSave.startTime = startTime
 		meetToSave.endTime = endTime
 
-		// Keep existing URLs (user may have removed some) and upload new files
-		meetToSave.images = [...existingImageUrls]
-		const newUrls = await meetToSave.uploadImages(newImageFiles)
-		meetToSave.images = [...existingImageUrls, ...newUrls]
+		const pendingFiles = imageSlots
+			.filter((s): s is Extract<MeetEditImageSlot, { type: "pending" }> => s.type === "pending")
+			.map((s) => s.file);
+		const newUrls = await meetToSave.uploadImages(pendingFiles, { assignToMeet: false });
+		let j = 0;
+		const finalImages: string[] = [];
+		for (const slot of imageSlots) {
+			if (slot.type === "existing") {
+				finalImages.push(slot.url);
+			} else {
+				const u = newUrls[j];
+				j += 1;
+				if (u) finalImages.push(u);
+			}
+		}
+		meetToSave.images = finalImages;
 
-		await meetToSave.saveEditDatabase()
+		const saved = await meetToSave.saveEditDatabase();
+		if (!saved) return;
 
-		console.log('form data submitted successfully.', meetToSave)
-		router.push("/seeAllMeets")
+		console.log("form data submitted successfully.", meetToSave);
+		router.push("/seeAllMeets");
 	}
 
 	const {
@@ -231,8 +291,9 @@ export default function MeetDetail() {
 			setTitle(meet?.title || '')
 			setBody(meet?.body || '')
 			setLinks((meet as { links?: string; link?: string }).links ?? meet?.link ?? '')
-			setExistingImageUrls(meet?.images ?? [])
-			setNewImageFiles([])
+			setImageSlots(
+				(meet?.images ?? []).map((url) => ({ type: "existing" as const, url })),
+			)
 			setDate(meet?.date ? parseDate(meet.date.toString()) : today(getLocalTimeZone()))
 			setStartTime(meet?.startTime != null ? (typeof meet.startTime === 'string' ? parseTime(meet.startTime) : meet.startTime) : null)
 			setEndTime(meet?.endTime != null ? (typeof meet.endTime === 'string' ? parseTime(meet.endTime) : meet.endTime) : null)
@@ -248,7 +309,7 @@ export default function MeetDetail() {
 		return publicUrl.slice(i + prefix.length);
 	};
 
-	const onDelete = async (idToDelete: number) => {
+	const onDelete = async (idToDelete: number | string) => {
 		// Delete meet images from Supabase storage by URL
 		const imageUrls = meet?.images ?? [];
 		if (imageUrls.length > 0) {
@@ -545,34 +606,89 @@ export default function MeetDetail() {
 								</Button>
 
 								<div className="mt-3 text-sm text-gray-600 space-y-3">
-									{existingImageUrls.length > 0 && (
+									{imageSlots.length > 0 && (
 										<div>
-											<p className="font-medium text-foreground-700 mb-1">Current images</p>
-											<div className="flex flex-wrap gap-2">
-												{existingImageUrls.map((url, index) => (
+											<p className="font-medium text-foreground-700 mb-1">
+												Images
+											</p>
+											<div className="flex flex-col gap-2">
+												{imageSlots.map((slot, index) => (
 													<div
-														key={`${url}-${index}`}
-														className="relative inline-block rounded-lg border border-default-200 overflow-hidden"
+														key={
+															slot.type === "existing"
+																? `existing-${slot.url}-${index}`
+																: slot.id
+														}
+														className="flex items-center gap-1 p-2 rounded-lg border border-default-200 bg-content1"
 													>
-														<Image
-															src={url}
-															alt="Meet"
-															className="h-16 w-16 object-cover rounded-lg"
-															width={64}
-															height={64}
-														/>
+														<div className="flex flex-col gap-0.5 shrink-0">
+															<button
+																type="button"
+																disabled={index === 0}
+																onClick={() =>
+																	setImageSlots((prev) => moveItemUp(prev, index))
+																}
+																className="px-1.5 py-0.5 text-xs rounded border border-default-300 bg-white hover:bg-default-100 disabled:opacity-40 disabled:cursor-not-allowed"
+																aria-label="Move image up"
+															>
+																↑
+															</button>
+															<button
+																type="button"
+																disabled={index === imageSlots.length - 1}
+																onClick={() =>
+																	setImageSlots((prev) => moveItemDown(prev, index))
+																}
+																className="px-1.5 py-0.5 text-xs rounded border border-default-300 bg-white hover:bg-default-100 disabled:opacity-40 disabled:cursor-not-allowed"
+																aria-label="Move image down"
+															>
+																↓
+															</button>
+														</div>
+														{slot.type === "existing" ? (
+															<div className="relative inline-block rounded-lg border border-default-200 overflow-hidden shrink-0">
+																<Image
+																	src={slot.url}
+																	alt="Meet"
+																	className="h-16 w-16 object-cover rounded-lg"
+																	width={64}
+																	height={64}
+																/>
+															</div>
+														) : (
+															<div className="relative inline-block h-16 w-16 shrink-0 rounded-lg border border-default-200 overflow-hidden">
+																<PendingImagePreview file={slot.file} />
+																<span className="absolute top-0.5 right-0.5 z-10 rounded bg-green-600 px-1 py-px text-[10px] font-semibold leading-none text-white shadow-sm pointer-events-none">
+																	New
+																</span>
+															</div>
+														)}
+														<span className="truncate mr-2 flex-1 min-w-0 text-foreground" title={slot.type === "existing" ? fileLabelFromImageUrl(slot.url) : slot.file.name}>
+															{slot.type === "existing"
+																? fileLabelFromImageUrl(slot.url)
+																: slot.file.name}
+														</span>
 														<button
 															type="button"
 															onClick={(e) => {
-																e.preventDefault()
-																e.stopPropagation()
-																handleRemoveExistingImage(index)
+																e.preventDefault();
+																e.stopPropagation();
+																handleRemoveSlot(index);
 															}}
-															className="absolute top-0.5 right-0.5 z-10 p-1 rounded-full bg-black/70 text-white hover:bg-red-500 transition shrink-0"
+															className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition shrink-0"
 															aria-label="Remove image"
 														>
-															<svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-																<path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+															<svg
+																xmlns="http://www.w3.org/2000/svg"
+																className="h-4 w-4"
+																viewBox="0 0 20 20"
+																fill="currentColor"
+															>
+																<path
+																	fillRule="evenodd"
+																	d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+																	clipRule="evenodd"
+																/>
 															</svg>
 														</button>
 													</div>
@@ -580,30 +696,7 @@ export default function MeetDetail() {
 											</div>
 										</div>
 									)}
-									{newImageFiles.length > 0 && (
-										<div>
-											<p className="font-medium text-green-600 mb-1">{newImageFiles.length} new file(s) to upload</p>
-											{newImageFiles.map((file, index) => (
-												<div
-													key={file.name + index}
-													className="flex items-center justify-between p-2 bg-green-50 rounded-lg border border-green-200 mt-1"
-												>
-													<span className="truncate mr-4">{file.name}</span>
-													<button
-														type="button"
-														onClick={() => handleRemoveNewFile(file.name)}
-														className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition duration-150"
-														aria-label={`Remove file ${file.name}`}
-													>
-														<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-															<path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-														</svg>
-													</button>
-												</div>
-											))}
-										</div>
-									)}
-									{existingImageUrls.length === 0 && newImageFiles.length === 0 && (
+									{imageSlots.length === 0 && (
 										<p className="text-gray-500">
 											No images. Click Upload to add current or new images.
 										</p>

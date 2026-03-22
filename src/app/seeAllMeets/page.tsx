@@ -6,10 +6,10 @@ import MeetCard from "@/components/meetCard"
 import { supabase } from "@/clients/supabaseClient";
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button, Checkbox } from "@heroui/react";
 
-/** Maps meet id -> attendee count (from batch fetch). */
-type AttendeeCountMap = Record<number, number>;
+/** Maps meet id -> attendee count (from batch fetch). Keys are String(meet.id) for UUID-safe lookup. */
+type AttendeeCountMap = Record<string, number>;
 /** Set of meet ids the current user is attending. */
-type AttendingSet = Set<number>;
+type AttendingSet = Set<string>;
 /** Maps organizer profile id -> display name. */
 type OrganizerNameMap = Record<string, string>;
 
@@ -81,7 +81,7 @@ export default function AllMeets() {
 			setMeets(meetsData as Meet[])
 			setFetchError("")
 
-			const meetIds = meetsData.map((m: { id: number }) => m.id)
+			const meetIds = meetsData.map((m: { id: number | string }) => m.id)
 			const organizerIds = [...new Set(meetsData.map((m: { organizerId?: string; organizer_id?: string }) => m.organizerId ?? m.organizer_id).filter(Boolean))] as string[]
 
 			// 3. Single batch: all meet_attendees for these meets (counts + current user attendance)
@@ -91,12 +91,12 @@ export default function AllMeets() {
 				.in('meet_id', meetIds)
 
 			const countMap: AttendeeCountMap = {}
-			const attendingSet = new Set<number>()
+			const attendingSet = new Set<string>()
 			if (attendeesData) {
 				for (const row of attendeesData) {
-					const mid = row.meet_id as number
-					countMap[mid] = (countMap[mid] ?? 0) + 1
-					if (currentProfileId && row.profile_id === currentProfileId) attendingSet.add(mid)
+					const key = String(row.meet_id)
+					countMap[key] = (countMap[key] ?? 0) + 1
+					if (currentProfileId && row.profile_id === currentProfileId) attendingSet.add(key)
 				}
 			}
 			setAttendeeCountByMeet(countMap)
@@ -184,8 +184,8 @@ export default function AllMeets() {
 							meet={meet}
 							profileId={profileId}
 							organizerName={organizerNames[organizerId ?? ''] ?? undefined}
-							attendeeCount={attendeeCountByMeet[meet.id] ?? 0}
-							attendanceStatus={attendingMeetIds.has(meet.id)}
+							attendeeCount={attendeeCountByMeet[String(meet.id)] ?? 0}
+							attendanceStatus={attendingMeetIds.has(String(meet.id))}
 						/>
 					)
 				})}

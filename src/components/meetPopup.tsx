@@ -46,7 +46,7 @@ function formatMeetDateTime(meet: MeetRow): string {
 
 export interface MeetPopupProps {
 	meets: Meet[];
-	onViewMeet: (id: number) => void;
+	onViewMeet: (id: number | string) => void;
 }
 
 export default function MeetPopup({ meets, onViewMeet }: MeetPopupProps) {

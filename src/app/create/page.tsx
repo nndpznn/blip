@@ -13,6 +13,7 @@ import Meet from '@/models/meet'
 import { LocationData } from "@/models/meet";
 import { useAuth } from "@/clients/authContext";
 import Searchbar from "@/components/searchbar";
+import { moveItemDown, moveItemUp } from "@/util/reorderArray";
 
 export default function Create() {
 	const router = useRouter()
@@ -24,7 +25,7 @@ export default function Create() {
 	const [location, setLocation] = useState<LocationData | null>(null);
 	const [body, setBody] = useState('')
 	const [links, setLinks] = useState('')
-	const [imageFiles, setImageFiles] = useState<File[]>([])
+	const [imageFiles, setImageFiles] = useState<{ id: string; file: File }[]>([])
 	const [date, setDate] = useState<CalendarDate | null>(null)
 	const [startTime, setStartTime] = useState<Time | null>()
 	const [endTime, setEndTime] = useState<Time | null>()
@@ -36,9 +37,13 @@ export default function Create() {
 	const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = e.target.files;
 		if (files) {
-		  setImageFiles(Array.from(files)); // Convert FileList to an array
+			setImageFiles((prev) => [
+				...prev,
+				...Array.from(files).map((file) => ({ id: crypto.randomUUID(), file })),
+			]);
 		}
-	  };
+		if (e.target) e.target.value = "";
+	};
 
 	const handleClear = () => {
 		setTitle('')
@@ -84,13 +89,14 @@ export default function Create() {
 		meet.startTime = startTime
 		meet.endTime = endTime
 
-		await meet.uploadImages(imageFiles)
+		await meet.uploadImages(imageFiles.map((e) => e.file))
 
-		await meet.saveToDatabase()
+		const saved = await meet.saveToDatabase();
+		if (!saved) return;
 
-		console.log('form data submitted successfully.', meet)
+		console.log("form data submitted successfully.", meet);
 
-		router.push("/seeAllMeets")
+		router.push("/seeAllMeets");
 	}
 
 	const handleUploadImagesPrompt = () => {
@@ -99,14 +105,10 @@ export default function Create() {
 		}
 	}
 
-	const handleRemoveFile = (fileNameToRemove: string) => {
-		setImageFiles(prevFiles => 
-			prevFiles.filter(file => file.name !== fileNameToRemove)
-		);
-		// To re-enable uploading the same file name later, 
-		// we need to reset the value of the hidden input:
+	const handleRemoveFile = (id: string) => {
+		setImageFiles((prev) => prev.filter((e) => e.id !== id));
 		if (fileInputRef.current) {
-			fileInputRef.current.value = '';
+			fileInputRef.current.value = "";
 		}
 	};
 
@@ -215,16 +217,37 @@ export default function Create() {
 								<p className="font-medium text-green-600">
 									{imageFiles.length} file(s) selected:
 								</p>
-								{imageFiles.map((file, index) => (
+								{imageFiles.map((entry, index) => (
 									<div 
-										key={file.name + index} 
-										className="flex items-center justify-between p-2 bg-green-50 rounded-lg border border-green-200"
+										key={entry.id} 
+										className="flex items-center gap-1 p-2 bg-green-50 rounded-lg border border-green-200 mt-1"
 									>
-										<span className="truncate mr-4">{file.name}</span>
+										<div className="flex flex-col gap-0.5 shrink-0">
+											<button
+												type="button"
+												disabled={index === 0}
+												onClick={() => setImageFiles((prev) => moveItemUp(prev, index))}
+												className="px-1.5 py-0.5 text-xs rounded border border-default-300 bg-white hover:bg-default-100 disabled:opacity-40 disabled:cursor-not-allowed"
+												aria-label="Move image up"
+											>
+												↑
+											</button>
+											<button
+												type="button"
+												disabled={index === imageFiles.length - 1}
+												onClick={() => setImageFiles((prev) => moveItemDown(prev, index))}
+												className="px-1.5 py-0.5 text-xs rounded border border-default-300 bg-white hover:bg-default-100 disabled:opacity-40 disabled:cursor-not-allowed"
+												aria-label="Move image down"
+											>
+												↓
+											</button>
+										</div>
+										<span className="truncate mr-2 flex-1 min-w-0">{entry.file.name}</span>
 										<button
-											onClick={() => handleRemoveFile(file.name)}
-											className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition duration-150"
-											aria-label={`Remove file ${file.name}`}
+											type="button"
+											onClick={() => handleRemoveFile(entry.id)}
+											className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition duration-150 shrink-0"
+											aria-label={`Remove file ${entry.file.name}`}
 										>
 											<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
 												<path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />

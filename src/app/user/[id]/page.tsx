@@ -11,10 +11,10 @@ import { supabase } from '@/clients/supabaseClient'
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button, Checkbox } from "@heroui/react";
 import { usePageAccent } from "@/contexts/PageAccentContext";
 
-/** Maps meet id -> attendee count (from batch fetch). */
-type AttendeeCountMap = Record<number, number>;
+/** Maps meet id -> attendee count (from batch fetch). Keys are String(meet.id) for UUID-safe lookup. */
+type AttendeeCountMap = Record<string, number>;
 /** Set of meet ids the current user is attending. */
-type AttendingSet = Set<number>;
+type AttendingSet = Set<string>;
 
 type SortOption = "newest" | "oldest" | "upcoming" | "furthest";
 
@@ -116,7 +116,7 @@ export default function UserDetail() {
 			setMeets(meetsData as Meet[])
 			setFetchError("")
 
-			const meetIds = meetsData.map((m: { id: number }) => m.id)
+			const meetIds = meetsData.map((m: { id: number | string }) => m.id)
 
 			// 3. Single batch: all meet_attendees for these meets (counts + current user attendance)
 			const { data: attendeesData } = await supabase
@@ -125,12 +125,12 @@ export default function UserDetail() {
 				.in('meet_id', meetIds)
 
 			const countMap: AttendeeCountMap = {}
-			const attendingSet = new Set<number>()
+			const attendingSet = new Set<string>()
 			if (attendeesData) {
 				for (const row of attendeesData) {
-					const mid = row.meet_id as number
-					countMap[mid] = (countMap[mid] ?? 0) + 1
-					if (currentProfileId && row.profile_id === currentProfileId) attendingSet.add(mid)
+					const key = String(row.meet_id)
+					countMap[key] = (countMap[key] ?? 0) + 1
+					if (currentProfileId && row.profile_id === currentProfileId) attendingSet.add(key)
 				}
 			}
 			setAttendeeCountByMeet(countMap)
@@ -239,8 +239,8 @@ export default function UserDetail() {
 											meet={meet}
 											profileId={profileId}
 											organizerName={user?.username || 'Unknown author'}
-											attendeeCount={attendeeCountByMeet[meet.id] ?? 0}
-											attendanceStatus={attendingMeetIds.has(meet.id)}
+											attendeeCount={attendeeCountByMeet[String(meet.id)] ?? 0}
+											attendanceStatus={attendingMeetIds.has(String(meet.id))}
 										/>
 									))}
 							</div>
