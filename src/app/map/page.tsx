@@ -257,17 +257,18 @@ export default function Map() {
 				{/* <div id="mapreplacement" className="flex w-screen h-[70vh] text-center bg-gray-500 overflow-hidden"/> */}
 			</div>
 
-			<div className="grid grid-cols-3 items-center justify-between">
+			<div className="grid grid-cols-3 items-center justify-between mx-5">
 				<div className="col-start-1 justify-self-start">
-					<Button 
+					{/* <Button 
 						color="primary" 
 						className="m-4 bg-red-400 hover:bg-red-500" 
 						type="button" 
 						onPress={() => router.push("/meet/39")}
-					>example meet</Button>
+					>example meet</Button> */}
+                    <a className="flex items-center gap-2 hover:cursor-pointer hover:underline hover:underline-offset-4" onClick={() => router.push("/issue")}>Report an Issue</a>
 				</div>
 				<div className="col-start-2 justify-self-center">
-					<p className="text-[2vh] m-4">hi there, <strong>{fullName}</strong>. looking for something cool to do?</p>
+					<p className="text-[2vh] m-4">Hi there, <strong>{fullName}</strong>. Looking for something cool to do?</p>
 				</div>
 				<div className="col-start-3 justify-self-end">
 					
