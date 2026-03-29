@@ -4,7 +4,8 @@ import { useEffect, useState, useMemo } from "react";
 import Meet from "@/models/meet";
 import MeetCard from "@/components/meetCard"
 import { supabase } from "@/clients/supabaseClient";
-import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button, Checkbox } from "@heroui/react";
+import { useAuth } from "@/clients/authContext";
+import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button, Checkbox, Spinner } from "@heroui/react";
 
 /** Maps meet id -> attendee count (from batch fetch). Keys are String(meet.id) for UUID-safe lookup. */
 type AttendeeCountMap = Record<string, number>;
@@ -46,8 +47,10 @@ function isMeetInFuture(meet: Meet): boolean {
 }
 
 export default function AllMeets() {
+	const { user, loading: authLoading } = useAuth()
 	const [fetchError, setFetchError] = useState<string>("")
 	const [meets, setMeets] = useState<Meet[] | null>(null)
+	const [meetsLoading, setMeetsLoading] = useState(true)
 	const [profileId, setProfileId] = useState<string | null>(null)
 	const [attendeeCountByMeet, setAttendeeCountByMeet] = useState<AttendeeCountMap>({})
 	const [attendingMeetIds, setAttendingMeetIds] = useState<AttendingSet>(new Set())
@@ -56,65 +59,78 @@ export default function AllMeets() {
 	const [showPast, setShowPast] = useState(false)
 
 	useEffect(() => {
-		const load = async () => {
-			// 1. Current user once (avoids N calls from each MeetCard)
-			const { data: { user } } = await supabase.auth.getUser()
-			const currentProfileId = user?.id ?? null
-			setProfileId(currentProfileId)
+		if (authLoading) return
 
-			// 2. All meets
-			const { data: meetsData, error: meetsError } = await supabase
-				.from('meets')
-				.select()
-				.order('created_at', { ascending: false })
+		let cancelled = false
+		setMeetsLoading(true)
 
-			if (meetsError) {
-				setFetchError('Error fetching meets for this user.')
-				setMeets(null)
-				return
-			}
-			if (!meetsData?.length) {
-				setMeets([])
-				setFetchError("")
-				return
-			}
-			setMeets(meetsData as Meet[])
-			setFetchError("")
+		;(async () => {
+			try {
+				const currentProfileId = user?.id ?? null
+				if (cancelled) return
+				setProfileId(currentProfileId)
 
-			const meetIds = meetsData.map((m: { id: number | string }) => m.id)
-			const organizerIds = [...new Set(meetsData.map((m: { organizerId?: string; organizer_id?: string }) => m.organizerId ?? m.organizer_id).filter(Boolean))] as string[]
+				const { data: meetsData, error: meetsError } = await supabase
+					.from('meets')
+					.select()
+					.order('created_at', { ascending: false })
 
-			// 3. Single batch: all meet_attendees for these meets (counts + current user attendance)
-			const { data: attendeesData } = await supabase
-				.from('meet_attendees')
-				.select('meet_id, profile_id')
-				.in('meet_id', meetIds)
+				if (cancelled) return
 
-			const countMap: AttendeeCountMap = {}
-			const attendingSet = new Set<string>()
-			if (attendeesData) {
-				for (const row of attendeesData) {
-					const key = String(row.meet_id)
-					countMap[key] = (countMap[key] ?? 0) + 1
-					if (currentProfileId && row.profile_id === currentProfileId) attendingSet.add(key)
+				if (meetsError) {
+					setFetchError('Error fetching meets for this user.')
+					setMeets(null)
+					return
 				}
-			}
-			setAttendeeCountByMeet(countMap)
-			setAttendingMeetIds(attendingSet)
+				if (!meetsData?.length) {
+					setMeets([])
+					setFetchError("")
+					return
+				}
+				setMeets(meetsData as Meet[])
+				setFetchError("")
 
-			// 4. Single batch: organizer display names
-			if (organizerIds.length > 0) {
-				const { data: profiles } = await supabase
-					.from('profiles')
-					.select('id, username')
-					.in('id', organizerIds)
-				const nameMap: OrganizerNameMap = {}
-				if (profiles) for (const p of profiles) nameMap[p.id] = p.username ?? 'Unknown author'
-				setOrganizerNames(nameMap)
+				const meetIds = meetsData.map((m: { id: number | string }) => m.id)
+				const organizerIds = [...new Set(meetsData.map((m: { organizerId?: string; organizer_id?: string }) => m.organizerId ?? m.organizer_id).filter(Boolean))] as string[]
+
+				const { data: attendeesData } = await supabase
+					.from('meet_attendees')
+					.select('meet_id, profile_id')
+					.in('meet_id', meetIds)
+
+				if (cancelled) return
+
+				const countMap: AttendeeCountMap = {}
+				const attendingSet = new Set<string>()
+				if (attendeesData) {
+					for (const row of attendeesData) {
+						const key = String(row.meet_id)
+						countMap[key] = (countMap[key] ?? 0) + 1
+						if (currentProfileId && row.profile_id === currentProfileId) attendingSet.add(key)
+					}
+				}
+				setAttendeeCountByMeet(countMap)
+				setAttendingMeetIds(attendingSet)
+
+				if (organizerIds.length > 0) {
+					const { data: profiles } = await supabase
+						.from('profiles')
+						.select('id, username')
+						.in('id', organizerIds)
+					if (cancelled) return
+					const nameMap: OrganizerNameMap = {}
+					if (profiles) for (const p of profiles) nameMap[p.id] = p.username ?? 'Unknown author'
+					setOrganizerNames(nameMap)
+				}
+			} finally {
+				if (!cancelled) setMeetsLoading(false)
 			}
+		})()
+
+		return () => {
+			cancelled = true
 		}
-		load()
-	}, [])
+	}, [user, authLoading])
 
 	const displayedMeets = useMemo(() => {
 		if (!meets) return null;
@@ -133,6 +149,17 @@ export default function AllMeets() {
 		});
 		return list;
 	}, [meets, sortOrder, showPast]);
+
+	if (authLoading || meetsLoading) {
+		return (
+			<div className="flex">
+				<div className="flex-1 mx-[5vw] mt-5 min-h-[50vh] flex flex-col items-center justify-center gap-4">
+					<Spinner size="lg" label="" />
+					<p className="text-lg text-foreground/80">Connecting to Blip…</p>
+				</div>
+			</div>
+		)
+	}
 
 	return (
 		<div className="mx-[5vw] mt-5 flex flex-col h-[calc(100vh-170px)]">

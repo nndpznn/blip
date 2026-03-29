@@ -5,7 +5,7 @@ import { supabase } from "@/clients/supabaseClient";
 import { fetchUserByUID } from "@/hooks/fetchUserbyUID";
 import { useEffect, useState, useCallback } from "react";
 import User, { ProfileRow } from "@/models/user";
-import { Button, Input, useDisclosure } from "@heroui/react"
+import { Button, Input, Spinner, useDisclosure } from "@heroui/react"
 import { HexColorPicker } from "react-colorful";
 
 import UserCard from "@/components/userCard";
@@ -14,8 +14,9 @@ import { ReusableFadeInComponent } from "@/components/reusableFadeInComponent";
 
 export default function Profile() {
 	const [currentUser, setCurrentUser] = useState<ProfileRow | null>(null)
+	const [profileLoading, setProfileLoading] = useState(true)
 	const [editing, setEditing] = useState(false)
-	const { user } = useAuth()
+	const { user, loading: authLoading } = useAuth()
 	const { isOpen, onOpen, onClose } = useDisclosure();
 
 	const [username, setUsername] = useState('')
@@ -39,18 +40,31 @@ export default function Profile() {
 		}
 	}, [currentUser]);
 
-    useEffect(() => {
-        const resolveAuthor = async () => {
-            if (user) {
-                const data = await fetchUserByUID(user.id)
-                setCurrentUser(data)
-                setFormFields(data)
-            }
-        }
-        resolveAuthor()
-        // Omit setFormFields: including it would re-run whenever currentUser changes (it's in setFormFields's deps), resetting the form while editing.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user])
+	useEffect(() => {
+		if (authLoading) return
+
+		if (!user) {
+			setCurrentUser(null)
+			setProfileLoading(false)
+			return
+		}
+
+		let cancelled = false
+		setProfileLoading(true)
+		;(async () => {
+			const data = await fetchUserByUID(user.id)
+			if (cancelled) return
+			setCurrentUser(data)
+			setFormFields(data)
+			setProfileLoading(false)
+		})()
+
+		return () => {
+			cancelled = true
+		}
+		// Omit setFormFields: including it would re-run whenever currentUser changes (it's in setFormFields's deps), resetting the form while editing.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [user, authLoading])
 
 	const handleFlipEdit = () => {
 		setEditing(!editing)
@@ -93,6 +107,28 @@ export default function Profile() {
 			}
 			setEditing(false);
 		}
+	}
+
+	if (authLoading || profileLoading) {
+		return (
+			<div className="flex">
+				<div className="flex-1 mx-[5vw] mt-5 min-h-[50vh] flex flex-col items-center justify-center gap-4">
+					<Spinner size="lg" label="" />
+					<p className="text-lg text-foreground/80">Connecting to Blip…</p>
+				</div>
+			</div>
+		)
+	}
+
+	if (!user) {
+		return (
+			<div className="flex">
+				<div className="flex-1 mx-[5vw] mt-5 h-full">
+					<h1 id="header" className="text-3xl font-bold mb-5">Sign in required</h1>
+					<p className="my-5 text-xl">You need to be signed in to view and edit your profile.</p>
+				</div>
+			</div>
+		)
 	}
 
 	if (!currentUser) {
