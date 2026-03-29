@@ -40,10 +40,10 @@ export default function Nav() {
 
 			<div className="col-start-1 justify-self-start flex items-center gap-2 mx-4">
 				{/* <Button color="primary" className={`${allButtonClassses} items-center justify-center gap-1.5`} type="button" disabled={pathname == "/map"} onPress={handleBack} startContent={<span className="inline-flex items-center justify-center shrink-0"><ChevronLeftIcon className="size-5 block" /></span>}></Button> */}
-				{/* <Button color="primary" className={allButtonClassses} type="button" onPress={() => router.push("/sandbox")}>Sandbox</Button> */}
+				<Button color="primary" className={allButtonClassses} type="button" onPress={() => router.push("/sandbox")}>Sandbox</Button>
 			</div>
 
-			<Image className="col-start-2 justify-self-center cursor-pointer hover:brightness-75" src="/favicon.ico" width={100} height={100} alt="Logo" onClick={() => router.push("/map")}/>
+			<Image className="col-start-2 justify-self-center cursor-pointer opacity-100 transition-opacity duration-200 ease-out hover:opacity-70" src="/favicon.ico" width={100} height={100} alt="Logo" onClick={() => router.push("/map")}/>
 
 			<div className="col-start-3 justify-self-end flex items-center gap-2 mx-4">
 				<Button color="primary" className={allButtonClassses} type="button" onPress={() => router.push("/seeAllMeets")}>All Meets</Button>

@@ -162,7 +162,7 @@ export default function AllMeets() {
 	}
 
 	return (
-		<div className="mx-[5vw] mt-5 flex flex-col h-[calc(100vh-170px)]">
+		<div className="mx-[5vw] mt-5 flex min-h-0 min-w-0 flex-col overflow-x-hidden h-[calc(100vh-170px)]">
 
 			<div className="flex flex-wrap items-center justify-between gap-3 mb-2">
 				<h1 id="header" className="text-3xl font-bold">Browse Meets</h1>
@@ -202,18 +202,22 @@ export default function AllMeets() {
 				<div className="text-red-500 text-center py-2" role="alert">{fetchError}</div>
 			)}
 
-			<div className="scrollbar-modern flex-1 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 overflow-y-auto pb-4">
+			<div className="scrollbar-modern flex-1 min-h-0 min-w-0 grid grid-cols-1 content-start items-start sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 overflow-y-auto overflow-x-hidden pb-4">
 				{displayedMeets?.map((meet: Meet) => {
 					const organizerId = (meet as { organizerId?: string; organizer_id?: string }).organizerId ?? (meet as { organizerId?: string; organizer_id?: string }).organizer_id
 					return (
-						<MeetCard
+						<div
 							key={meet.id}
-							meet={meet}
-							profileId={profileId}
-							organizerName={organizerNames[organizerId ?? ''] ?? undefined}
-							attendeeCount={attendeeCountByMeet[String(meet.id)] ?? 0}
-							attendanceStatus={attendingMeetIds.has(String(meet.id))}
-						/>
+							className="min-w-0 w-full max-w-full self-start origin-center opacity-100 transition-opacity duration-200 ease-out hover:opacity-70"
+						>
+							<MeetCard
+								meet={meet}
+								profileId={profileId}
+								organizerName={organizerNames[organizerId ?? ''] ?? undefined}
+								attendeeCount={attendeeCountByMeet[String(meet.id)] ?? 0}
+								attendanceStatus={attendingMeetIds.has(String(meet.id))}
+							/>
+						</div>
 					)
 				})}
 			</div>
