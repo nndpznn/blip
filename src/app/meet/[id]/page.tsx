@@ -36,6 +36,7 @@ import { LocationData } from "@/models/meet";
 import { moveItemDown, moveItemUp } from "@/util/reorderArray";
 
 import UserCard from "@/components/userCard";
+import MeetImageGallery from "@/components/MeetImageGallery";
 import { ReusableFadeInComponent } from "@/components/reusableFadeInComponent";
 import { CalendarIcon } from "@/assets/CalendarIcon";
 import { MapPinIcon } from "@/assets/MapPinIcon";
@@ -470,14 +471,13 @@ export default function MeetDetail() {
 				</div>
 			</div>
 
-			{/* TO ADD: GALLERY FUNCTIONALITY */}
 			<div className="flex flex-col w-2/3 h-full min-h-0 overflow-hidden border-l-4 border-red-400 items-center justify-center">
-				<div className="flex-1 w-[60vw] max-h-[60vh] flex items-center justify-center">
-					{meet.images ? (
-						<Image className="rounded-none" alt="Meet" src={meet.images[0]} />
-					) : (
-						<span className="text-foreground-500 text-sm">No image</span>
-					)}
+				<div className="flex flex-1 w-[60vw] max-h-[60vh] min-h-0 items-center justify-center px-2">
+					<MeetImageGallery
+						key={meet.id}
+						images={meet.images ?? []}
+						title={meet.title}
+					/>
 				</div>
 			</div>
 			
