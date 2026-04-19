@@ -13,6 +13,13 @@ export interface LocationData {
     };
 }
 
+/** Max size per meet image (10 MiB). */
+export const MEET_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+
+export function isMeetImageOverLimit(file: File): boolean {
+	return file.size > MEET_IMAGE_MAX_BYTES;
+}
+
 class Meet {
 	// supabase generates a unique meet ID upon data entry, and can be retrieved later...
 	organizerId: string 
@@ -70,18 +77,24 @@ class Meet {
 	// END DATE TIME STUFF
 
 	/**
-	 * Uploads files in order; returns public URLs in the same order (skipping failed uploads).
-	 * @param assignToMeet When true (default), sets `this.images` to the returned URLs. Set false when merging ordered slots (e.g. edit flow).
+	 * Uploads files in order. Returns one string per input file: public URL or "" if over limit / upload failed.
+	 * Preserves length so edit flows can zip results with pending slots by index.
+	 * @param assignToMeet When true (default), sets `this.images` to successful URLs only (order preserved). Set false when merging ordered slots (e.g. edit flow).
 	 */
 	async uploadImages(files: File[], options?: { assignToMeet?: boolean }): Promise<string[]> {
 		const uploadedImageUrls: string[] = [];
 
 		for (const file of files) {
+		  if (isMeetImageOverLimit(file)) {
+			console.error("Image exceeds max size:", file.name, file.size);
+			uploadedImageUrls.push("");
+			continue;
+		  }
+
 		  const fileExt = file.name.split('.').pop(); // Get file extension
 		  const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${fileExt}`; // unique per file (batch uploads can share ms)
 		  const filePath = `meetImages/${this.organizerId}/${fileName}`;
 
-		  // Upload the image to Supabase Storage
 		  const { data, error } = await supabase
 			.storage
 			.from('images')
@@ -89,23 +102,21 @@ class Meet {
 
 		  if (error) {
 			console.error("Error uploading image:", error);
+			uploadedImageUrls.push("");
 			continue;
 		  }
 
-		  // Get the public URL of the uploaded image
 		  const imageUrl = supabase
 			.storage
 			.from('images')
 			.getPublicUrl(data?.path || '')
 			.data.publicUrl;
 
-		  if (imageUrl) {
-			uploadedImageUrls.push(imageUrl);
-		  }
+		  uploadedImageUrls.push(imageUrl || "");
 		}
 
 		if (options?.assignToMeet !== false) {
-			this.images = uploadedImageUrls;
+			this.images = uploadedImageUrls.filter(Boolean);
 		}
 		return uploadedImageUrls;
 	  }

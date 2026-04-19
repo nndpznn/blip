@@ -1,6 +1,6 @@
 'use client'
 
-import Meet from "@/models/meet"
+import Meet, { isMeetImageOverLimit } from "@/models/meet"
 import User from "@/models/user";
 
 import { Button } from "@heroui/button"
@@ -103,14 +103,29 @@ export default function MeetDetail() {
 	const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = e.target.files;
 		if (files) {
-			setImageSlots((prev) => [
-				...prev,
-				...Array.from(files).map((file) => ({
-					type: "pending" as const,
-					id: crypto.randomUUID(),
-					file,
-				})),
-			]);
+			const rejected: string[] = [];
+			const allowed = Array.from(files).filter((file) => {
+				if (isMeetImageOverLimit(file)) {
+					rejected.push(file.name);
+					return false;
+				}
+				return true;
+			});
+			if (rejected.length > 0) {
+				alert(
+					`These images exceed the max size of 10 MB and were not added:\n${rejected.join("\n")}`,
+				);
+			}
+			if (allowed.length > 0) {
+				setImageSlots((prev) => [
+					...prev,
+					...allowed.map((file) => ({
+						type: "pending" as const,
+						id: crypto.randomUUID(),
+						file,
+					})),
+				]);
+			}
 		}
 		if (fileInputRef.current) {
 			fileInputRef.current.value = "";
@@ -185,6 +200,13 @@ export default function MeetDetail() {
 		const pendingFiles = imageSlots
 			.filter((s): s is Extract<MeetEditImageSlot, { type: "pending" }> => s.type === "pending")
 			.map((s) => s.file);
+		const oversizedPending = pendingFiles.filter(isMeetImageOverLimit);
+		if (oversizedPending.length > 0) {
+			alert(
+				`Remove or replace images over 10 MB: ${oversizedPending.map((f) => f.name).join(", ")}`,
+			);
+			return;
+		}
 		const newUrls = await meetToSave.uploadImages(pendingFiles, { assignToMeet: false });
 		let j = 0;
 		const finalImages: string[] = [];
@@ -587,6 +609,7 @@ export default function MeetDetail() {
 								<TimeInput value={endTime} onChange={setEndTime} label="End Time" />
 
 								<p className="mt-5 text-xl font-bold">Upload Images</p>
+								<p className="mt-1 text-sm text-gray-600">Max 10 MB per image.</p>
 
 								<input
 								ref={fileInputRef}

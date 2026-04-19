@@ -9,8 +9,7 @@ import {Calendar} from '@heroui/calendar'
 import {Time, today, getLocalTimeZone, CalendarDate} from "@internationalized/date";
 
 import { useState, useRef } from "react";
-import Meet from '@/models/meet'
-import { LocationData } from "@/models/meet";
+import Meet, { isMeetImageOverLimit, type LocationData } from "@/models/meet";
 import { useAuth } from "@/clients/authContext";
 import Searchbar from "@/components/searchbar";
 import { moveItemDown, moveItemUp } from "@/util/reorderArray";
@@ -37,10 +36,25 @@ export default function Create() {
 	const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = e.target.files;
 		if (files) {
-			setImageFiles((prev) => [
-				...prev,
-				...Array.from(files).map((file) => ({ id: crypto.randomUUID(), file })),
-			]);
+			const rejected: string[] = [];
+			const allowed = Array.from(files).filter((file) => {
+				if (isMeetImageOverLimit(file)) {
+					rejected.push(file.name);
+					return false;
+				}
+				return true;
+			});
+			if (rejected.length > 0) {
+				alert(
+					`These images exceed the max size of 10 MB and were not added:\n${rejected.join("\n")}`,
+				);
+			}
+			if (allowed.length > 0) {
+				setImageFiles((prev) => [
+					...prev,
+					...allowed.map((file) => ({ id: crypto.randomUUID(), file })),
+				]);
+			}
 		}
 		if (e.target) e.target.value = "";
 	};
@@ -81,6 +95,14 @@ export default function Create() {
 		if (!isCalifornia) {
 			// alert("Sorry! We are only hosting meets in California at this time.");
 			setCaliAlertVisible(true)
+			return;
+		}
+
+		const oversized = imageFiles.filter((e) => isMeetImageOverLimit(e.file));
+		if (oversized.length > 0) {
+			alert(
+				`Remove or replace images over 10 MB: ${oversized.map((e) => e.file.name).join(", ")}`,
+			);
 			return;
 		}
 
@@ -193,6 +215,7 @@ export default function Create() {
 						<TimeInput value={endTime} onChange={setEndTime} label="End Time" />
 
 						<p className="mt-5 text-xl font-bold">Upload Images</p>
+						<p className="mt-1 text-sm text-gray-600">Max 10 MB per image.</p>
 
 						<input
 						ref={fileInputRef}
