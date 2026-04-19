@@ -130,7 +130,10 @@ export default function AllMeets() {
 		return () => {
 			cancelled = true
 		}
-	}, [user, authLoading])
+		// Use user id, not `user`: Supabase refreshes the session when the tab is focused and
+		// passes a new User object reference, which would otherwise re-run this effect and
+		// flash the loading state even though nothing meaningful changed.
+	}, [user?.id, authLoading])
 
 	const displayedMeets = useMemo(() => {
 		if (!meets) return null;
