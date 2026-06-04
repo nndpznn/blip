@@ -9,7 +9,12 @@ import {Calendar} from '@heroui/calendar'
 import {Time, today, getLocalTimeZone, CalendarDate} from "@internationalized/date";
 
 import { useState, useRef } from "react";
-import Meet, { isMeetImageOverLimit, type LocationData } from "@/models/meet";
+import Meet, {
+	filesWithinMeetImageLimit,
+	isMeetImageOverLimit,
+	MEET_IMAGE_MAX_COUNT,
+	type LocationData,
+} from "@/models/meet";
 import { useAuth } from "@/clients/authContext";
 import Searchbar from "@/components/searchbar";
 import { moveItemDown, moveItemUp } from "@/util/reorderArray";
@@ -50,10 +55,24 @@ export default function Create() {
 				);
 			}
 			if (allowed.length > 0) {
-				setImageFiles((prev) => [
-					...prev,
-					...allowed.map((file) => ({ id: crypto.randomUUID(), file })),
-				]);
+				let skippedDueToCount: string[] = [];
+				setImageFiles((prev) => {
+					const { accepted, skippedNames } = filesWithinMeetImageLimit(
+						prev.length,
+						allowed,
+					);
+					skippedDueToCount = skippedNames;
+					if (accepted.length === 0) return prev;
+					return [
+						...prev,
+						...accepted.map((file) => ({ id: crypto.randomUUID(), file })),
+					];
+				});
+				if (skippedDueToCount.length > 0) {
+					alert(
+						`A meet can have at most ${MEET_IMAGE_MAX_COUNT} images. These were not added:\n${skippedDueToCount.join("\n")}`,
+					);
+				}
 			}
 		}
 		if (e.target) e.target.value = "";
@@ -98,6 +117,13 @@ export default function Create() {
 			return;
 		}
 
+		if (imageFiles.length > MEET_IMAGE_MAX_COUNT) {
+			alert(
+				`A meet can have at most ${MEET_IMAGE_MAX_COUNT} images. Remove ${imageFiles.length - MEET_IMAGE_MAX_COUNT} before submitting.`,
+			);
+			return;
+		}
+
 		const oversized = imageFiles.filter((e) => isMeetImageOverLimit(e.file));
 		if (oversized.length > 0) {
 			alert(
@@ -122,6 +148,12 @@ export default function Create() {
 	}
 
 	const handleUploadImagesPrompt = () => {
+		if (imageFiles.length >= MEET_IMAGE_MAX_COUNT) {
+			alert(
+				`A meet can have at most ${MEET_IMAGE_MAX_COUNT} images. Remove one to add another.`,
+			);
+			return;
+		}
 		if (fileInputRef.current) {
 			fileInputRef.current.click();
 		}
@@ -215,7 +247,9 @@ export default function Create() {
 						<TimeInput value={endTime} onChange={setEndTime} label="End Time" />
 
 						<p className="mt-5 text-xl font-bold">Upload Images</p>
-						<p className="mt-1 text-sm text-gray-600">Max 10 MB per image.</p>
+						<p className="mt-1 text-sm text-gray-600">
+							Max 10 MB per image. Up to {MEET_IMAGE_MAX_COUNT} images per meet.
+						</p>
 
 						<input
 						ref={fileInputRef}
@@ -230,6 +264,7 @@ export default function Create() {
 						onPress={handleUploadImagesPrompt}
 						color="primary"
 						className="mt-1"
+						isDisabled={imageFiles.length >= MEET_IMAGE_MAX_COUNT}
 						>
 							Upload
 						</Button>

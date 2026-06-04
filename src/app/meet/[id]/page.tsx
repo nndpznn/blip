@@ -1,6 +1,10 @@
 'use client'
 
-import Meet, { isMeetImageOverLimit } from "@/models/meet"
+import Meet, {
+	filesWithinMeetImageLimit,
+	isMeetImageOverLimit,
+	MEET_IMAGE_MAX_COUNT,
+} from "@/models/meet"
 import User from "@/models/user";
 
 import { Button } from "@heroui/button"
@@ -117,14 +121,28 @@ export default function MeetDetail() {
 				);
 			}
 			if (allowed.length > 0) {
-				setImageSlots((prev) => [
-					...prev,
-					...allowed.map((file) => ({
-						type: "pending" as const,
-						id: crypto.randomUUID(),
-						file,
-					})),
-				]);
+				let skippedDueToCount: string[] = [];
+				setImageSlots((prev) => {
+					const { accepted, skippedNames } = filesWithinMeetImageLimit(
+						prev.length,
+						allowed,
+					);
+					skippedDueToCount = skippedNames;
+					if (accepted.length === 0) return prev;
+					return [
+						...prev,
+						...accepted.map((file) => ({
+							type: "pending" as const,
+							id: crypto.randomUUID(),
+							file,
+						})),
+					];
+				});
+				if (skippedDueToCount.length > 0) {
+					alert(
+						`A meet can have at most ${MEET_IMAGE_MAX_COUNT} images. These were not added:\n${skippedDueToCount.join("\n")}`,
+					);
+				}
 			}
 		}
 		if (fileInputRef.current) {
@@ -133,6 +151,12 @@ export default function MeetDetail() {
 	};
 
 	const handleUploadImagesPrompt = () => {
+		if (imageSlots.length >= MEET_IMAGE_MAX_COUNT) {
+			alert(
+				`A meet can have at most ${MEET_IMAGE_MAX_COUNT} images. Remove one to add another.`,
+			);
+			return;
+		}
 		if (fileInputRef.current) {
 			fileInputRef.current.click();
 		}
@@ -200,6 +224,13 @@ export default function MeetDetail() {
 		const pendingFiles = imageSlots
 			.filter((s): s is Extract<MeetEditImageSlot, { type: "pending" }> => s.type === "pending")
 			.map((s) => s.file);
+		if (imageSlots.length > MEET_IMAGE_MAX_COUNT) {
+			alert(
+				`A meet can have at most ${MEET_IMAGE_MAX_COUNT} images. Remove ${imageSlots.length - MEET_IMAGE_MAX_COUNT} before saving.`,
+			);
+			return;
+		}
+
 		const oversizedPending = pendingFiles.filter(isMeetImageOverLimit);
 		if (oversizedPending.length > 0) {
 			alert(
@@ -609,7 +640,9 @@ export default function MeetDetail() {
 								<TimeInput value={endTime} onChange={setEndTime} label="End Time" />
 
 								<p className="mt-5 text-xl font-bold">Upload Images</p>
-								<p className="mt-1 text-sm text-gray-600">Max 10 MB per image.</p>
+								<p className="mt-1 text-sm text-gray-600">
+									Max 10 MB per image. Up to {MEET_IMAGE_MAX_COUNT} images per meet.
+								</p>
 
 								<input
 								ref={fileInputRef}
@@ -624,6 +657,7 @@ export default function MeetDetail() {
 								onPress={handleUploadImagesPrompt}
 								color="primary"
 								className="mt-1"
+								isDisabled={imageSlots.length >= MEET_IMAGE_MAX_COUNT}
 								>
 									Upload
 								</Button>
