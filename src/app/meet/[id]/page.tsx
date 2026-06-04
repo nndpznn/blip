@@ -41,6 +41,7 @@ import { moveItemDown, moveItemUp } from "@/util/reorderArray";
 
 import UserCard from "@/components/userCard";
 import MeetImageGallery from "@/components/MeetImageGallery";
+import MeetImagePreviewList from "@/components/MeetImagePreviewList";
 import { ReusableFadeInComponent } from "@/components/reusableFadeInComponent";
 import { CalendarIcon } from "@/assets/CalendarIcon";
 import { MapPinIcon } from "@/assets/MapPinIcon";
@@ -567,13 +568,13 @@ export default function MeetDetail() {
 
 			{/* EDIT CONFIRM PROTOCOL */}
 			<Drawer className="bg-black blip-main" isOpen={isEditOpen} onOpenChange={onEditOpenChange} size="full">
-				<DrawerContent>
+				<DrawerContent className="flex max-h-[100dvh] flex-col">
 				{(onClose) => (
 					<>
-					<DrawerHeader className="flex flex-col gap-1">Edit Meet</DrawerHeader>
-					<DrawerBody>
-						<div className="flex mb-5">
-							<div id="fields" className="w-2/5">
+					<DrawerHeader className="flex shrink-0 flex-col gap-1">Edit Meet</DrawerHeader>
+					<DrawerBody className="flex min-h-0 flex-1 flex-col overflow-hidden">
+						<div className="mb-5 flex min-h-0 flex-1 items-stretch overflow-hidden">
+							<div id="fields" className="min-h-0 min-w-0 w-2/5">
 								<p className="text-xl font-bold">Title</p>
 								<Input value={title} onChange={e => setTitle(e.target.value)}size="md" type="text" />
 								
@@ -617,7 +618,7 @@ export default function MeetDetail() {
 								<Input value={links} onChange={e => setLinks(e.target.value)}size="md" type="text" /> */}
 							</div>
 
-							<div id="calendar" className="w-2/5 ml-10 align-items-center">
+							<div id="calendar" className="ml-10 min-h-0 min-w-0 w-2/5">
 								<p className="text-xl font-bold">Date</p>
 
 								<Calendar
@@ -632,138 +633,143 @@ export default function MeetDetail() {
 							</div>
 
 
-							<div id="misc" className="flex flex-col w-1/5 ml-10">
-								<p className="mt-5 text-xl font-bold">Start Time</p>
+							<div id="misc" className="ml-10 flex w-1/5 min-h-0 flex-col self-stretch">
+								<p className="mt-5 shrink-0 text-xl font-bold">Start Time</p>
 								<TimeInput value={startTime} onChange={setStartTime} label="Start Time" />
 
-								<p className="mt-5 text-xl font-bold">End Time</p>
+								<p className="mt-5 shrink-0 text-xl font-bold">End Time</p>
 								<TimeInput value={endTime} onChange={setEndTime} label="End Time" />
 
-								<p className="mt-5 text-xl font-bold">Upload Images</p>
-								<p className="mt-1 text-sm text-gray-600">
-									Max 10 MB per image. Up to {MEET_IMAGE_MAX_COUNT} images per meet.
-								</p>
+								<div className="mt-5 shrink-0">
+									<p className="text-xl font-bold">Upload Images</p>
+									<p className="mt-1 text-sm text-gray-600">
+										Max 10 MB per image. Up to {MEET_IMAGE_MAX_COUNT} images per meet.
+									</p>
 
-								<input
-								ref={fileInputRef}
-								className="hidden"
-								type="file"
-								multiple
-								accept="image/*"
-								onChange={handleImageChange}
-								/>
+									<input
+									ref={fileInputRef}
+									className="hidden"
+									type="file"
+									multiple
+									accept="image/*"
+									onChange={handleImageChange}
+									/>
 
-								<Button
-								onPress={handleUploadImagesPrompt}
-								color="primary"
-								className="mt-1"
-								isDisabled={imageSlots.length >= MEET_IMAGE_MAX_COUNT}
-								>
-									Upload
-								</Button>
-
-								<div className="mt-3 text-sm text-gray-600 space-y-3">
-									{imageSlots.length > 0 && (
-										<div>
-											<p className="font-medium text-foreground-700 mb-1">
-												Images (top = thumbnail)
-											</p>
-											<div className="flex flex-col gap-2">
-												{imageSlots.map((slot, index) => (
-													<div
-														key={
-															slot.type === "existing"
-																? `existing-${slot.url}-${index}`
-																: slot.id
-														}
-														className="flex items-center gap-1 p-2 rounded-lg border border-default-200 bg-content1"
-													>
-														<div className="flex flex-col gap-0.5 shrink-0">
-															<button
-																type="button"
-																disabled={index === 0}
-																onClick={() =>
-																	setImageSlots((prev) => moveItemUp(prev, index))
-																}
-																className="px-1.5 py-0.5 text-xs rounded border border-default-300 bg-white hover:bg-default-100 disabled:opacity-40 disabled:cursor-not-allowed"
-																aria-label="Move image up"
-															>
-																↑
-															</button>
-															<button
-																type="button"
-																disabled={index === imageSlots.length - 1}
-																onClick={() =>
-																	setImageSlots((prev) => moveItemDown(prev, index))
-																}
-																className="px-1.5 py-0.5 text-xs rounded border border-default-300 bg-white hover:bg-default-100 disabled:opacity-40 disabled:cursor-not-allowed"
-																aria-label="Move image down"
-															>
-																↓
-															</button>
-														</div>
-														{slot.type === "existing" ? (
-															<div className="relative inline-block rounded-lg border border-default-200 overflow-hidden shrink-0">
-																<Image
-																	src={slot.url}
-																	alt="Meet"
-																	className="h-16 w-16 object-cover rounded-lg"
-																	width={64}
-																	height={64}
-																/>
-															</div>
-														) : (
-															<div className="relative inline-block h-16 w-16 shrink-0 rounded-lg border border-default-200 overflow-hidden">
-																<PendingImagePreview file={slot.file} />
-																<span className="absolute top-0.5 right-0.5 z-10 rounded bg-green-600 px-1 py-px text-[10px] font-semibold leading-none text-white shadow-sm pointer-events-none">
-																	New
-																</span>
-															</div>
-														)}
-														<span className="truncate mr-2 flex-1 min-w-0 text-foreground" title={slot.type === "existing" ? fileLabelFromImageUrl(slot.url) : slot.file.name}>
-															{slot.type === "existing"
-																? fileLabelFromImageUrl(slot.url)
-																: slot.file.name}
-														</span>
-														<button
-															type="button"
-															onClick={(e) => {
-																e.preventDefault();
-																e.stopPropagation();
-																handleRemoveSlot(index);
-															}}
-															className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition shrink-0"
-															aria-label="Remove image"
-														>
-															<svg
-																xmlns="http://www.w3.org/2000/svg"
-																className="h-4 w-4"
-																viewBox="0 0 20 20"
-																fill="currentColor"
-															>
-																<path
-																	fillRule="evenodd"
-																	d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-																	clipRule="evenodd"
-																/>
-															</svg>
-														</button>
-													</div>
-												))}
-											</div>
-										</div>
-									)}
-									{imageSlots.length === 0 && (
-										<p className="text-gray-500">
-											No images. Click Upload to add current or new images.
-										</p>
-									)}
+									<Button
+									onPress={handleUploadImagesPrompt}
+									color="primary"
+									className="mt-1"
+									isDisabled={imageSlots.length >= MEET_IMAGE_MAX_COUNT}
+									>
+										Upload
+									</Button>
 								</div>
+
+								<MeetImagePreviewList
+									count={imageSlots.length}
+									emptyMessage="No images. Click Upload to add current or new images."
+									header={
+										<p className="font-medium text-foreground-700">
+											Images (top = thumbnail)
+										</p>
+									}
+									className="text-gray-600"
+								>
+									{imageSlots.map((slot, index) => (
+										<div
+											key={
+												slot.type === "existing"
+													? `existing-${slot.url}-${index}`
+													: slot.id
+											}
+											role="listitem"
+											className="flex items-center gap-1 rounded-lg border border-default-200 bg-content1 p-2"
+										>
+											<div className="flex shrink-0 flex-col gap-0.5">
+												<button
+													type="button"
+													disabled={index === 0}
+													onClick={() =>
+														setImageSlots((prev) => moveItemUp(prev, index))
+													}
+													className="rounded border border-default-300 bg-white px-1.5 py-0.5 text-xs hover:bg-default-100 disabled:cursor-not-allowed disabled:opacity-40"
+													aria-label="Move image up"
+												>
+													↑
+												</button>
+												<button
+													type="button"
+													disabled={index === imageSlots.length - 1}
+													onClick={() =>
+														setImageSlots((prev) => moveItemDown(prev, index))
+													}
+													className="rounded border border-default-300 bg-white px-1.5 py-0.5 text-xs hover:bg-default-100 disabled:cursor-not-allowed disabled:opacity-40"
+													aria-label="Move image down"
+												>
+													↓
+												</button>
+											</div>
+											{slot.type === "existing" ? (
+												<div className="relative inline-block shrink-0 overflow-hidden rounded-lg border border-default-200">
+													<Image
+														src={slot.url}
+														alt="Meet"
+														className="h-16 w-16 rounded-lg object-cover"
+														width={64}
+														height={64}
+													/>
+												</div>
+											) : (
+												<div className="relative inline-block h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-default-200">
+													<PendingImagePreview file={slot.file} />
+													<span className="pointer-events-none absolute top-0.5 right-0.5 z-10 rounded bg-green-600 px-1 py-px text-[10px] font-semibold leading-none text-white shadow-sm">
+														New
+													</span>
+												</div>
+											)}
+											<span
+												className="mr-2 min-w-0 flex-1 truncate text-foreground"
+												title={
+													slot.type === "existing"
+														? fileLabelFromImageUrl(slot.url)
+														: slot.file.name
+												}
+											>
+												{slot.type === "existing"
+													? fileLabelFromImageUrl(slot.url)
+													: slot.file.name}
+											</span>
+											<button
+												type="button"
+												onClick={(e) => {
+													e.preventDefault();
+													e.stopPropagation();
+													handleRemoveSlot(index);
+												}}
+												className="shrink-0 rounded-full p-1 text-red-500 transition hover:bg-red-100 hover:text-red-700"
+												aria-label="Remove image"
+											>
+												<svg
+													xmlns="http://www.w3.org/2000/svg"
+													className="h-4 w-4"
+													viewBox="0 0 20 20"
+													fill="currentColor"
+												>
+													<path
+														fillRule="evenodd"
+														d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+														clipRule="evenodd"
+													/>
+												</svg>
+											</button>
+										</div>
+									))}
+								</MeetImagePreviewList>
 								{/* <p>yes we know this looks not great</p> */}
 							</div>
 						</div>
 						</DrawerBody>
-						<DrawerFooter>
+						<DrawerFooter className="shrink-0">
 							<Button color="primary" onPress={onClose}>
 							Cancel
 							</Button>

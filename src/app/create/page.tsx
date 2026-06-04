@@ -16,6 +16,7 @@ import Meet, {
 	type LocationData,
 } from "@/models/meet";
 import { useAuth } from "@/clients/authContext";
+import MeetImagePreviewList from "@/components/MeetImagePreviewList";
 import Searchbar from "@/components/searchbar";
 import { moveItemDown, moveItemUp } from "@/util/reorderArray";
 
@@ -167,13 +168,13 @@ export default function Create() {
 	};
 
 	return (
-		<div className="">
+		<div className="flex min-h-0 flex-1 flex-col">
 
-			<div className="mx-[5vw] mt-5 h-full">
-				<h1 id="header" className="text-3xl font-bold mb-5">New Meet</h1>
+			<div className="mx-[5vw] mt-5 flex h-[calc(100vh-170px)] min-h-0 min-w-0 flex-col overflow-hidden">
+				<h1 id="header" className="mb-5 shrink-0 text-3xl font-bold">New Meet</h1>
 
-				<div className="flex mb-5">
-					<div id="fields" className="w-2/5">
+				<div className="mb-5 flex min-h-0 flex-1 items-stretch overflow-hidden">
+					<div id="fields" className="min-h-0 min-w-0 w-2/5">
 						<div className="flex items-center">
 							<p className="text-xl font-bold">Title</p>
 							<p className="text-md ml-2 font-bold">(25 chars. max)</p>
@@ -221,7 +222,7 @@ export default function Create() {
 						<Input value={links} onChange={e => setLinks(e.target.value)}size="md" type="text" />
 					</div>
 
-					<div id="calendar" className="w-2/5 ml-10 flex flex-col items-center">
+					<div id="calendar" className="ml-10 flex min-h-0 min-w-0 w-2/5 flex-col items-center">
 						<div>
 							<p className="w-full text-left text-xl font-bold">Date</p>
 
@@ -237,99 +238,102 @@ export default function Create() {
 						{/* <Button color="primary" onPress={() => console.log(date)}>Print date to console</Button> */}
 					</div>
 
-					<div id="misc" className="flex flex-col w-1/5 ml-10">
-						<p className="mt-5 text-xl font-bold">Start Time</p>
+					<div id="misc" className="ml-10 flex w-1/5 min-h-0 flex-col self-stretch">
+						<p className="mt-5 shrink-0 text-xl font-bold">Start Time</p>
 						{/* <Input value={startTime} onChange={e => setStartTime(e.target.value)}size="md" type="text" /> */}
 						<TimeInput value={startTime} onChange={setStartTime} label="Start Time" />
 
-						<p className="mt-5 text-xl font-bold">End Time</p>
+						<p className="mt-5 shrink-0 text-xl font-bold">End Time</p>
 						{/* <Input value={endTime} onChange={e => setEndTime(e.target.value)}size="md" type="text" /> */}
 						<TimeInput value={endTime} onChange={setEndTime} label="End Time" />
 
-						<p className="mt-5 text-xl font-bold">Upload Images</p>
-						<p className="mt-1 text-sm text-gray-600">
-							Max 10 MB per image. Up to {MEET_IMAGE_MAX_COUNT} images per meet.
-						</p>
+						<div className="mt-5 shrink-0">
+							<p className="text-xl font-bold">Upload Images</p>
+							<p className="mt-1 text-sm text-gray-600">
+								Max 10 MB per image. Up to {MEET_IMAGE_MAX_COUNT} images per meet.
+							</p>
 
-						<input
-						ref={fileInputRef}
-						className="hidden"
-						type="file"
-						multiple
-						accept="image/*"
-						onChange={handleImageChange}
-						/>
+							<input
+							ref={fileInputRef}
+							className="hidden"
+							type="file"
+							multiple
+							accept="image/*"
+							onChange={handleImageChange}
+							/>
 
-						<Button
-						onPress={handleUploadImagesPrompt}
-						color="primary"
-						className="mt-1"
-						isDisabled={imageFiles.length >= MEET_IMAGE_MAX_COUNT}
-						>
-							Upload
-						</Button>
+							<Button
+							onPress={handleUploadImagesPrompt}
+							color="primary"
+							className="mt-1"
+							isDisabled={imageFiles.length >= MEET_IMAGE_MAX_COUNT}
+							>
+								Upload
+							</Button>
+						</div>
 
-						<div className="mt-3 text-sm text-gray-600">
-							{imageFiles.length > 0 ? (
-							<div>
+						<MeetImagePreviewList
+							count={imageFiles.length}
+							emptyMessage="Click the button above to select images for upload."
+							header={
 								<p className="font-medium text-green-600">
 									{imageFiles.length} file(s) selected (top = thumbnail):
 								</p>
-								{imageFiles.map((entry, index) => (
-									<div 
-										key={entry.id} 
-										className="flex items-center gap-1 p-2 bg-green-50 rounded-lg border border-green-200 mt-1"
-									>
-										<div className="flex flex-col gap-0.5 shrink-0">
-											<button
-												type="button"
-												disabled={index === 0}
-												onClick={() => setImageFiles((prev) => moveItemUp(prev, index))}
-												className="px-1.5 py-0.5 text-xs rounded border border-default-300 bg-white hover:bg-default-100 disabled:opacity-40 disabled:cursor-not-allowed"
-												aria-label="Move image up"
-											>
-												↑
-											</button>
-											<button
-												type="button"
-												disabled={index === imageFiles.length - 1}
-												onClick={() => setImageFiles((prev) => moveItemDown(prev, index))}
-												className="px-1.5 py-0.5 text-xs rounded border border-default-300 bg-white hover:bg-default-100 disabled:opacity-40 disabled:cursor-not-allowed"
-												aria-label="Move image down"
-											>
-												↓
-											</button>
-										</div>
-										<span className="truncate mr-2 flex-1 min-w-0">{entry.file.name}</span>
+							}
+							className="text-gray-600"
+						>
+							{imageFiles.map((entry, index) => (
+								<div
+									key={entry.id}
+									role="listitem"
+									className="flex items-center gap-1 rounded-lg border border-green-200 bg-green-50 p-2"
+								>
+									<div className="flex shrink-0 flex-col gap-0.5">
 										<button
 											type="button"
-											onClick={() => handleRemoveFile(entry.id)}
-											className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition duration-150 shrink-0"
-											aria-label={`Remove file ${entry.file.name}`}
+											disabled={index === 0}
+											onClick={() => setImageFiles((prev) => moveItemUp(prev, index))}
+											className="rounded border border-default-300 bg-white px-1.5 py-0.5 text-xs hover:bg-default-100 disabled:cursor-not-allowed disabled:opacity-40"
+											aria-label="Move image up"
 										>
-											<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-												<path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-											</svg>
+											↑
+										</button>
+										<button
+											type="button"
+											disabled={index === imageFiles.length - 1}
+											onClick={() => setImageFiles((prev) => moveItemDown(prev, index))}
+											className="rounded border border-default-300 bg-white px-1.5 py-0.5 text-xs hover:bg-default-100 disabled:cursor-not-allowed disabled:opacity-40"
+											aria-label="Move image down"
+										>
+											↓
 										</button>
 									</div>
-								))}
-							</div>
-							) : (
-							<p className="text-gray-500">
-								Click the button above to select images for upload.
-							</p>
-							)}
-						</div>
+									<span className="mr-2 min-w-0 flex-1 truncate">{entry.file.name}</span>
+									<button
+										type="button"
+										onClick={() => handleRemoveFile(entry.id)}
+										className="shrink-0 rounded-full p-1 text-red-500 transition duration-150 hover:bg-red-100 hover:text-red-700"
+										aria-label={`Remove file ${entry.file.name}`}
+									>
+										<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+											<path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+										</svg>
+									</button>
+								</div>
+							))}
+						</MeetImagePreviewList>
 						{/* <p>yes we know this looks not great</p> */}
 					</div>
 				</div>
 
+				<div className="shrink-0">
 				<Button color="primary" className="mx-3 bg-primary-700" onPress={handleClear}>Clear</Button>
 				{/* <Button color="primary" isDisabled={true} className="mx-3">Save Draft</Button> */}
 				<Button color="primary" className="mx-3" onPress={handleSubmit}>Submit</Button>
 
 				<Alert className="mt-5" title="Incomplete Meet"  description="Your meet is incomplete. Please fill out the required sections." isVisible={incAlertVisible}  onClose={() => setIncAlertVisible(false)}/>
 				<Alert className="mt-5" title="Meet not in California"  description="Blip meets are limited to California for the time being. Sorry for the inconvenience!" isVisible={caliAlertVisible}  onClose={() => setCaliAlertVisible(false)}/>
+				</div>
 				
 			</div>
 			
