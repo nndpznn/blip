@@ -46,6 +46,22 @@ function isMeetInFuture(meet: Meet): boolean {
 	return d != null && d.getTime() > Date.now();
 }
 
+function compareMeets(a: Meet, b: Meet, sortOrder: Exclude<SortOption, "furthest">): number {
+	if (sortOrder === "newest" || sortOrder === "oldest") {
+		const aCt = (a as { created_at?: string }).created_at ?? "";
+		const bCt = (b as { created_at?: string }).created_at ?? "";
+		return sortOrder === "oldest" ? aCt.localeCompare(bCt) : bCt.localeCompare(aCt);
+	}
+	const nullTime = Infinity;
+	const aT = getMeetDateTime(a as unknown as MeetRow)?.getTime() ?? nullTime;
+	const bT = getMeetDateTime(b as unknown as MeetRow)?.getTime() ?? nullTime;
+	return aT - bT;
+}
+
+function sortMeetGroup(meets: Meet[], sortOrder: Exclude<SortOption, "furthest">): Meet[] {
+	return [...meets].sort((a, b) => compareMeets(a, b, sortOrder));
+}
+
 export default function AllMeets() {
 	const { user, loading: authLoading } = useAuth()
 	const [fetchError, setFetchError] = useState<string>("")
@@ -137,20 +153,17 @@ export default function AllMeets() {
 
 	const displayedMeets = useMemo(() => {
 		if (!meets) return null;
-		let list = showPast ? meets : meets.filter(isMeetInFuture);
-		// Treat null meet time as end of list for time-based sorts
-		const getSortTime = (meet: Meet) => getMeetDateTime(meet as unknown as MeetRow)?.getTime() ?? (sortOrder === "upcoming" ? Infinity : -Infinity);
-		list = [...list].sort((a, b) => {
-			if (sortOrder === "newest" || sortOrder === "oldest") {
-				const aCt = (a as { created_at?: string }).created_at ?? "";
-				const bCt = (b as { created_at?: string }).created_at ?? "";
-				return sortOrder === "oldest" ? aCt.localeCompare(bCt) : bCt.localeCompare(aCt);
-			}
-			const aT = getSortTime(a);
-			const bT = getSortTime(b);
-			return sortOrder === "upcoming" ? aT - bT : bT - aT;
-		});
-		return list;
+		const list = showPast ? meets : meets.filter(isMeetInFuture);
+
+		if (sortOrder === "furthest") {
+			const getSortTime = (meet: Meet) =>
+				getMeetDateTime(meet as unknown as MeetRow)?.getTime() ?? -Infinity;
+			return [...list].sort((a, b) => getSortTime(b) - getSortTime(a));
+		}
+
+		const upcoming = list.filter(isMeetInFuture);
+		const past = list.filter((m) => !isMeetInFuture(m));
+		return [...sortMeetGroup(upcoming, sortOrder), ...sortMeetGroup(past, sortOrder)];
 	}, [meets, sortOrder, showPast]);
 
 	if (authLoading || meetsLoading) {
