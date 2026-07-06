@@ -39,7 +39,7 @@ export default function Nav() {
 	return (
 		<div
 			id="nav"
-			className={`grid grid-cols-3 justify-between items-center w-full py-4 border-b-8 border-b-[var(--page-accent)] ${hideNav ? "hidden" : ""}`}
+			className={`grid grid-cols-3 justify-between items-center w-full py-4 border-b-8 border-b-(--page-accent) ${hideNav ? "hidden" : ""}`}
 			aria-hidden={hideNav ? true : undefined}
 		>
 
@@ -62,7 +62,7 @@ export default function Nav() {
 					className="relative grid grid-cols-2 rounded-lg bg-white/10 p-1.5"
 				>
 					<span
-						className="absolute top-1.5 bottom-1.5 left-1.5 w-[calc(50%-6px)] rounded-md bg-[var(--page-accent)] transition-transform duration-200 ease-out"
+						className="absolute top-1.5 bottom-1.5 left-1.5 w-[calc(50%-6px)] rounded-md bg-(--page-accent) transition-transform duration-200 ease-out"
 						style={{ transform: isListView ? "translateX(100%)" : "translateX(0)" }}
 					/>
 					<button
