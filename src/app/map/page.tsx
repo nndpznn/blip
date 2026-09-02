@@ -10,7 +10,7 @@ import { supabase } from '@/clients/supabaseClient';
 
 // components
 import { Button } from "@heroui/button";
-import { Point } from 'geojson';
+import type { Point } from 'geojson';
 import MeetPopup from '@/components/meetPopup';
 
 // customs
