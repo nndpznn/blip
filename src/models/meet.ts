@@ -13,10 +13,35 @@ export interface LocationData {
     };
 }
 
+/** Max size per meet image (10 MiB). */
+export const MEET_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+
+/** Max images per meet (each slot counts, including duplicates). */
+export const MEET_IMAGE_MAX_COUNT = 10;
+
+export function isMeetImageOverLimit(file: File): boolean {
+	return file.size > MEET_IMAGE_MAX_BYTES;
+}
+
+/** Splits `files` so only `MEET_IMAGE_MAX_COUNT - currentCount` are accepted. */
+export function filesWithinMeetImageLimit(
+	currentCount: number,
+	files: File[],
+): { accepted: File[]; skippedNames: string[] } {
+	const remaining = MEET_IMAGE_MAX_COUNT - currentCount;
+	if (remaining <= 0) {
+		return { accepted: [], skippedNames: files.map((f) => f.name) };
+	}
+	const accepted = files.slice(0, remaining);
+	const skippedNames = files.slice(remaining).map((f) => f.name);
+	return { accepted, skippedNames };
+}
+
 class Meet {
 	// supabase generates a unique meet ID upon data entry, and can be retrieved later...
 	organizerId: string 
-	id: number
+	/** Matches `meets.id` in Supabase (integer or UUID string). */
+	id: number | string
 	title: string
 	body: string
 	link?: string
@@ -68,15 +93,25 @@ class Meet {
 
 	// END DATE TIME STUFF
 
-	async uploadImages(files: File[]): Promise<string[]> {
+	/**
+	 * Uploads files in order. Returns one string per input file: public URL or "" if over limit / upload failed.
+	 * Preserves length so edit flows can zip results with pending slots by index.
+	 * @param assignToMeet When true (default), sets `this.images` to successful URLs only (order preserved). Set false when merging ordered slots (e.g. edit flow).
+	 */
+	async uploadImages(files: File[], options?: { assignToMeet?: boolean }): Promise<string[]> {
 		const uploadedImageUrls: string[] = [];
 
 		for (const file of files) {
+		  if (isMeetImageOverLimit(file)) {
+			console.error("Image exceeds max size:", file.name, file.size);
+			uploadedImageUrls.push("");
+			continue;
+		  }
+
 		  const fileExt = file.name.split('.').pop(); // Get file extension
-		  const fileName = `${Date.now()}.${fileExt}`; // Create a unique filename
+		  const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${fileExt}`; // unique per file (batch uploads can share ms)
 		  const filePath = `meetImages/${this.organizerId}/${fileName}`;
 
-		  // Upload the image to Supabase Storage
 		  const { data, error } = await supabase
 			.storage
 			.from('images')
@@ -84,79 +119,96 @@ class Meet {
 
 		  if (error) {
 			console.error("Error uploading image:", error);
+			uploadedImageUrls.push("");
 			continue;
 		  }
 
-		  // Get the public URL of the uploaded image
 		  const imageUrl = supabase
 			.storage
 			.from('images')
 			.getPublicUrl(data?.path || '')
 			.data.publicUrl;
 
-		  if (imageUrl) {
-			uploadedImageUrls.push(imageUrl);
-		  }
+		  uploadedImageUrls.push(imageUrl || "");
 		}
 
-		this.images = uploadedImageUrls; // Save the URLs to the images array (for create flow)
+		if (options?.assignToMeet !== false) {
+			this.images = uploadedImageUrls.filter(Boolean);
+		}
 		return uploadedImageUrls;
 	  }
 
 
-	  async saveToDatabase(): Promise<void> {
-		const { data, error } = await supabase
-		  .from('meets')
-		  .insert([
-			{
-			  organizerId: this.organizerId,
-			  title: this.title,
-			  body: this.body,
-			  location: this.location,
-			  mapsLink: encodeToGoogleMaps(this.location.name, this.location.coordinates),
-			  links: this.link,
-			  images: this.images,
-			  date: this.date?.toString(),
-			  startTime: this.startTime?.toString(),
-			  endTime: this.endTime?.toString(),
-			}
-		  ]).select("id");
-	
-		if (error) {
-		  console.error("Error saving meet data:", error);
-		  return;
-		}
-		
-		this.id = data[0].id
-		console.log("Meet data saved:", data);
+	  /** Payload for `meets` — column names must match your Supabase table (this app uses camelCase, e.g. organizerId). */
+	  private toMeetsRowPayload() {
+		return {
+			organizerId: this.organizerId,
+			title: this.title,
+			body: this.body,
+			location: this.location,
+			mapsLink: encodeToGoogleMaps(this.location.name, this.location.coordinates),
+			links: this.link,
+			images: this.images,
+			date: this.date?.toString(),
+			startTime: this.startTime?.toString(),
+			endTime: this.endTime?.toString(),
+		};
 	  }
 
-	  async saveEditDatabase(): Promise<void> {
+	  async saveToDatabase(): Promise<boolean> {
 		const { data, error } = await supabase
 		  .from('meets')
-		  .update([
-			{
-			  organizerId: this.organizerId,
-			  title: this.title,
-			  body: this.body,
-			  location: this.location,
-			  mapsLink: encodeToGoogleMaps(this.location.name, this.location.coordinates),
-			  links: this.link,
-			  images: this.images,
-			  date: this.date?.toString(),
-			  startTime: this.startTime?.toString(),
-			  endTime: this.endTime?.toString(),
-			}
-		  ]).eq("id", this.id)
+		  .insert([this.toMeetsRowPayload()])
 		  .select("id");
 	
 		if (error) {
 		  console.error("Error saving meet data:", error);
-		  return;
+		  return false;
 		}
-		
-		this.id = data[0].id
+
+		const row = data?.[0];
+		if (!row) {
+		  console.error("Error saving meet data: no row returned from insert.");
+		  return false;
+		}
+
+		this.id = row.id;
+		console.log("Meet data saved:", data);
+		return true;
+	  }
+
+	  async saveEditDatabase(): Promise<boolean> {
+		const {
+			data: { session },
+		} = await supabase.auth.getSession();
+		if (!session) {
+			console.error("Error saving meet data: not signed in (Supabase session missing).");
+			return false;
+		}
+
+		const { data, error } = await supabase
+		  .from('meets')
+		  .update(this.toMeetsRowPayload())
+		  .eq("id", this.id)
+		  .select("id");
+
+		if (error) {
+		  console.error("Error saving meet data:", error);
+		  return false;
+		}
+
+		const row = data?.[0];
+		if (!row) {
+		  console.error(
+				"Error saving meet data: no rows updated (check id, RLS, or permissions).",
+				{ meetId: this.id, idType: typeof this.id },
+			);
+		  return false;
+		}
+
+		this.id = row.id;
 		console.log("Meet data edited:", data);
+		return true;
 	  }
   }
   

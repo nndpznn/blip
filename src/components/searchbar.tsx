@@ -87,14 +87,14 @@ export default function Searchbar({
                         type="text"
                         value={search}
                         placeholder="Search addresses or businesses..."
-                        className="w-full p-2 bg-black text-gray-200 border border-gray-700 rounded-l-lg"
+                        className="w-full p-2 bg-black rounded-l-lg"
                         onChange={(e) => setSearch(e.target.value)}
                     />
-                    <Button radius="none" className="rounded-r-lg" onPress={() => {setSearch(""); setResults([]);}}>clear</Button>
+                    <Button radius="none" className="rounded-r-lg bg-black" onPress={() => {setSearch(""); setResults([]);}}>clear</Button>
                 </div>
     
                 {results.length > 0 && (
-                <ul className="absolute z-50 bg-black border border-gray-700 rounded mt-1 w-full max-h-60 overflow-y-auto shadow-xl">
+                <ul className="absolute z-50 bg-black rounded mt-2 p-3 w-full max-h-60 overflow-y-auto shadow-xl transition-colors-opacity duration-200 ease-out">
                 {results.map((suggestion) => (
                     <li
 						key={suggestion.mapbox_id}

@@ -1,37 +1,13 @@
 'use client'
 
-import Meet from "@/models/meet"
+import Meet, {
+	filesWithinMeetImageLimit,
+	isMeetImageOverLimit,
+	MEET_IMAGE_MAX_COUNT,
+} from "@/models/meet"
 import User from "@/models/user";
 
 import { Button } from "@heroui/button"
-import { Input, Textarea, TimeInput } from "@heroui/react";
-import {Image} from "@heroui/image";
-import { useRouter, useParams } from 'next/navigation'
-import { useEffect, useState, useRef } from "react";
-import { useAuth } from "@/clients/authContext";
-
-import {Calendar} from '@heroui/calendar'
-import { Time, today, getLocalTimeZone, CalendarDate, parseDate, parseTime } from "@internationalized/date";
-import { to12Hour } from "@/util/politeTimeString";
-
-import { supabase } from '@/clients/supabaseClient'
-import { useSupabaseUserMetadata } from '@/hooks/useSupabaseUserMetadata'
-import { fetchUserByUID } from "@/hooks/fetchUserbyUID";
-import Searchbar from "@/components/searchbar";
-import { LocationData } from "@/models/meet";
-
-import UserCard from "@/components/userCard";
-import { ReusableFadeInComponent } from "@/components/reusableFadeInComponent";
-import { CalendarIcon } from "@/assets/CalendarIcon";
-import { MapPinIcon } from "@/assets/MapPinIcon";
-
-const formatAddress = (address: string) => {
-	if (address.includes(', United States')) {
-		return address.slice(0, address.lastIndexOf(', United States'));
-	}
-	return address;
-};
-
 import {
   Drawer,
   DrawerContent,
@@ -43,7 +19,74 @@ import {
   DropdownTrigger,
   DropdownMenu,
   DropdownItem,
+  Input,
+  Textarea,
+  TimeInput,
 } from "@heroui/react";
+import {Image} from "@heroui/image";
+import { useRouter, useParams } from 'next/navigation'
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "@/clients/authContext";
+
+import {Calendar} from '@heroui/calendar'
+import { Time, today, getLocalTimeZone, CalendarDate, parseDate, parseTime } from "@internationalized/date";
+import { to12Hour } from "@/util/politeTimeString";
+
+import { supabase } from '@/clients/supabaseClient'
+import { useSupabaseUserMetadata } from '@/hooks/useSupabaseUserMetadata'
+import { fetchUserByUID } from "@/hooks/fetchUserbyUID";
+import Searchbar from "@/components/searchbar";
+import { LocationData } from "@/models/meet";
+import { moveItemDown, moveItemUp } from "@/util/reorderArray";
+
+import UserCard from "@/components/userCard";
+import MeetImageGallery from "@/components/MeetImageGallery";
+import MeetImagePreviewList from "@/components/MeetImagePreviewList";
+import { ReusableFadeInComponent } from "@/components/reusableFadeInComponent";
+import { CalendarIcon } from "@/assets/CalendarIcon";
+import { MapPinIcon } from "@/assets/MapPinIcon";
+
+const formatAddress = (address: string) => {
+	if (address.includes(', United States')) {
+		return address.slice(0, address.lastIndexOf(', United States'));
+	}
+	return address;
+};
+
+/** Last path segment of a stored image URL (upload filename), for display in the edit drawer. */
+function fileLabelFromImageUrl(url: string): string {
+	try {
+		const path = new URL(url).pathname;
+		const segments = path.split("/").filter(Boolean);
+		return segments.length > 0 ? segments[segments.length - 1] : url;
+	} catch {
+		const i = url.lastIndexOf("/");
+		return i >= 0 ? url.slice(i + 1) : url;
+	}
+}
+
+/** Ordered slots for edit: existing URLs and new files can be interleaved (first = thumbnail). */
+export type MeetEditImageSlot =
+	| { type: "existing"; url: string }
+	| { type: "pending"; id: string; file: File };
+
+function PendingImagePreview({ file }: { file: File }) {
+	const objectUrl = useMemo(() => URL.createObjectURL(file), [file]);
+	useEffect(() => {
+		return () => {
+			URL.revokeObjectURL(objectUrl);
+		};
+	}, [objectUrl]);
+	return (
+		<Image
+			src={objectUrl}
+			alt=""
+			className="h-16 w-16 object-cover rounded-lg"
+			width={64}
+			height={64}
+		/>
+	);
+}
 
 export default function MeetDetail() {
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -51,8 +94,7 @@ export default function MeetDetail() {
 	const [location, setLocation] = useState<LocationData | null>(null);
 	const [body, setBody] = useState('')
 	const [links, setLinks] = useState('')
-	const [existingImageUrls, setExistingImageUrls] = useState<string[]>([])
-	const [newImageFiles, setNewImageFiles] = useState<File[]>([])
+	const [imageSlots, setImageSlots] = useState<MeetEditImageSlot[]>([])
 	const [date, setDate] = useState<CalendarDate>(today(getLocalTimeZone()))
 	const [startTime, setStartTime] = useState<Time | null>()
 	const [endTime, setEndTime] = useState<Time | null>()
@@ -66,27 +108,65 @@ export default function MeetDetail() {
 	const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = e.target.files;
 		if (files) {
-		  setNewImageFiles(prev => [...prev, ...Array.from(files)]);
+			const rejected: string[] = [];
+			const allowed = Array.from(files).filter((file) => {
+				if (isMeetImageOverLimit(file)) {
+					rejected.push(file.name);
+					return false;
+				}
+				return true;
+			});
+			if (rejected.length > 0) {
+				alert(
+					`These images exceed the max size of 10 MB and were not added:\n${rejected.join("\n")}`,
+				);
+			}
+			if (allowed.length > 0) {
+				let skippedDueToCount: string[] = [];
+				setImageSlots((prev) => {
+					const { accepted, skippedNames } = filesWithinMeetImageLimit(
+						prev.length,
+						allowed,
+					);
+					skippedDueToCount = skippedNames;
+					if (accepted.length === 0) return prev;
+					return [
+						...prev,
+						...accepted.map((file) => ({
+							type: "pending" as const,
+							id: crypto.randomUUID(),
+							file,
+						})),
+					];
+				});
+				if (skippedDueToCount.length > 0) {
+					alert(
+						`A meet can have at most ${MEET_IMAGE_MAX_COUNT} images. These were not added:\n${skippedDueToCount.join("\n")}`,
+					);
+				}
+			}
 		}
 		if (fileInputRef.current) {
-			fileInputRef.current.value = '';
+			fileInputRef.current.value = "";
 		}
 	};
 
 	const handleUploadImagesPrompt = () => {
+		if (imageSlots.length >= MEET_IMAGE_MAX_COUNT) {
+			alert(
+				`A meet can have at most ${MEET_IMAGE_MAX_COUNT} images. Remove one to add another.`,
+			);
+			return;
+		}
 		if (fileInputRef.current) {
 			fileInputRef.current.click();
 		}
 	};
 
-	const handleRemoveExistingImage = (indexToRemove: number) => {
-		setExistingImageUrls(prev => prev.filter((_, i) => i !== indexToRemove));
-	};
-
-	const handleRemoveNewFile = (fileNameToRemove: string) => {
-		setNewImageFiles(prev => prev.filter(file => file.name !== fileNameToRemove));
+	const handleRemoveSlot = (indexToRemove: number) => {
+		setImageSlots((prev) => prev.filter((_, i) => i !== indexToRemove));
 		if (fileInputRef.current) {
-			fileInputRef.current.value = '';
+			fileInputRef.current.value = "";
 		}
 	};
 
@@ -95,8 +175,9 @@ export default function MeetDetail() {
 		setTitle(meetData.title || '')
 		setBody(meetData.body || '')
 		setLinks((meetData as { links?: string; link?: string }).links ?? meetData.link ?? '')
-		setExistingImageUrls(meetData.images ?? [])
-		setNewImageFiles([])
+		setImageSlots(
+			(meetData.images ?? []).map((url) => ({ type: "existing" as const, url })),
+		)
 		setDate(meetData.date ? parseDate(meetData.date.toString()) : today(getLocalTimeZone()))
 		setStartTime(meetData.startTime != null ? (typeof meetData.startTime === 'string' ? parseTime(meetData.startTime) : meetData.startTime) : null)
 		setEndTime(meetData.endTime != null ? (typeof meetData.endTime === 'string' ? parseTime(meetData.endTime) : meetData.endTime) : null)
@@ -121,7 +202,10 @@ export default function MeetDetail() {
 	const handleEdit = async () => {
 		console.log([title, body, links])
 
-		const correctId = parseInt(meetId, 10)
+		if (!meet) {
+			console.log("meet not loaded; cannot save")
+			return
+		}
 
 		if (!title || !body || !date || !startTime || !endTime || !location) {
 			console.log("missing one or more required fields")
@@ -129,20 +213,51 @@ export default function MeetDetail() {
 		}
 
 		const meetToSave = new Meet(user!.id, title, body, links, location)
-		meetToSave.id = correctId
+		// Use the id from the loaded row — parseInt(meetId) breaks UUID ids (e.g. parseInt("550e8400-...", 10) === 550).
+		meetToSave.id = meet.id
+		// Keep organizer exactly as stored (camelCase or snake_case from Supabase) so UPDATE matches RLS / row.
+		const orgRow = meet as { organizerId?: string; organizer_id?: string };
+		meetToSave.organizerId = orgRow.organizerId ?? orgRow.organizer_id ?? user!.id
 		meetToSave.date = date
 		meetToSave.startTime = startTime
 		meetToSave.endTime = endTime
 
-		// Keep existing URLs (user may have removed some) and upload new files
-		meetToSave.images = [...existingImageUrls]
-		const newUrls = await meetToSave.uploadImages(newImageFiles)
-		meetToSave.images = [...existingImageUrls, ...newUrls]
+		const pendingFiles = imageSlots
+			.filter((s): s is Extract<MeetEditImageSlot, { type: "pending" }> => s.type === "pending")
+			.map((s) => s.file);
+		if (imageSlots.length > MEET_IMAGE_MAX_COUNT) {
+			alert(
+				`A meet can have at most ${MEET_IMAGE_MAX_COUNT} images. Remove ${imageSlots.length - MEET_IMAGE_MAX_COUNT} before saving.`,
+			);
+			return;
+		}
 
-		await meetToSave.saveEditDatabase()
+		const oversizedPending = pendingFiles.filter(isMeetImageOverLimit);
+		if (oversizedPending.length > 0) {
+			alert(
+				`Remove or replace images over 10 MB: ${oversizedPending.map((f) => f.name).join(", ")}`,
+			);
+			return;
+		}
+		const newUrls = await meetToSave.uploadImages(pendingFiles, { assignToMeet: false });
+		let j = 0;
+		const finalImages: string[] = [];
+		for (const slot of imageSlots) {
+			if (slot.type === "existing") {
+				finalImages.push(slot.url);
+			} else {
+				const u = newUrls[j];
+				j += 1;
+				if (u) finalImages.push(u);
+			}
+		}
+		meetToSave.images = finalImages;
 
-		console.log('form data submitted successfully.', meetToSave)
-		router.push("/seeAllMeets")
+		const saved = await meetToSave.saveEditDatabase();
+		if (!saved) return;
+
+		console.log("form data submitted successfully.", meetToSave);
+		router.push("/seeAllMeets");
 	}
 
 	const {
@@ -231,8 +346,9 @@ export default function MeetDetail() {
 			setTitle(meet?.title || '')
 			setBody(meet?.body || '')
 			setLinks((meet as { links?: string; link?: string }).links ?? meet?.link ?? '')
-			setExistingImageUrls(meet?.images ?? [])
-			setNewImageFiles([])
+			setImageSlots(
+				(meet?.images ?? []).map((url) => ({ type: "existing" as const, url })),
+			)
 			setDate(meet?.date ? parseDate(meet.date.toString()) : today(getLocalTimeZone()))
 			setStartTime(meet?.startTime != null ? (typeof meet.startTime === 'string' ? parseTime(meet.startTime) : meet.startTime) : null)
 			setEndTime(meet?.endTime != null ? (typeof meet.endTime === 'string' ? parseTime(meet.endTime) : meet.endTime) : null)
@@ -248,7 +364,7 @@ export default function MeetDetail() {
 		return publicUrl.slice(i + prefix.length);
 	};
 
-	const onDelete = async (idToDelete: number) => {
+	const onDelete = async (idToDelete: number | string) => {
 		// Delete meet images from Supabase storage by URL
 		const imageUrls = meet?.images ?? [];
 		if (imageUrls.length > 0) {
@@ -326,12 +442,12 @@ export default function MeetDetail() {
 				<div className="flex-1 min-h-0 overflow-y-auto">
 					{/* TITLE/HEADING + OPTIONS DROPDOWN */}
 					<div className="flex items-center justify-between gap-2 mx-6 my-4">
-						<p className="font-bold text-4xl flex-1">{meet.title}</p>
+						<p className="font-bold text-4xl flex-1 min-w-0 break-words text-center">{meet.title}</p>
 						{(meet.organizerId == uid) && (
-							<Dropdown className="blip-main" placement="bottom-end">
+							<Dropdown className="blip-main shrink-0" placement="bottom-end">
 								<DropdownTrigger>
-									<Button isIconOnly variant="light" size="sm" aria-label="Meet options" className="shrink-0 text-foreground-500">
-										<span className="text-xl leading-none">⋯</span>
+									<Button isIconOnly variant="light" size="sm" aria-label="Meet options" className="text-white min-w-8">
+										<span className="text-xl leading-none text-white">⋯</span>
 									</Button>
 								</DropdownTrigger>
 								<DropdownMenu aria-label="Meet actions">
@@ -409,14 +525,13 @@ export default function MeetDetail() {
 				</div>
 			</div>
 
-			{/* TO ADD: GALLERY FUNCTIONALITY */}
 			<div className="flex flex-col w-2/3 h-full min-h-0 overflow-hidden border-l-4 border-red-400 items-center justify-center">
-				<div className="flex-1 w-[60vw] max-h-[60vh] flex items-center justify-center">
-					{meet.images ? (
-						<Image className="rounded-none" alt="Meet" src={meet.images[0]} />
-					) : (
-						<span className="text-foreground-500 text-sm">No image</span>
-					)}
+				<div className="flex flex-1 w-[60vw] max-h-[60vh] min-h-0 items-center justify-center px-2">
+					<MeetImageGallery
+						key={meet.id}
+						images={meet.images ?? []}
+						title={meet.title}
+					/>
 				</div>
 			</div>
 			
@@ -453,13 +568,13 @@ export default function MeetDetail() {
 
 			{/* EDIT CONFIRM PROTOCOL */}
 			<Drawer className="bg-black blip-main" isOpen={isEditOpen} onOpenChange={onEditOpenChange} size="full">
-				<DrawerContent>
+				<DrawerContent className="flex max-h-[100dvh] flex-col">
 				{(onClose) => (
 					<>
-					<DrawerHeader className="flex flex-col gap-1">Edit Meet</DrawerHeader>
-					<DrawerBody>
-						<div className="flex mb-5">
-							<div id="fields" className="w-2/5">
+					<DrawerHeader className="flex shrink-0 flex-col gap-1">Edit Meet</DrawerHeader>
+					<DrawerBody className="flex min-h-0 flex-1 flex-col overflow-hidden">
+						<div className="mb-5 flex min-h-0 flex-1 items-stretch overflow-hidden">
+							<div id="fields" className="min-h-0 min-w-0 w-2/5">
 								<p className="text-xl font-bold">Title</p>
 								<Input value={title} onChange={e => setTitle(e.target.value)}size="md" type="text" />
 								
@@ -503,7 +618,7 @@ export default function MeetDetail() {
 								<Input value={links} onChange={e => setLinks(e.target.value)}size="md" type="text" /> */}
 							</div>
 
-							<div id="calendar" className="w-2/5 ml-10 align-items-center">
+							<div id="calendar" className="ml-10 min-h-0 min-w-0 w-2/5">
 								<p className="text-xl font-bold">Date</p>
 
 								<Calendar
@@ -518,102 +633,143 @@ export default function MeetDetail() {
 							</div>
 
 
-							<div id="misc" className="flex flex-col w-1/5 ml-10">
-								<p className="mt-5 text-xl font-bold">Start Time</p>
+							<div id="misc" className="ml-10 flex w-1/5 min-h-0 flex-col self-stretch">
+								<p className="mt-5 shrink-0 text-xl font-bold">Start Time</p>
 								<TimeInput value={startTime} onChange={setStartTime} label="Start Time" />
 
-								<p className="mt-5 text-xl font-bold">End Time</p>
+								<p className="mt-5 shrink-0 text-xl font-bold">End Time</p>
 								<TimeInput value={endTime} onChange={setEndTime} label="End Time" />
 
-								<p className="mt-5 text-xl font-bold">Upload Images</p>
+								<div className="mt-5 shrink-0">
+									<p className="text-xl font-bold">Upload Images</p>
+									<p className="mt-1 text-sm text-gray-600">
+										Max 10 MB per image. Up to {MEET_IMAGE_MAX_COUNT} images per meet.
+									</p>
 
-								<input
-								ref={fileInputRef}
-								className="hidden"
-								type="file"
-								multiple
-								accept="image/*"
-								onChange={handleImageChange}
-								/>
+									<input
+									ref={fileInputRef}
+									className="hidden"
+									type="file"
+									multiple
+									accept="image/*"
+									onChange={handleImageChange}
+									/>
 
-								<Button
-								onPress={handleUploadImagesPrompt}
-								color="primary"
-								className="mt-1"
-								>
-									Upload
-								</Button>
-
-								<div className="mt-3 text-sm text-gray-600 space-y-3">
-									{existingImageUrls.length > 0 && (
-										<div>
-											<p className="font-medium text-foreground-700 mb-1">Current images</p>
-											<div className="flex flex-wrap gap-2">
-												{existingImageUrls.map((url, index) => (
-													<div
-														key={`${url}-${index}`}
-														className="relative inline-block rounded-lg border border-default-200 overflow-hidden"
-													>
-														<Image
-															src={url}
-															alt="Meet"
-															className="h-16 w-16 object-cover rounded-lg"
-															width={64}
-															height={64}
-														/>
-														<button
-															type="button"
-															onClick={(e) => {
-																e.preventDefault()
-																e.stopPropagation()
-																handleRemoveExistingImage(index)
-															}}
-															className="absolute top-0.5 right-0.5 z-10 p-1 rounded-full bg-black/70 text-white hover:bg-red-500 transition shrink-0"
-															aria-label="Remove image"
-														>
-															<svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-																<path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-															</svg>
-														</button>
-													</div>
-												))}
-											</div>
-										</div>
-									)}
-									{newImageFiles.length > 0 && (
-										<div>
-											<p className="font-medium text-green-600 mb-1">{newImageFiles.length} new file(s) to upload</p>
-											{newImageFiles.map((file, index) => (
-												<div
-													key={file.name + index}
-													className="flex items-center justify-between p-2 bg-green-50 rounded-lg border border-green-200 mt-1"
-												>
-													<span className="truncate mr-4">{file.name}</span>
-													<button
-														type="button"
-														onClick={() => handleRemoveNewFile(file.name)}
-														className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition duration-150"
-														aria-label={`Remove file ${file.name}`}
-													>
-														<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-															<path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-														</svg>
-													</button>
-												</div>
-											))}
-										</div>
-									)}
-									{existingImageUrls.length === 0 && newImageFiles.length === 0 && (
-										<p className="text-gray-500">
-											No images. Click Upload to add current or new images.
-										</p>
-									)}
+									<Button
+									onPress={handleUploadImagesPrompt}
+									color="primary"
+									className="mt-1"
+									isDisabled={imageSlots.length >= MEET_IMAGE_MAX_COUNT}
+									>
+										Upload
+									</Button>
 								</div>
+
+								<MeetImagePreviewList
+									count={imageSlots.length}
+									emptyMessage="No images. Click Upload to add current or new images."
+									header={
+										<p className="font-medium text-foreground-700">
+											Images (top = thumbnail)
+										</p>
+									}
+									className="text-gray-600"
+								>
+									{imageSlots.map((slot, index) => (
+										<div
+											key={
+												slot.type === "existing"
+													? `existing-${slot.url}-${index}`
+													: slot.id
+											}
+											role="listitem"
+											className="flex items-center gap-1 rounded-lg border border-default-200 bg-content1 p-2"
+										>
+											<div className="flex shrink-0 flex-col gap-0.5">
+												<button
+													type="button"
+													disabled={index === 0}
+													onClick={() =>
+														setImageSlots((prev) => moveItemUp(prev, index))
+													}
+													className="rounded border border-default-300 bg-white px-1.5 py-0.5 text-xs hover:bg-default-100 disabled:cursor-not-allowed disabled:opacity-40"
+													aria-label="Move image up"
+												>
+													↑
+												</button>
+												<button
+													type="button"
+													disabled={index === imageSlots.length - 1}
+													onClick={() =>
+														setImageSlots((prev) => moveItemDown(prev, index))
+													}
+													className="rounded border border-default-300 bg-white px-1.5 py-0.5 text-xs hover:bg-default-100 disabled:cursor-not-allowed disabled:opacity-40"
+													aria-label="Move image down"
+												>
+													↓
+												</button>
+											</div>
+											{slot.type === "existing" ? (
+												<div className="relative inline-block shrink-0 overflow-hidden rounded-lg border border-default-200">
+													<Image
+														src={slot.url}
+														alt="Meet"
+														className="h-16 w-16 rounded-lg object-cover"
+														width={64}
+														height={64}
+													/>
+												</div>
+											) : (
+												<div className="relative inline-block h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-default-200">
+													<PendingImagePreview file={slot.file} />
+													<span className="pointer-events-none absolute top-0.5 right-0.5 z-10 rounded bg-green-600 px-1 py-px text-[10px] font-semibold leading-none text-white shadow-sm">
+														New
+													</span>
+												</div>
+											)}
+											<span
+												className="mr-2 min-w-0 flex-1 truncate text-foreground"
+												title={
+													slot.type === "existing"
+														? fileLabelFromImageUrl(slot.url)
+														: slot.file.name
+												}
+											>
+												{slot.type === "existing"
+													? fileLabelFromImageUrl(slot.url)
+													: slot.file.name}
+											</span>
+											<button
+												type="button"
+												onClick={(e) => {
+													e.preventDefault();
+													e.stopPropagation();
+													handleRemoveSlot(index);
+												}}
+												className="shrink-0 rounded-full p-1 text-red-500 transition hover:bg-red-100 hover:text-red-700"
+												aria-label="Remove image"
+											>
+												<svg
+													xmlns="http://www.w3.org/2000/svg"
+													className="h-4 w-4"
+													viewBox="0 0 20 20"
+													fill="currentColor"
+												>
+													<path
+														fillRule="evenodd"
+														d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+														clipRule="evenodd"
+													/>
+												</svg>
+											</button>
+										</div>
+									))}
+								</MeetImagePreviewList>
 								{/* <p>yes we know this looks not great</p> */}
 							</div>
 						</div>
 						</DrawerBody>
-						<DrawerFooter>
+						<DrawerFooter className="shrink-0">
 							<Button color="primary" onPress={onClose}>
 							Cancel
 							</Button>

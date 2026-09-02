@@ -4,12 +4,13 @@ import { useEffect, useState, useMemo } from "react";
 import Meet from "@/models/meet";
 import MeetCard from "@/components/meetCard"
 import { supabase } from "@/clients/supabaseClient";
-import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button, Checkbox } from "@heroui/react";
+import { useAuth } from "@/clients/authContext";
+import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button, Checkbox, Spinner } from "@heroui/react";
 
-/** Maps meet id -> attendee count (from batch fetch). */
-type AttendeeCountMap = Record<number, number>;
+/** Maps meet id -> attendee count (from batch fetch). Keys are String(meet.id) for UUID-safe lookup. */
+type AttendeeCountMap = Record<string, number>;
 /** Set of meet ids the current user is attending. */
-type AttendingSet = Set<number>;
+type AttendingSet = Set<string>;
 /** Maps organizer profile id -> display name. */
 type OrganizerNameMap = Record<string, string>;
 
@@ -45,9 +46,27 @@ function isMeetInFuture(meet: Meet): boolean {
 	return d != null && d.getTime() > Date.now();
 }
 
+function compareMeets(a: Meet, b: Meet, sortOrder: Exclude<SortOption, "furthest">): number {
+	if (sortOrder === "newest" || sortOrder === "oldest") {
+		const aCt = (a as { created_at?: string }).created_at ?? "";
+		const bCt = (b as { created_at?: string }).created_at ?? "";
+		return sortOrder === "oldest" ? aCt.localeCompare(bCt) : bCt.localeCompare(aCt);
+	}
+	const nullTime = Infinity;
+	const aT = getMeetDateTime(a as unknown as MeetRow)?.getTime() ?? nullTime;
+	const bT = getMeetDateTime(b as unknown as MeetRow)?.getTime() ?? nullTime;
+	return aT - bT;
+}
+
+function sortMeetGroup(meets: Meet[], sortOrder: Exclude<SortOption, "furthest">): Meet[] {
+	return [...meets].sort((a, b) => compareMeets(a, b, sortOrder));
+}
+
 export default function AllMeets() {
+	const { user, loading: authLoading } = useAuth()
 	const [fetchError, setFetchError] = useState<string>("")
 	const [meets, setMeets] = useState<Meet[] | null>(null)
+	const [meetsLoading, setMeetsLoading] = useState(true)
 	const [profileId, setProfileId] = useState<string | null>(null)
 	const [attendeeCountByMeet, setAttendeeCountByMeet] = useState<AttendeeCountMap>({})
 	const [attendingMeetIds, setAttendingMeetIds] = useState<AttendingSet>(new Set())
@@ -56,86 +75,110 @@ export default function AllMeets() {
 	const [showPast, setShowPast] = useState(false)
 
 	useEffect(() => {
-		const load = async () => {
-			// 1. Current user once (avoids N calls from each MeetCard)
-			const { data: { user } } = await supabase.auth.getUser()
-			const currentProfileId = user?.id ?? null
-			setProfileId(currentProfileId)
+		if (authLoading) return
 
-			// 2. All meets
-			const { data: meetsData, error: meetsError } = await supabase
-				.from('meets')
-				.select()
-				.order('created_at', { ascending: false })
+		let cancelled = false
+		setMeetsLoading(true)
 
-			if (meetsError) {
-				setFetchError('Error fetching meets for this user.')
-				setMeets(null)
-				return
-			}
-			if (!meetsData?.length) {
-				setMeets([])
-				setFetchError("")
-				return
-			}
-			setMeets(meetsData as Meet[])
-			setFetchError("")
+		;(async () => {
+			try {
+				const currentProfileId = user?.id ?? null
+				if (cancelled) return
+				setProfileId(currentProfileId)
 
-			const meetIds = meetsData.map((m: { id: number }) => m.id)
-			const organizerIds = [...new Set(meetsData.map((m: { organizerId?: string; organizer_id?: string }) => m.organizerId ?? m.organizer_id).filter(Boolean))] as string[]
+				const { data: meetsData, error: meetsError } = await supabase
+					.from('meets')
+					.select()
+					.order('created_at', { ascending: false })
 
-			// 3. Single batch: all meet_attendees for these meets (counts + current user attendance)
-			const { data: attendeesData } = await supabase
-				.from('meet_attendees')
-				.select('meet_id, profile_id')
-				.in('meet_id', meetIds)
+				if (cancelled) return
 
-			const countMap: AttendeeCountMap = {}
-			const attendingSet = new Set<number>()
-			if (attendeesData) {
-				for (const row of attendeesData) {
-					const mid = row.meet_id as number
-					countMap[mid] = (countMap[mid] ?? 0) + 1
-					if (currentProfileId && row.profile_id === currentProfileId) attendingSet.add(mid)
+				if (meetsError) {
+					setFetchError('Error fetching meets for this user.')
+					setMeets(null)
+					return
 				}
-			}
-			setAttendeeCountByMeet(countMap)
-			setAttendingMeetIds(attendingSet)
+				if (!meetsData?.length) {
+					setMeets([])
+					setFetchError("")
+					return
+				}
+				setMeets(meetsData as Meet[])
+				setFetchError("")
 
-			// 4. Single batch: organizer display names
-			if (organizerIds.length > 0) {
-				const { data: profiles } = await supabase
-					.from('profiles')
-					.select('id, username')
-					.in('id', organizerIds)
-				const nameMap: OrganizerNameMap = {}
-				if (profiles) for (const p of profiles) nameMap[p.id] = p.username ?? 'Unknown author'
-				setOrganizerNames(nameMap)
+				const meetIds = meetsData.map((m: { id: number | string }) => m.id)
+				const organizerIds = [...new Set(meetsData.map((m: { organizerId?: string; organizer_id?: string }) => m.organizerId ?? m.organizer_id).filter(Boolean))] as string[]
+
+				const { data: attendeesData } = await supabase
+					.from('meet_attendees')
+					.select('meet_id, profile_id')
+					.in('meet_id', meetIds)
+
+				if (cancelled) return
+
+				const countMap: AttendeeCountMap = {}
+				const attendingSet = new Set<string>()
+				if (attendeesData) {
+					for (const row of attendeesData) {
+						const key = String(row.meet_id)
+						countMap[key] = (countMap[key] ?? 0) + 1
+						if (currentProfileId && row.profile_id === currentProfileId) attendingSet.add(key)
+					}
+				}
+				setAttendeeCountByMeet(countMap)
+				setAttendingMeetIds(attendingSet)
+
+				if (organizerIds.length > 0) {
+					const { data: profiles } = await supabase
+						.from('profiles')
+						.select('id, username')
+						.in('id', organizerIds)
+					if (cancelled) return
+					const nameMap: OrganizerNameMap = {}
+					if (profiles) for (const p of profiles) nameMap[p.id] = p.username ?? 'Unknown author'
+					setOrganizerNames(nameMap)
+				}
+			} finally {
+				if (!cancelled) setMeetsLoading(false)
 			}
+		})()
+
+		return () => {
+			cancelled = true
 		}
-		load()
-	}, [])
+		// Use user id, not `user`: Supabase refreshes the session when the tab is focused and
+		// passes a new User object reference, which would otherwise re-run this effect and
+		// flash the loading state even though nothing meaningful changed.
+	}, [user?.id, authLoading])
 
 	const displayedMeets = useMemo(() => {
 		if (!meets) return null;
-		let list = showPast ? meets : meets.filter(isMeetInFuture);
-		// Treat null meet time as end of list for time-based sorts
-		const getSortTime = (meet: Meet) => getMeetDateTime(meet as unknown as MeetRow)?.getTime() ?? (sortOrder === "upcoming" ? Infinity : -Infinity);
-		list = [...list].sort((a, b) => {
-			if (sortOrder === "newest" || sortOrder === "oldest") {
-				const aCt = (a as { created_at?: string }).created_at ?? "";
-				const bCt = (b as { created_at?: string }).created_at ?? "";
-				return sortOrder === "oldest" ? aCt.localeCompare(bCt) : bCt.localeCompare(aCt);
-			}
-			const aT = getSortTime(a);
-			const bT = getSortTime(b);
-			return sortOrder === "upcoming" ? aT - bT : bT - aT;
-		});
-		return list;
+		const list = showPast ? meets : meets.filter(isMeetInFuture);
+
+		if (sortOrder === "furthest") {
+			const getSortTime = (meet: Meet) =>
+				getMeetDateTime(meet as unknown as MeetRow)?.getTime() ?? -Infinity;
+			return [...list].sort((a, b) => getSortTime(b) - getSortTime(a));
+		}
+
+		const upcoming = list.filter(isMeetInFuture);
+		const past = list.filter((m) => !isMeetInFuture(m));
+		return [...sortMeetGroup(upcoming, sortOrder), ...sortMeetGroup(past, sortOrder)];
 	}, [meets, sortOrder, showPast]);
 
+	if (authLoading || meetsLoading) {
+		return (
+			<div className="flex">
+				<div className="flex-1 mx-[5vw] mt-5 min-h-[50vh] flex flex-col items-center justify-center gap-4">
+					<Spinner size="lg" label="" />
+					<p className="text-lg text-foreground/80">Connecting to Blip…</p>
+				</div>
+			</div>
+		)
+	}
+
 	return (
-		<div className="mx-[5vw] mt-5 flex flex-col h-[calc(100vh-170px)]">
+		<div className="mx-[5vw] mt-5 flex min-h-0 min-w-0 flex-col overflow-x-hidden h-[calc(100vh-170px)]">
 
 			<div className="flex flex-wrap items-center justify-between gap-3 mb-2">
 				<h1 id="header" className="text-3xl font-bold">Browse Meets</h1>
@@ -175,18 +218,22 @@ export default function AllMeets() {
 				<div className="text-red-500 text-center py-2" role="alert">{fetchError}</div>
 			)}
 
-			<div className="scrollbar-modern flex-1 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 overflow-y-auto pb-4">
+			<div className="scrollbar-modern flex-1 min-h-0 min-w-0 grid grid-cols-1 content-start items-start sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 overflow-y-auto overflow-x-hidden pb-4">
 				{displayedMeets?.map((meet: Meet) => {
 					const organizerId = (meet as { organizerId?: string; organizer_id?: string }).organizerId ?? (meet as { organizerId?: string; organizer_id?: string }).organizer_id
 					return (
-						<MeetCard
+						<div
 							key={meet.id}
-							meet={meet}
-							profileId={profileId}
-							organizerName={organizerNames[organizerId ?? ''] ?? undefined}
-							attendeeCount={attendeeCountByMeet[meet.id] ?? 0}
-							attendanceStatus={attendingMeetIds.has(meet.id)}
-						/>
+							className="min-w-0 w-full max-w-full self-start origin-center opacity-100 transition-opacity duration-200 ease-out hover:opacity-70"
+						>
+							<MeetCard
+								meet={meet}
+								profileId={profileId}
+								organizerName={organizerNames[organizerId ?? ''] ?? undefined}
+								attendeeCount={attendeeCountByMeet[String(meet.id)] ?? 0}
+								attendanceStatus={attendingMeetIds.has(String(meet.id))}
+							/>
+						</div>
 					)
 				})}
 			</div>

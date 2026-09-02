@@ -17,7 +17,16 @@ export default function Sandbox() {
 				<h1 className="text-3xl font-bold mb-5">Sandbox</h1>
 
 				<p className="my-5 text-xl">Put anything you need here, any component we&apos;re designing or testing! But please keep tidy and remove it when you&apos;re done.</p>
-			
+
+				<Button
+					color="primary"
+					type="button"
+					className="mb-5"
+					onPress={() => router.push("/sandbox/meet-blog-layout")}
+				>
+					Meet blog layout
+				</Button>
+
 				{/* <MeetCard meet={fakeMeetLol}></MeetCard> */}
 			
 			</div>

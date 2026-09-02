@@ -174,7 +174,7 @@ export default function Map() {
                     const coords = leaves.map((f) => (f.geometry as Point).coordinates);
                     const meetIds = leaves.map((f) => f.properties?.id).filter((id): id is number => id != null);
                     const meetsToShow = meetIds
-                        .map((id) => meets.find((m) => m.id === id))
+                        .map((id) => meets.find((m) => String(m.id) === String(id)))
                         .filter((m): m is Meet => m != null);
                     if (meetsToShow.length === 0) return;
 
@@ -212,19 +212,22 @@ export default function Map() {
                 if (!e.features || e.features.length === 0) return;
 
                 const feature = e.features[0];
-                const geometry = feature.geometry as Point;
-                const coordinates = [...geometry.coordinates] as [number, number];
+                const featureId = feature.properties?.id;
 
-                const [clng, clat] = coordinates;
+                const clickedMeet = meets.find((m) => String(m.id) === String(featureId));
+                if (!clickedMeet?.location?.coordinates) return;
+
+                const [slng, slat] = clickedMeet.location.coordinates;
                 const meetsAtLocation = meets.filter(
                     (m) =>
-                        round5(m.location.coordinates[0]) === round5(clng) &&
-                        round5(m.location.coordinates[1]) === round5(clat)
+                        round5(m.location.coordinates[0]) === round5(slng) &&
+                        round5(m.location.coordinates[1]) === round5(slat)
                 );
                 if (meetsAtLocation.length === 0) return;
 
-                map.easeTo({ center: coordinates, zoom: 14 });
-                showMeetsPopup(meetsAtLocation, coordinates);
+                const popupCenter: [number, number] = [slng, slat];
+                map.easeTo({ center: popupCenter, zoom: 14 });
+                showMeetsPopup(meetsAtLocation, popupCenter);
             });
 
             // Hover effects
@@ -257,17 +260,18 @@ export default function Map() {
 				{/* <div id="mapreplacement" className="flex w-screen h-[70vh] text-center bg-gray-500 overflow-hidden"/> */}
 			</div>
 
-			<div className="grid grid-cols-3 items-center justify-between">
+			<div className="grid grid-cols-3 items-center justify-between mx-5">
 				<div className="col-start-1 justify-self-start">
-					<Button 
+					{/* <Button 
 						color="primary" 
 						className="m-4 bg-red-400 hover:bg-red-500" 
 						type="button" 
 						onPress={() => router.push("/meet/39")}
-					>example meet</Button>
+					>example meet</Button> */}
+                    <a className="flex items-center gap-2 hover:cursor-pointer hover:underline hover:underline-offset-4" onClick={() => router.push("/issue")}>Report an Issue</a>
 				</div>
 				<div className="col-start-2 justify-self-center">
-					<p className="text-[2vh] m-4">hi there, <strong>{fullName}</strong>. looking for something cool to do?</p>
+					<p className="text-[2vh] m-4">Hi there, <strong>{fullName}</strong>. Looking for something cool to do?</p>
 				</div>
 				<div className="col-start-3 justify-self-end">
 					

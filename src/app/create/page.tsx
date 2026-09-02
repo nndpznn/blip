@@ -9,10 +9,16 @@ import {Calendar} from '@heroui/calendar'
 import {Time, today, getLocalTimeZone, CalendarDate} from "@internationalized/date";
 
 import { useState, useRef } from "react";
-import Meet from '@/models/meet'
-import { LocationData } from "@/models/meet";
+import Meet, {
+	filesWithinMeetImageLimit,
+	isMeetImageOverLimit,
+	MEET_IMAGE_MAX_COUNT,
+	type LocationData,
+} from "@/models/meet";
 import { useAuth } from "@/clients/authContext";
+import MeetImagePreviewList from "@/components/MeetImagePreviewList";
 import Searchbar from "@/components/searchbar";
+import { moveItemDown, moveItemUp } from "@/util/reorderArray";
 
 export default function Create() {
 	const router = useRouter()
@@ -24,7 +30,7 @@ export default function Create() {
 	const [location, setLocation] = useState<LocationData | null>(null);
 	const [body, setBody] = useState('')
 	const [links, setLinks] = useState('')
-	const [imageFiles, setImageFiles] = useState<File[]>([])
+	const [imageFiles, setImageFiles] = useState<{ id: string; file: File }[]>([])
 	const [date, setDate] = useState<CalendarDate | null>(null)
 	const [startTime, setStartTime] = useState<Time | null>()
 	const [endTime, setEndTime] = useState<Time | null>()
@@ -36,9 +42,42 @@ export default function Create() {
 	const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = e.target.files;
 		if (files) {
-		  setImageFiles(Array.from(files)); // Convert FileList to an array
+			const rejected: string[] = [];
+			const allowed = Array.from(files).filter((file) => {
+				if (isMeetImageOverLimit(file)) {
+					rejected.push(file.name);
+					return false;
+				}
+				return true;
+			});
+			if (rejected.length > 0) {
+				alert(
+					`These images exceed the max size of 10 MB and were not added:\n${rejected.join("\n")}`,
+				);
+			}
+			if (allowed.length > 0) {
+				let skippedDueToCount: string[] = [];
+				setImageFiles((prev) => {
+					const { accepted, skippedNames } = filesWithinMeetImageLimit(
+						prev.length,
+						allowed,
+					);
+					skippedDueToCount = skippedNames;
+					if (accepted.length === 0) return prev;
+					return [
+						...prev,
+						...accepted.map((file) => ({ id: crypto.randomUUID(), file })),
+					];
+				});
+				if (skippedDueToCount.length > 0) {
+					alert(
+						`A meet can have at most ${MEET_IMAGE_MAX_COUNT} images. These were not added:\n${skippedDueToCount.join("\n")}`,
+					);
+				}
+			}
 		}
-	  };
+		if (e.target) e.target.value = "";
+	};
 
 	const handleClear = () => {
 		setTitle('')
@@ -79,45 +118,63 @@ export default function Create() {
 			return;
 		}
 
+		if (imageFiles.length > MEET_IMAGE_MAX_COUNT) {
+			alert(
+				`A meet can have at most ${MEET_IMAGE_MAX_COUNT} images. Remove ${imageFiles.length - MEET_IMAGE_MAX_COUNT} before submitting.`,
+			);
+			return;
+		}
+
+		const oversized = imageFiles.filter((e) => isMeetImageOverLimit(e.file));
+		if (oversized.length > 0) {
+			alert(
+				`Remove or replace images over 10 MB: ${oversized.map((e) => e.file.name).join(", ")}`,
+			);
+			return;
+		}
+
 		const meet = new Meet(user!.id, title, body, links, location)
 		meet.date = date
 		meet.startTime = startTime
 		meet.endTime = endTime
 
-		await meet.uploadImages(imageFiles)
+		await meet.uploadImages(imageFiles.map((e) => e.file))
 
-		await meet.saveToDatabase()
+		const saved = await meet.saveToDatabase();
+		if (!saved) return;
 
-		console.log('form data submitted successfully.', meet)
+		console.log("form data submitted successfully.", meet);
 
-		router.push("/seeAllMeets")
+		router.push("/seeAllMeets");
 	}
 
 	const handleUploadImagesPrompt = () => {
+		if (imageFiles.length >= MEET_IMAGE_MAX_COUNT) {
+			alert(
+				`A meet can have at most ${MEET_IMAGE_MAX_COUNT} images. Remove one to add another.`,
+			);
+			return;
+		}
 		if (fileInputRef.current) {
 			fileInputRef.current.click();
 		}
 	}
 
-	const handleRemoveFile = (fileNameToRemove: string) => {
-		setImageFiles(prevFiles => 
-			prevFiles.filter(file => file.name !== fileNameToRemove)
-		);
-		// To re-enable uploading the same file name later, 
-		// we need to reset the value of the hidden input:
+	const handleRemoveFile = (id: string) => {
+		setImageFiles((prev) => prev.filter((e) => e.id !== id));
 		if (fileInputRef.current) {
-			fileInputRef.current.value = '';
+			fileInputRef.current.value = "";
 		}
 	};
 
 	return (
-		<div className="">
+		<div className="flex min-h-0 flex-1 flex-col">
 
-			<div className="mx-[5vw] mt-5 h-full">
-				<h1 id="header" className="text-3xl font-bold mb-5">New Meet</h1>
+			<div className="mx-[5vw] mt-5 flex h-[calc(100vh-170px)] min-h-0 min-w-0 flex-col overflow-hidden">
+				<h1 id="header" className="mb-5 shrink-0 text-3xl font-bold">New Meet</h1>
 
-				<div className="flex mb-5">
-					<div id="fields" className="w-2/5">
+				<div className="mb-5 flex min-h-0 flex-1 items-stretch overflow-hidden">
+					<div id="fields" className="min-h-0 min-w-0 w-2/5">
 						<div className="flex items-center">
 							<p className="text-xl font-bold">Title</p>
 							<p className="text-md ml-2 font-bold">(25 chars. max)</p>
@@ -165,7 +222,7 @@ export default function Create() {
 						<Input value={links} onChange={e => setLinks(e.target.value)}size="md" type="text" />
 					</div>
 
-					<div id="calendar" className="w-2/5 ml-10 flex flex-col items-center">
+					<div id="calendar" className="ml-10 flex min-h-0 min-w-0 w-2/5 flex-col items-center">
 						<div>
 							<p className="w-full text-left text-xl font-bold">Date</p>
 
@@ -181,74 +238,102 @@ export default function Create() {
 						{/* <Button color="primary" onPress={() => console.log(date)}>Print date to console</Button> */}
 					</div>
 
-					<div id="misc" className="flex flex-col w-1/5 ml-10">
-						<p className="mt-5 text-xl font-bold">Start Time</p>
+					<div id="misc" className="ml-10 flex w-1/5 min-h-0 flex-col self-stretch">
+						<p className="mt-5 shrink-0 text-xl font-bold">Start Time</p>
 						{/* <Input value={startTime} onChange={e => setStartTime(e.target.value)}size="md" type="text" /> */}
 						<TimeInput value={startTime} onChange={setStartTime} label="Start Time" />
 
-						<p className="mt-5 text-xl font-bold">End Time</p>
+						<p className="mt-5 shrink-0 text-xl font-bold">End Time</p>
 						{/* <Input value={endTime} onChange={e => setEndTime(e.target.value)}size="md" type="text" /> */}
 						<TimeInput value={endTime} onChange={setEndTime} label="End Time" />
 
-						<p className="mt-5 text-xl font-bold">Upload Images</p>
+						<div className="mt-5 shrink-0">
+							<p className="text-xl font-bold">Upload Images</p>
+							<p className="mt-1 text-sm text-gray-600">
+								Max 10 MB per image. Up to {MEET_IMAGE_MAX_COUNT} images per meet.
+							</p>
 
-						<input
-						ref={fileInputRef}
-						className="hidden"
-						type="file"
-						multiple
-						accept="image/*"
-						onChange={handleImageChange}
-						/>
+							<input
+							ref={fileInputRef}
+							className="hidden"
+							type="file"
+							multiple
+							accept="image/*"
+							onChange={handleImageChange}
+							/>
 
-						<Button
-						onPress={handleUploadImagesPrompt}
-						color="primary"
-						className="mt-1"
-						>
-							Upload
-						</Button>
+							<Button
+							onPress={handleUploadImagesPrompt}
+							color="primary"
+							className="mt-1"
+							isDisabled={imageFiles.length >= MEET_IMAGE_MAX_COUNT}
+							>
+								Upload
+							</Button>
+						</div>
 
-						<div className="mt-3 text-sm text-gray-600">
-							{imageFiles.length > 0 ? (
-							<div>
+						<MeetImagePreviewList
+							count={imageFiles.length}
+							emptyMessage="Click the button above to select images for upload."
+							header={
 								<p className="font-medium text-green-600">
-									{imageFiles.length} file(s) selected:
+									{imageFiles.length} file(s) selected (top = thumbnail):
 								</p>
-								{imageFiles.map((file, index) => (
-									<div 
-										key={file.name + index} 
-										className="flex items-center justify-between p-2 bg-green-50 rounded-lg border border-green-200"
-									>
-										<span className="truncate mr-4">{file.name}</span>
+							}
+							className="text-gray-600"
+						>
+							{imageFiles.map((entry, index) => (
+								<div
+									key={entry.id}
+									role="listitem"
+									className="flex items-center gap-1 rounded-lg border border-green-200 bg-green-50 p-2"
+								>
+									<div className="flex shrink-0 flex-col gap-0.5">
 										<button
-											onClick={() => handleRemoveFile(file.name)}
-											className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition duration-150"
-											aria-label={`Remove file ${file.name}`}
+											type="button"
+											disabled={index === 0}
+											onClick={() => setImageFiles((prev) => moveItemUp(prev, index))}
+											className="rounded border border-default-300 bg-white px-1.5 py-0.5 text-xs hover:bg-default-100 disabled:cursor-not-allowed disabled:opacity-40"
+											aria-label="Move image up"
 										>
-											<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-												<path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-											</svg>
+											↑
+										</button>
+										<button
+											type="button"
+											disabled={index === imageFiles.length - 1}
+											onClick={() => setImageFiles((prev) => moveItemDown(prev, index))}
+											className="rounded border border-default-300 bg-white px-1.5 py-0.5 text-xs hover:bg-default-100 disabled:cursor-not-allowed disabled:opacity-40"
+											aria-label="Move image down"
+										>
+											↓
 										</button>
 									</div>
-								))}
-							</div>
-							) : (
-							<p className="text-gray-500">
-								Click the button above to select images for upload.
-							</p>
-							)}
-						</div>
+									<span className="mr-2 min-w-0 flex-1 truncate">{entry.file.name}</span>
+									<button
+										type="button"
+										onClick={() => handleRemoveFile(entry.id)}
+										className="shrink-0 rounded-full p-1 text-red-500 transition duration-150 hover:bg-red-100 hover:text-red-700"
+										aria-label={`Remove file ${entry.file.name}`}
+									>
+										<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+											<path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+										</svg>
+									</button>
+								</div>
+							))}
+						</MeetImagePreviewList>
 						{/* <p>yes we know this looks not great</p> */}
 					</div>
 				</div>
 
+				<div className="shrink-0">
 				<Button color="primary" className="mx-3 bg-primary-700" onPress={handleClear}>Clear</Button>
 				{/* <Button color="primary" isDisabled={true} className="mx-3">Save Draft</Button> */}
 				<Button color="primary" className="mx-3" onPress={handleSubmit}>Submit</Button>
 
 				<Alert className="mt-5" title="Incomplete Meet"  description="Your meet is incomplete. Please fill out the required sections." isVisible={incAlertVisible}  onClose={() => setIncAlertVisible(false)}/>
 				<Alert className="mt-5" title="Meet not in California"  description="Blip meets are limited to California for the time being. Sorry for the inconvenience!" isVisible={caliAlertVisible}  onClose={() => setCaliAlertVisible(false)}/>
+				</div>
 				
 			</div>
 			

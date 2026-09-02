@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Meet from '@/models/meet';
 import { fetchUserByUID } from '@/hooks/fetchUserbyUID';
 
@@ -46,7 +46,7 @@ function formatMeetDateTime(meet: MeetRow): string {
 
 export interface MeetPopupProps {
 	meets: Meet[];
-	onViewMeet: (id: number) => void;
+	onViewMeet: (id: number | string) => void;
 }
 
 export default function MeetPopup({ meets, onViewMeet }: MeetPopupProps) {
@@ -76,8 +76,8 @@ export default function MeetPopup({ meets, onViewMeet }: MeetPopupProps) {
 	const dateTimeStr = formatMeetDateTime(meet as unknown as MeetRow);
 
 	return (
-		<div className="mx-3 text-black min-w-[180px]">
-			<p className="text-left text-2xl font-bold">{meet.title || 'Untitled Meet'}</p>
+		<div className="mx-3 text-black min-w-[180px] max-w-[280px]">
+			<p className="text-left text-2xl font-bold break-words">{meet.title || 'Untitled Meet'}</p>
 			{organizerUsername != null && organizerUsername !== '' && (
 				<p className="text-left text-lg mt-0.5">by {organizerUsername}</p>
 			)}
