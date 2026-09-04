@@ -226,7 +226,7 @@ export default function Map() {
                 if (meetsAtLocation.length === 0) return;
 
                 const popupCenter: [number, number] = [slng, slat];
-                map.easeTo({ center: popupCenter, zoom: 14 });
+                map.easeTo({ center: popupCenter, zoom: 12 });
                 showMeetsPopup(meetsAtLocation, popupCenter);
             });
 
