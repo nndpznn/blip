@@ -525,14 +525,12 @@ export default function MeetDetail() {
 				</div>
 			</div>
 
-			<div className="flex flex-col w-2/3 h-full min-h-0 overflow-hidden border-l-4 border-red-400 items-center justify-center">
-				<div className="flex flex-1 w-[60vw] max-h-[60vh] min-h-0 items-center justify-center px-2">
-					<MeetImageGallery
-						key={meet.id}
-						images={meet.images ?? []}
-						title={meet.title}
-					/>
-				</div>
+			<div className="flex h-full min-h-0 w-2/3 flex-col items-center justify-center overflow-hidden border-l-4 border-red-400 px-4 py-6 sm:px-8">
+				<MeetImageGallery
+					key={meet.id}
+					images={meet.images ?? []}
+					title={meet.title}
+				/>
 			</div>
 			
 
