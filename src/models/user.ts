@@ -35,6 +35,20 @@ class User {
 	}
 
 	async saveProfile(): Promise<ProfileRow|null> {
+		const {
+			data: { user },
+			error: authError,
+		} = await supabase.auth.getUser();
+		if (authError || !user) {
+			console.error(
+				"Error saving profile data: not signed in.",
+				authError?.message,
+			);
+			return null;
+		}
+
+		this.id = user.id;
+
 		const { data, error } = await supabase
 		  .from('profiles')
 		  .update({
@@ -45,7 +59,7 @@ class User {
 				link: this.link,
 				profile_color: this.profile_color
 		  })
-		  .eq("id", this.id)
+		  .eq("id", user.id)
 		  .select("*")
 
 		if (error) {

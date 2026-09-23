@@ -365,8 +365,18 @@ export default function MeetDetail() {
 	};
 
 	const onDelete = async (idToDelete: number | string) => {
+		if (!user) {
+			console.error("Cannot delete meet: not signed in.");
+			return;
+		}
+		if (!meet || meet.organizerId !== user.id) {
+			console.error("Cannot delete meet: only the organizer can delete.");
+			alert("You can only delete meets you organize.");
+			return;
+		}
+
 		// Delete meet images from Supabase storage by URL
-		const imageUrls = meet?.images ?? [];
+		const imageUrls = meet.images ?? [];
 		if (imageUrls.length > 0) {
 			const bucket = 'images';
 			const paths = imageUrls
@@ -384,9 +394,11 @@ export default function MeetDetail() {
 
 		if (error) {
 			console.error("Error deleting data:", error);
-		} else {
-			console.log("Data deleted successfully:", data);
+			alert("Could not delete this meet. Please try again.");
+			return;
 		}
+
+		console.log("Data deleted successfully:", data);
 		router.push("/seeAllMeets");
 	}
 

@@ -54,7 +54,7 @@ function CoverPhoto({ src, alt }: { src: string; alt: string }) {
 				}}
 			>
 				<Image
-					ref={(el) => {
+					ref={(el: HTMLImageElement | null) => {
 						imgRef.current = el;
 						syncFromImg(el);
 					}}

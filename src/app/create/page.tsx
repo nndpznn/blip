@@ -133,7 +133,12 @@ export default function Create() {
 			return;
 		}
 
-		const meet = new Meet(user!.id, title, body, links, location)
+		if (!user) {
+			console.error("Cannot create meet: not signed in.");
+			return;
+		}
+
+		const meet = new Meet(user.id, title, body, links, location)
 		meet.date = date
 		meet.startTime = startTime
 		meet.endTime = endTime

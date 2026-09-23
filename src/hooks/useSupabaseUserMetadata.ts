@@ -1,7 +1,7 @@
-import { useSupabaseUser } from './useSupabaseUser'
+import { useAuth } from '@/clients/authContext'
 
 export const useSupabaseUserMetadata = () => {
-  const { user, loading } = useSupabaseUser()
+  const { user, loading } = useAuth()
 
   const email = user?.email ?? ''
   const fullName = user?.user_metadata?.full_name ?? ''

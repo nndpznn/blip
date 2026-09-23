@@ -2,15 +2,21 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { supabase } from '@/clients/supabaseClient';
 import { Button } from "@heroui/button";
+import { safeNextPath } from '@/util/safeNextPath';
 
-export default function LoginRequired() {
+function LoginRequiredContent() {
+  const searchParams = useSearchParams();
+  const next = safeNextPath(searchParams.get('next'));
+
   const signInWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/map`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
       },
     })
 
@@ -55,5 +61,17 @@ export default function LoginRequired() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginRequired() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-[calc(100vh-var(--nav-height,4rem))] items-center justify-center">
+        Loading…
+      </div>
+    }>
+      <LoginRequiredContent />
+    </Suspense>
   )
 }

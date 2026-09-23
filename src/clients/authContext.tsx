@@ -9,21 +9,17 @@ import React, {
     useCallback
 } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/clients/supabaseClient'; // Adjust path as needed
+import { supabase } from '@/clients/supabaseClient';
 
-// Define the shape of your context value
 interface AuthContextType {
     user: User | null;
     session: Session | null;
     loading: boolean;
     signOut: () => Promise<void>;
-    // You might add other auth-related functions here, e.g., signInWithOAuth, signUp
 }
 
-// Create the context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Create the provider component
 interface AuthProviderProps {
     children: ReactNode;
 }
@@ -31,50 +27,50 @@ interface AuthProviderProps {
 export const AuthProvider = ({ children }: AuthProviderProps) => {
     const [user, setUser] = useState<User | null>(null);
     const [session, setSession] = useState<Session | null>(null);
-    const [loading, setLoading] = useState(true); // Initial loading state
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const getInitialSession = async () => {
+        const getInitialUser = async () => {
             try {
-                // Fetch the initial session on component mount
                 const {
-                    data: { session },
+                    data: { user: initialUser },
                     error,
-                } = await supabase.auth.getSession();
+                } = await supabase.auth.getUser();
 
                 if (error) {
-                    console.error('Error fetching initial session:', error.message);
+                    console.error('Error fetching initial user:', error.message);
+                    setUser(null);
+                    setSession(null);
                 } else {
-                    setSession(session);
-                    setUser(session?.user || null);
+                    setUser(initialUser);
+                    const {
+                        data: { session: initialSession },
+                    } = await supabase.auth.getSession();
+                    setSession(initialSession);
                 }
             } catch (err) {
-                console.error('An unexpected error occurred during initial session fetch:', err);
+                console.error('An unexpected error occurred during initial auth fetch:', err);
+                setUser(null);
+                setSession(null);
             } finally {
                 setLoading(false);
             }
         };
 
-        getInitialSession();
+        getInitialUser();
 
-        // Listen for auth state changes
-        // The onAuthStateChange method now returns a function to unsubscribe directly.
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            (event, currentSession) => {
+            (_event, currentSession) => {
                 setSession(currentSession);
-                setUser(currentSession?.user || null);
-                setLoading(false); // Once an event occurs, we're no longer 'initial loading'
+                setUser(currentSession?.user ?? null);
+                setLoading(false);
             }
         );
 
-        // Cleanup the listener on unmount
         return () => {
-            // Check if subscription exists and unsubscribe
-            if (subscription) {
-                subscription.unsubscribe();
-            }
+            subscription?.unsubscribe();
         };
-    }, []); // Empty dependency array ensures this runs once on mount
+    }, []);
 
     const signOut = useCallback(async () => {
         setLoading(true);
@@ -82,8 +78,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         if (error) {
             console.error('Error signing out:', error.message);
         }
-        setLoading(false); // Set loading to false regardless of error
-        // The onAuthStateChange listener will automatically update user/session to null
+        setLoading(false);
     }, []);
 
     const contextValue: AuthContextType = {
@@ -100,7 +95,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     );
 };
 
-// Custom hook to consume the context
 export const useAuth = () => {
     const context = useContext(AuthContext);
     if (context === undefined) {
