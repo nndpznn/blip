@@ -7,7 +7,6 @@ out/
 *.env
 
 # Build and dependency artifacts
-package-lock.json
 
 # Logs
 npm-debug.log*
@@ -31,3 +30,4 @@ Thumbs.db
 coverage/
 *.bak
 *.tmp
+tsconfig.tsbuildinfo

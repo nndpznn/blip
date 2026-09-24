@@ -1,5 +1,4 @@
 import mapboxgl from "mapbox-gl";
-import Meet from "@/models/meet";
 
 const MAPBOX_ACCESS_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || "";
 
@@ -23,18 +22,3 @@ export const initMap = (containerId: string, center: [number, number] = [-122.41
 		zoom: 11,
 	});
 };
-
-/**
- * Adds markers for events on the map.
- * @param {mapboxgl.Map} map - The Mapbox map instance.
- * @param {Array} events - Array of event objects with { name, lat, lng }.
- */
-export const addEventMarkers = (map: mapboxgl.Map, meets: Meet[]) => {
-      meets.forEach((meet) => {
-        // Parse the location string from Supabase
-		new mapboxgl.Marker({ color: '#FF4500' })
-		.setLngLat([meet.location.coordinates[0], meet.location.coordinates[1]])
-		.setPopup(new mapboxgl.Popup().setHTML(`<h3>${meet.title}</h3><p>${meet.body}</p>`))
-		.addTo(map);
-      });
-  };
