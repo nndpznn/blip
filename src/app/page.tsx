@@ -1,6 +1,7 @@
 'use client'
 
 import Image from "next/image";
+import Link from "next/link";
 import { supabase } from '../clients/supabaseClient';
 import { Button } from "@heroui/button";
 
@@ -32,7 +33,10 @@ export default function Home() {
 
           <p className="w-[50vw]">welcome to blip, your new companion for finding nearby cars and coffee events and meets from community leaders. this app came about as a result of the realization that we, as car enthusiasts, have no real central resource to find if there are any nearby/upcoming car enthusiast shows and meets. looking through Tiktok, Reddit threads, Facebook forums, and Instagram pages can be tedious and community centers can be hard to find. we hope that this map can become this central resource for carspotters around the country(but california for now) to rely on to find cool events near them.</p>
 
-          <Button className="self-center p-6" onPress={signInWithGoogle}>Sign in with Google</Button>
+          <div className="flex flex-wrap gap-4 self-center justify-center">
+            <Button className="p-6" onPress={signInWithGoogle}>Sign in with Google</Button>
+            <Button as={Link} href="/map" variant="bordered" className="p-6">Browse as guest</Button>
+          </div>
         </main>
       </div>
 

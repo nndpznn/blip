@@ -38,7 +38,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 } = await supabase.auth.getUser();
 
                 if (error) {
-                    console.error('Error fetching initial user:', error.message);
+                    // A missing session just means the visitor is logged out (guest); not an error.
+                    if (error.name !== 'AuthSessionMissingError') {
+                        console.error('Error fetching initial user:', error.message);
+                    }
                     setUser(null);
                     setSession(null);
                 } else {

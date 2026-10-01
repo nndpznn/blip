@@ -16,11 +16,14 @@ import MeetPopup from '@/components/meetPopup';
 // customs
 import Searchbar from '@/components/searchbar';
 import { useSupabaseUserMetadata } from '@/hooks/useSupabaseUserMetadata'
+import { useLoginPrompt } from '@/hooks/useLoginPrompt'
 import Meet from '@/models/meet';
 
 export default function Map() {
 	const router = useRouter()
-	const { fullName } = useSupabaseUserMetadata()
+	const { fullName, uid, loading: authLoading } = useSupabaseUserMetadata()
+	const isGuest = !authLoading && !uid
+	const promptLogin = useLoginPrompt()
 	// can also access avatarUrl
 
 	const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -29,9 +32,6 @@ export default function Map() {
 	const searchPingRef = useRef<maplibregl.Marker | null>(null);
 	const [meets, setMeets] = useState<Meet[]>([]);
 
-	// Helper to transform Meet to GeoJSON Feature (must be declared before use in effects)
-	const createFeature = (meet: Meet) => ({
-		type: 'Feature' as const,
 	const clearSearchPing = () => {
 		searchPingRef.current?.remove();
 		searchPingRef.current = null;
@@ -89,6 +89,9 @@ export default function Map() {
 			.addTo(map);
 	};
 
+	// Helper to transform Meet to GeoJSON Feature (must be declared before use in effects)
+	const createFeature = (meet: Meet) => ({
+		type: 'Feature' as const,
 		geometry: {
 			type: 'Point' as const,
 			coordinates: meet.location.coordinates
@@ -107,9 +110,6 @@ export default function Map() {
         const map = initMap(mapContainerRef.current.id);
         mapRef.current = map;
 
-        // Fetch data
-        const fetchMeets = async () => {
-            const { data, error } = await supabase.from('meets').select('*');
         // Clicking any meet ping or cluster dismisses the searched-location ping.
         // Registered with the map (not with the meet layers) so it works regardless of when meets load.
         map.on('click', (e) => {
@@ -118,16 +118,19 @@ export default function Map() {
             if (map.queryRenderedFeatures(e.point, { layers }).length > 0) clearSearchPing();
         });
 
+        // Fetch data
+        const fetchMeets = async () => {
+            const { data, error } = await supabase.from('meets').select('*');
             if (!error && data) setMeets(data);
         };
 
         fetchMeets();
 
         return () => {
+            clearSearchPing();
             if (mapRef.current) mapRef.current.remove();
         }
     }, []);
-            clearSearchPing();
 
 	useEffect(() => {
         const map = mapRef.current;
@@ -325,10 +328,17 @@ export default function Map() {
 
 			<div className="flex-1 w-full">
 				<div className="absolute z-10 p-4">
-					<Searchbar onSelect={(place) => {
-						const [lng, lat] = place.coordinates;
-						mapRef.current?.flyTo({ center: [lng, lat], zoom: 14 });
-					}} />
+					<Searchbar
+						getBias={() => {
+							const center = mapRef.current?.getCenter();
+							return center ? { lat: center.lat, lon: center.lng } : null;
+						}}
+						onSelect={(place) => {
+							const [lng, lat] = place.coordinates;
+							showSearchPing([lng, lat], place.name);
+							mapRef.current?.flyTo({ center: [lng, lat], zoom: 14 });
+						}}
+					/>
 				</div>
 
 				<div id="map" ref={mapContainerRef} className="flex w-screen h-[70vh] text-center overflow-hidden" />  

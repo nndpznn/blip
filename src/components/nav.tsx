@@ -8,11 +8,17 @@ import Image from "next/image"
 import { MapViewIcon } from "@/assets/MapViewIcon"
 import { ListViewIcon } from "@/assets/ListViewIcon"
 import { PlusIcon } from "@/assets/PlusIcon"
+import { useAuth } from "@/clients/authContext"
+import { useLoginPrompt } from "@/hooks/useLoginPrompt"
 import '../styles/globals.css'
 
 export default function Nav() {
 	const router = useRouter()
 	const pathname = usePathname()
+	const { user, loading: authLoading } = useAuth()
+	const promptLogin = useLoginPrompt()
+	// Wait for auth to resolve before picking a menu, so signed-in users never see guest options flash
+	const isGuest = !authLoading && !user
 	const [path, setPath] = useState<string | null>(null)
 	const allButtonClassses = "bg-[var(--page-accent)] hover:bg-[var(--page-accent-hover)] disabled:bg-gray-500"
 
@@ -50,11 +56,18 @@ export default function Nav() {
 							<Image className="cursor-pointer hover:brightness-75" width={36} height={36} src="/favicon.ico" alt="Menu" />
 						</Button>
 					</DropdownTrigger>
-					<DropdownMenu aria-label="Profile Actions">
-						<DropdownItem key="new" onPress={() => router.push("/profile")}>View profile</DropdownItem>
-						<DropdownItem key="report" onPress={() => router.push("/issue")}>Report an issue</DropdownItem>
-						<DropdownItem key="logout" onPress={handleLogout}>Log out</DropdownItem>
-					</DropdownMenu>
+					{isGuest ? (
+						<DropdownMenu aria-label="Guest Actions">
+							<DropdownItem key="signin" onPress={promptLogin}>Sign in</DropdownItem>
+							<DropdownItem key="report" onPress={() => router.push("/issue")}>Report an issue</DropdownItem>
+						</DropdownMenu>
+					) : (
+						<DropdownMenu aria-label="Profile Actions">
+							<DropdownItem key="new" onPress={() => router.push("/profile")}>View profile</DropdownItem>
+							<DropdownItem key="report" onPress={() => router.push("/issue")}>Report an issue</DropdownItem>
+							<DropdownItem key="logout" onPress={handleLogout}>Log out</DropdownItem>
+						</DropdownMenu>
+					)}
 				</Dropdown>
 				<div
 					role="tablist"
@@ -91,9 +104,11 @@ export default function Nav() {
 			<Image className="col-start-2 justify-self-center cursor-pointer opacity-100 transition-opacity duration-200 ease-out hover:opacity-70" src="/favicon.ico" width={70} height={70} alt="Logo" onClick={() => router.push("/map")}/>
 
 			<div className="col-start-3 justify-self-end flex items-center gap-2 mx-4">
-				<Button isIconOnly color="primary" className={`${allButtonClassses} min-w-11 min-h-11 w-11 h-11`} type="button" aria-label="Create meet" onPress={() => router.push("/create")}>
-					<PlusIcon className="size-6" />
-				</Button>
+				{user && (
+					<Button isIconOnly color="primary" className={`${allButtonClassses} min-w-11 min-h-11 w-11 h-11`} type="button" aria-label="Create meet" onPress={() => router.push("/create")}>
+						<PlusIcon className="size-6" />
+					</Button>
+				)}
 			</div>
 		</div>
 	)

@@ -5,7 +5,7 @@ import Meet, {
 	isMeetImageOverLimit,
 	MEET_IMAGE_MAX_COUNT,
 } from "@/models/meet"
-import User from "@/models/user";
+import type { ProfileRow } from "@/models/user";
 
 import { Button } from "@heroui/button"
 import {
@@ -34,6 +34,7 @@ import { to12Hour } from "@/util/politeTimeString";
 
 import { supabase } from '@/clients/supabaseClient'
 import { useSupabaseUserMetadata } from '@/hooks/useSupabaseUserMetadata'
+import { useLoginPrompt } from "@/hooks/useLoginPrompt";
 import { fetchUserByUID } from "@/hooks/fetchUserbyUID";
 import Searchbar from "@/components/searchbar";
 import { LocationData } from "@/models/meet";
@@ -98,12 +99,14 @@ export default function MeetDetail() {
 	const [date, setDate] = useState<CalendarDate>(today(getLocalTimeZone()))
 	const [startTime, setStartTime] = useState<Time | null>()
 	const [endTime, setEndTime] = useState<Time | null>()
-	const [organizer, setOrganizer] = useState<User | null>()
+	const [organizer, setOrganizer] = useState<ProfileRow | null>()
 
 	const { uid } = useSupabaseUserMetadata()
 
 	// const [incAlertVisible, setIncAlertVisible] = useState(false)
-	const { user } = useAuth();
+	const { user, loading: authLoading } = useAuth();
+	const isGuest = !authLoading && !user;
+	const promptLogin = useLoginPrompt();
 
 	const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = e.target.files;
@@ -306,7 +309,18 @@ export default function MeetDetail() {
 		const resolveAuthor = async () => {
 			if (meet) {
 				const user = await fetchUserByUID(meet.organizerId)
-				if (user) setOrganizer(user)
+				// If the profile can't be loaded (e.g. deleted account), still render the meet
+				setOrganizer(
+					user ?? {
+						id: meet.organizerId,
+						fullname: "Unknown author",
+						username: "",
+						headline: "",
+						bio: "",
+						link: "",
+						profile_color: "",
+					},
+				)
 			}
 		}
 		resolveAuthor()
@@ -314,9 +328,9 @@ export default function MeetDetail() {
 
 	useEffect(() => {
 		const fetchAttendance = async () => {
-			if (!meet || !uid) return
+			if (!meet) return
 
-			// Get total attendee count
+			// Get total attendee count (shown to everyone, including logged-out visitors)
 			const { count: total, error: countError } = await supabase
 				.from('meet_attendees')
 				.select('*', { count: 'exact', head: true })
@@ -328,7 +342,11 @@ export default function MeetDetail() {
 				setAttendeeCount(total ?? 0)
 			}
 
-			// Check if current user is attending
+			// Whether the current user is attending only applies when signed in
+			if (!uid) {
+				setAttendanceStatus(false)
+				return
+			}
 			const { count: userCount } = await supabase
 				.from('meet_attendees')
 				.select('*', { count: 'exact', head: true })
@@ -403,10 +421,12 @@ export default function MeetDetail() {
 	}
 
 	const handleRsvpToggle = async () => {
-		if (!uid || !meet) {
-			console.warn("User not logged in or meet not loaded. Cannot RSVP.");
+		if (!uid) {
+			// Logged-out visitors can't RSVP; send them to sign in and back here
+			promptLogin();
 			return;
 		}
+		if (!meet) return;
 
 		let error = null;
 
@@ -508,7 +528,12 @@ export default function MeetDetail() {
 					<div className="flex flex-wrap items-center justify-between gap-3">
 						<div className="flex items-center gap-2">
 							<span className="text-sm text-foreground/80">Organized by</span>
-							<Button onPress={onUserOpen} size="sm" style={{ backgroundColor: organizer.profile_color || "#ff0000" }}>{organizer.username ? organizer.username : organizer.fullname}</Button>
+							{isGuest ? (
+								// Guests can't open user profiles, so show the name as plain text
+								<span className="text-sm font-semibold">{organizer.username ? organizer.username : organizer.fullname}</span>
+							) : (
+								<Button onPress={onUserOpen} size="sm" style={{ backgroundColor: organizer.profile_color || "#ff0000" }}>{organizer.username ? organizer.username : organizer.fullname}</Button>
+							)}
 						</div>
 						<div className="flex items-center gap-2">
 							<Button
@@ -520,7 +545,7 @@ export default function MeetDetail() {
 										: "bg-gray-500 hover:bg-gray-600 text-white"
 								}`}
 							>
-								{attendanceStatus ? "Attending!" : "Attend"}
+								{isGuest ? "Sign in to attend" : attendanceStatus ? "Attending!" : "Attend"}
 							</Button>
 							<div className="flex items-center gap-1">
 								<Image
