@@ -8,7 +8,7 @@ const SECURITY_HEADERS: Record<string, string> = {
 	'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
 }
 
-const PROTECTED_PATHS = ['/create', '/profile']
+const PROTECTED_PATHS = ['/create', '/profile', '/user']
 
 function applySecurityHeaders(response: NextResponse) {
 	Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {

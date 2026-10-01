@@ -52,7 +52,7 @@ export default function Profile() {
 		let cancelled = false
 		setProfileLoading(true)
 		;(async () => {
-			const data = await fetchUserByUID(user.id)
+			const data = await fetchUserByUID(user.id, { includeEmail: true })
 			if (cancelled) return
 			setCurrentUser(data)
 			setFormFields(data)
@@ -92,7 +92,7 @@ export default function Profile() {
 				user.id,
 				fullname,
 				username.trim(),
-				currentUser.email,
+				currentUser.email ?? '',
 				headline,
 				bio,
 				currentUser.link,

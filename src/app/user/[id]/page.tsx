@@ -1,6 +1,6 @@
 'use client'
 
-import User from "@/models/user";
+import { PUBLIC_PROFILE_COLUMNS, type ProfileRow } from "@/models/user";
 import Meet from "@/models/meet";
 import MeetCard from "@/components/meetCard"
 
@@ -54,7 +54,7 @@ export default function UserDetail() {
     const userId = params.id;
 	const { setAccentColor } = usePageAccent();
 
-	const [user, setUser] = useState<User | null>(null)
+	const [user, setUser] = useState<ProfileRow | null>(null)
 	const [fetchError, setFetchError] = useState<string>("")
 	const [meets, setMeets] = useState<Meet[] | null>(null)
 	const [profileId, setProfileId] = useState<string | null>(null)
@@ -67,12 +67,12 @@ export default function UserDetail() {
 		if (!userId) return
 	
 		const fetchData = async () => {
-			const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single()
+			const { data, error } = await supabase.from('profiles').select(PUBLIC_PROFILE_COLUMNS).eq('id', userId).single()
 	
 			if (error) {
 				console.error('There was an error fetching the user.', error)
 			} else {
-				setUser(data)
+				setUser(data as unknown as ProfileRow)
 			}
 		}
 	
