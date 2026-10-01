@@ -1,5 +1,4 @@
-@import 'mapbox-gl/dist/mapbox-gl.css' layer(base);
-@import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css' layer(base);
+@import 'maplibre-gl/dist/maplibre-gl.css' layer(base);
 @import "tailwindcss";
 
 @config "../../tailwind.config.ts";

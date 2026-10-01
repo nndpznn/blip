@@ -4,8 +4,8 @@
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from 'react-dom/client';
-import { initMap } from "../../api/mapbox";
-import mapboxgl from 'mapbox-gl';
+import { initMap, MAP_TEXT_FONT } from "../../api/map";
+import * as maplibregl from 'maplibre-gl';
 import { supabase } from '@/clients/supabaseClient';
 
 // components
@@ -24,12 +24,71 @@ export default function Map() {
 	// can also access avatarUrl
 
 	const mapContainerRef = useRef<HTMLDivElement>(null);
-	const mapRef = useRef<mapboxgl.Map | null>(null);
+	const mapRef = useRef<maplibregl.Map | null>(null);
+	// Marker for the place picked in the search bar; stays until another ping is clicked
+	const searchPingRef = useRef<maplibregl.Marker | null>(null);
 	const [meets, setMeets] = useState<Meet[]>([]);
 
 	// Helper to transform Meet to GeoJSON Feature (must be declared before use in effects)
 	const createFeature = (meet: Meet) => ({
 		type: 'Feature' as const,
+	const clearSearchPing = () => {
+		searchPingRef.current?.remove();
+		searchPingRef.current = null;
+	};
+
+	const showSearchPing = (coordinates: [number, number], label: string) => {
+		const map = mapRef.current;
+		if (!map) return;
+		clearSearchPing();
+
+		// A blue teardrop pin with a name label above it, clearly unlike the flat red meet dots.
+		const el = document.createElement('div');
+		el.setAttribute('aria-label', `Selected location: ${label}`);
+		Object.assign(el.style, {
+			position: 'relative',
+			width: '34px',
+			height: '44px',
+			// Let clicks fall through to the map so a meet ping underneath stays clickable
+			pointerEvents: 'none',
+		});
+
+		// Pin graphic: static markup, no user-provided content
+		el.innerHTML = `
+			<svg width="34" height="44" viewBox="0 0 34 44" style="position:absolute;inset:0;filter:drop-shadow(0 3px 3px rgba(0,0,0,0.6));">
+				<path d="M17 43 C17 43 3 27 3 16 A14 14 0 1 1 31 16 C31 27 17 43 17 43 Z" fill="#38bdf8" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>
+				<circle cx="17" cy="16" r="5.5" fill="#ffffff"/>
+			</svg>`;
+
+		// Label: the place name goes in via textContent so it can never be interpreted as HTML
+		const labelEl = document.createElement('div');
+		labelEl.textContent = label;
+		Object.assign(labelEl.style, {
+			position: 'absolute',
+			bottom: '48px',
+			left: '50%',
+			transform: 'translateX(-50%)',
+			width: 'max-content',
+			maxWidth: '220px',
+			padding: '4px 10px',
+			borderRadius: '6px',
+			background: 'rgba(75, 85, 99, 0.85)',
+			color: '#ffffff',
+			fontSize: '13px',
+			fontWeight: '600',
+			lineHeight: '1.3',
+			textAlign: 'center',
+			boxShadow: '0 2px 6px rgba(0, 0, 0, 0.5)',
+			pointerEvents: 'none',
+		});
+		el.appendChild(labelEl);
+
+		// Anchor at the pin's tip so it points at the exact location
+		searchPingRef.current = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+			.setLngLat(coordinates)
+			.addTo(map);
+	};
+
 		geometry: {
 			type: 'Point' as const,
 			coordinates: meet.location.coordinates
@@ -51,6 +110,14 @@ export default function Map() {
         // Fetch data
         const fetchMeets = async () => {
             const { data, error } = await supabase.from('meets').select('*');
+        // Clicking any meet ping or cluster dismisses the searched-location ping.
+        // Registered with the map (not with the meet layers) so it works regardless of when meets load.
+        map.on('click', (e) => {
+            const layers = ['clusters', 'unclustered-point'].filter((id) => map.getLayer(id));
+            if (layers.length === 0) return;
+            if (map.queryRenderedFeatures(e.point, { layers }).length > 0) clearSearchPing();
+        });
+
             if (!error && data) setMeets(data);
         };
 
@@ -60,6 +127,7 @@ export default function Map() {
             if (mapRef.current) mapRef.current.remove();
         }
     }, []);
+            clearSearchPing();
 
 	useEffect(() => {
         const map = mapRef.current;
@@ -69,7 +137,7 @@ export default function Map() {
         const loadLayers = () => {
             // Check if source already exists (prevents duplicate errors during hot reloads)
             if (map.getSource('meets-source')) {
-                (map.getSource('meets-source') as mapboxgl.GeoJSONSource).setData({
+                (map.getSource('meets-source') as maplibregl.GeoJSONSource).setData({
                     type: 'FeatureCollection',
                     features: meets.map(m => createFeature(m))
                 });
@@ -112,7 +180,7 @@ export default function Map() {
                 filter: ['has', 'point_count'],
                 layout: {
                     'text-field': '{point_count}',
-                    'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+                    'text-font': MAP_TEXT_FONT,
                     'text-size': 20
                 },
                 paint: { 'text-color': '#ffffff' }
@@ -139,7 +207,7 @@ export default function Map() {
             // Shared: show popup for a list of meets at given coordinates (used for point clicks)
             const showMeetsPopup = (meetsToShow: Meet[], coordinates: [number, number]) => {
 				if (meetsToShow.length === 0) return;
-				const popup = new mapboxgl.Popup({ offset: 15, className: 'dark-popup' }).setLngLat(coordinates);
+				const popup = new maplibregl.Popup({ offset: 15, className: 'dark-popup' }).setLngLat(coordinates);
 				const container = document.createElement('div');
 				const root = createRoot(container);
 				root.render(
@@ -157,7 +225,7 @@ export default function Map() {
 			};
 
             // Click on cluster: zoom and/or show popup depending on count and locations
-            map.on('click', 'clusters', (e) => {
+            map.on('click', 'clusters', async (e) => {
                 const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
                 if (!features.length) return;
 
@@ -167,9 +235,16 @@ export default function Map() {
 
                 if (typeof clusterId !== 'number' || pointCount === 0) return;
 
-                const source = map.getSource('meets-source') as mapboxgl.GeoJSONSource;
-                source.getClusterLeaves(clusterId, pointCount, 0, (err, leaves) => {
-                    if (err || !leaves?.length) return;
+                const source = map.getSource('meets-source') as maplibregl.GeoJSONSource;
+                let leaves: GeoJSON.Feature[];
+                try {
+                    leaves = await source.getClusterLeaves(clusterId, pointCount, 0);
+                } catch (err) {
+                    console.error('Error reading cluster leaves:', err);
+                    return;
+                }
+                if (!leaves?.length) return;
+                {
 
                     const coords = leaves.map((f) => (f.geometry as Point).coordinates);
                     const meetIds = leaves.map((f) => f.properties?.id).filter((id): id is number => id != null);
@@ -182,7 +257,7 @@ export default function Map() {
                     const lats = coords.map((c) => c[1]);
                     const sw: [number, number] = [Math.min(...lngs), Math.min(...lats)];
                     const ne: [number, number] = [Math.max(...lngs), Math.max(...lats)];
-                    const bounds = new mapboxgl.LngLatBounds(sw, ne);
+                    const bounds = new maplibregl.LngLatBounds(sw, ne);
                     const center: [number, number] = [coords[0][0], coords[0][1]];
                     const allSameLocation = coords.every(
                         (c) => round5(c[0]) === round5(center[0]) && round5(c[1]) === round5(center[1])
@@ -204,7 +279,7 @@ export default function Map() {
                         }
                         map.fitBounds(bounds, { padding: 60, maxZoom: 14, duration: 400 });
                     }
-                });
+                }
             });
 
             // Click on point: show popup for meets at this location
@@ -271,7 +346,15 @@ export default function Map() {
                     <a className="flex items-center gap-2 hover:cursor-pointer hover:underline hover:underline-offset-4" onClick={() => router.push("/issue")}>Report an Issue</a>
 				</div>
 				<div className="col-start-2 justify-self-center">
-					<p className="text-[2vh] m-4">Hi there, <strong>{fullName}</strong>. Looking for something cool to do?</p>
+					{isGuest ? (
+						<p className="text-[2vh] m-4">
+							Looking for something cool to do?{' '}
+							<a className="font-bold underline underline-offset-4 hover:cursor-pointer" onClick={promptLogin}>Sign in</a>
+							{' '}to attend meets and post your own.
+						</p>
+					) : (
+						<p className="text-[2vh] m-4">Hi there, <strong>{fullName}</strong>. Looking for something cool to do?</p>
+					)}
 				</div>
 				<div className="col-start-3 justify-self-end">
 					

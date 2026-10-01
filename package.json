@@ -14,19 +14,17 @@
     "@heroui/react": "^2.8.5",
     "@heroui/system": "^2.4.23",
     "@heroui/theme": "^2.4.23",
-    "@mapbox/mapbox-gl-geocoder": "^5.0.3",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.48.1",
     "@tailwindcss/postcss": "^4.1.17",
     "framer-motion": "^12.23.24",
-    "mapbox-gl": "^3.9.4",
+    "maplibre-gl": "^5.24.0",
     "next": "16.1.6",
     "react": "19.2.4",
     "react-colorful": "^5.6.1",
     "react-dom": "19.2.4",
     "tailwindcss": "^4.1.17",
-    "tailwindcss-scrollbar": "^0.1.0",
-    "uuid": "^13.0.0"
+    "tailwindcss-scrollbar": "^0.1.0"
   },
   "devDependencies": {
     "@types/geojson": "^7946.0.16",
