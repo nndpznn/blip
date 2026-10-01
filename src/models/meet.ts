@@ -5,7 +5,7 @@ import { encodeToGoogleMaps } from "@/util/encodeToGoogleMaps";
 export interface LocationData {
     name: string;           // e.g., "Whole Foods" or "595 Redwood Highway"
     address: string;        // The full formatted address string
-    mapbox_id: string | null; // Nullable for your migrated legacy records
+    mapbox_id: string | null; // Legacy (Mapbox-era) records only; new places store null
     coordinates: [number, number]; // Strictly a tuple of [lng, lat]
     metadata?: {
         category?: string;

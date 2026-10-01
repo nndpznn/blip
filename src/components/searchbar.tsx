@@ -1,19 +1,10 @@
 import { Button } from "@heroui/react";
-import { useState, useEffect, useMemo, useRef } from "react";
-import { v4 as uuidv4 } from 'uuid'; // You may need to install uuid
-
-interface MapboxSuggestion {
-  mapbox_id: string;
-  name: string;
-  full_address: string;
-  poi_category?: string;
-}
+import { useState, useEffect, useRef } from "react";
+import { searchPlaces, type PlaceSuggestion, type SearchBias } from "@/util/photon";
 
 export interface SearchResult {
   name: string;
   address: string;
-  mapbox_id: string;
-  session_token: string;
   coordinates: [number, number];
   metadata: {
     category: string;
@@ -24,20 +15,22 @@ export interface SearchResult {
 export default function Searchbar({
     onSelect,
     initialValue = "",
+    getBias,
 }: {
   onSelect: (result: SearchResult) => void;
   initialValue?: string;
+  /** Called at search time; return a point (e.g. the map center) to rank nearby places first. */
+  getBias?: () => SearchBias | null;
 }) {
     const [search, setSearch] = useState(initialValue);
-    const [results, setResults] = useState<MapboxSuggestion[]>([]);
+    const [results, setResults] = useState<PlaceSuggestion[]>([]);
+    const [searched, setSearched] = useState(false);
+    const [failed, setFailed] = useState(false);
     const isSelecting = useRef(false);
-    
-    // Search Box API requires a session token for billing efficiency
-    const sessionToken = useMemo(() => uuidv4(), []);
-
-	// useEffect(() => {
-    //     console.log("Current Location State:", location);
-    // }, [location]);
+    const getBiasRef = useRef(getBias);
+    useEffect(() => {
+        getBiasRef.current = getBias;
+    }, [getBias]);
 
     useEffect(() => {
         const controller = new AbortController();
@@ -50,26 +43,24 @@ export default function Searchbar({
         const timeout = setTimeout(() => {
             if (search.length < 3) {
                 setResults([]);
+                setSearched(false);
+                setFailed(false);
                 return;
             }
-      
-            // CHANGED: Using searchbox/v1/suggest for POI + Address support
-            fetch(
-              `https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(search)}` +
-              `&access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}` +
-              `&session_token=${sessionToken}` +
-              `&limit=5` +
-              `&country=US` + 
-              `&bbox=-124.4,32.5,-114.1,42.0`, // <--- This locks it to California
-              { signal: controller.signal }
-            )
-              .then((res) => res.json())
-              .then((data) => {
-                // Search Box returns 'suggestions' instead of 'features'
-                setResults(data.suggestions || []);
+
+            // Photon returns coordinates with each suggestion, so there is no separate retrieve call.
+            searchPlaces(search, { signal: controller.signal, limit: 5, bias: getBiasRef.current?.() })
+              .then((found) => {
+                setResults(found);
+                setFailed(false);
+                setSearched(true);
               })
               .catch((err) => {
-                if (err.name !== "AbortError") console.error(err);
+                if (err.name === "AbortError") return;
+                console.error(err);
+                setResults([]);
+                setFailed(true);
+                setSearched(true);
               });
         }, 300);
 
@@ -77,7 +68,26 @@ export default function Searchbar({
             clearTimeout(timeout);
             controller.abort();
         };
-    }, [search, sessionToken]);
+    }, [search]);
+
+    const handleSelect = (suggestion: PlaceSuggestion) => {
+        // Clear results and update text immediately to avoid flicker/double-click issues
+        isSelecting.current = true;
+        setResults([]);
+        setSearched(false);
+        setFailed(false);
+        setSearch(suggestion.name);
+
+        onSelect({
+            name: suggestion.name,
+            address: suggestion.address,
+            coordinates: suggestion.coordinates,
+            metadata: {
+                category: suggestion.category || "address",
+                is_poi: !!suggestion.category,
+            },
+        });
+    };
 
     return (
         <div className="relative w-screen max-w-md">
@@ -90,53 +100,26 @@ export default function Searchbar({
                         className="w-full p-2 bg-black rounded-l-lg"
                         onChange={(e) => setSearch(e.target.value)}
                     />
-                    <Button radius="none" className="rounded-r-lg bg-black" onPress={() => {setSearch(""); setResults([]);}}>clear</Button>
+                    <Button radius="none" className="rounded-r-lg bg-black" onPress={() => {setSearch(""); setResults([]); setSearched(false); setFailed(false);}}>clear</Button>
                 </div>
+
+                {searched && results.length === 0 && search.length >= 3 && (
+                    <div className="absolute z-50 bg-black rounded mt-2 p-3 w-full text-sm text-gray-400 shadow-xl">
+                        {failed
+                            ? "Search is unavailable right now. Please try again in a moment."
+                            : "No matches in California. Try a street address or the business's exact name."}
+                    </div>
+                )}
     
                 {results.length > 0 && (
                 <ul className="absolute z-50 bg-black rounded mt-2 p-3 w-full max-h-60 overflow-y-auto shadow-xl transition-colors-opacity duration-200 ease-out">
                 {results.map((suggestion) => (
                     <li
-						key={suggestion.mapbox_id}
-                        onClick={async () => {
-                            // 1. IMMEDIATELY clear results and update text 
-                            // This stops the flickering/double-click issue
-                            isSelecting.current = true;
-                            setResults([]); 
-                            setSearch(suggestion.name);
-
-                            try {
-                                // 2. Now perform the background work
-                                const response = await fetch(
-                                    `https://api.mapbox.com/search/searchbox/v1/retrieve/${suggestion.mapbox_id}?access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}&session_token=${sessionToken}`
-                                );
-                                const data = await response.json();
-                                
-                                if (data.features && data.features.length > 0) {
-                                    const feature = data.features[0];
-
-                                    const selection = {
-                                        name: suggestion.name,
-                                        address: suggestion.full_address,
-                                        mapbox_id: suggestion.mapbox_id,
-                                        session_token: sessionToken,
-                                        coordinates: feature.geometry.coordinates,
-                                        metadata: {
-                                            category: suggestion.poi_category || "address",
-                                            is_poi: !!suggestion.poi_category
-                                        }
-                                    };
-
-                                    onSelect(selection);
-                                    setResults([]); 
-                                }
-                            } catch (err) {
-                                console.error("Error retrieving location details:", err);
-                            }
-                        }}
+						key={suggestion.id}
+                        onClick={() => handleSelect(suggestion)}
 						>
                         <div className="font-bold">{suggestion.name}</div>
-                        <div className="text-xs text-gray-500">{suggestion.full_address}</div>
+                        <div className="text-xs text-gray-500">{suggestion.address}</div>
                     </li>
                 ))}
                 </ul>

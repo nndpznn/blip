@@ -593,33 +593,19 @@ export default function MeetDetail() {
 								
 								<p className="mt-5 text-xl font-bold">NEW Location (Leave blank if not changing)</p>
 								<Searchbar 
-									onSelect={async (suggestion) => {
+									onSelect={(suggestion) => {
 										if (!suggestion) return;
 
-										try {
-											// Use the sessionToken passed from the Searchbar
-											const response = await fetch(
-												`https://api.mapbox.com/search/searchbox/v1/retrieve/${suggestion.mapbox_id}?access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}&session_token=${suggestion.session_token}`
-											);
-
-											if (!response.ok) throw new Error("Failed to retrieve location");
-
-											const data = await response.json();
-											const feature = data.features[0];
-
-											setLocation({
-												name: suggestion.name,
-												address: suggestion.address,
-												mapbox_id: suggestion.mapbox_id,
-												coordinates: feature.geometry.coordinates,
-												metadata: {
-													category: suggestion.metadata.category || "address",
-													is_poi: !!suggestion.metadata.is_poi
-												}
-											});
-										} catch (error) {
-											console.error("Retrieve error:", error);
-										}
+										setLocation({
+											name: suggestion.name,
+											address: suggestion.address,
+											mapbox_id: null,
+											coordinates: suggestion.coordinates,
+											metadata: {
+												category: suggestion.metadata.category || "address",
+												is_poi: !!suggestion.metadata.is_poi
+											}
+										});
 									}} 
 								/>
 								{/* <Input value={address} onChange={e => setAddress(e.target.value)}size="md" type="text" /> */}
