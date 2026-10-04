@@ -55,7 +55,7 @@ export default function MeetBlogLayoutSandbox() {
 
 				{/* 2. Gallery */}
 				<section
-					className="mb-12 w-full overflow-hidden rounded-xl border border-red-400/40 bg-white/5 px-2 py-4 sm:px-4"
+					className="mb-12 w-full overflow-hidden rounded-xl border border-red-400/40 bg-white/5 px-3 py-4 sm:px-6"
 					aria-label="Meet photos"
 				>
 					<MeetImageGallery

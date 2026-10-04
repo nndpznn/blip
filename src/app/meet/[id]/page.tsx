@@ -5,7 +5,7 @@ import Meet, {
 	isMeetImageOverLimit,
 	MEET_IMAGE_MAX_COUNT,
 } from "@/models/meet"
-import User from "@/models/user";
+import type { ProfileRow } from "@/models/user";
 
 import { Button } from "@heroui/button"
 import {
@@ -34,6 +34,7 @@ import { to12Hour } from "@/util/politeTimeString";
 
 import { supabase } from '@/clients/supabaseClient'
 import { useSupabaseUserMetadata } from '@/hooks/useSupabaseUserMetadata'
+import { useLoginPrompt } from "@/hooks/useLoginPrompt";
 import { fetchUserByUID } from "@/hooks/fetchUserbyUID";
 import Searchbar from "@/components/searchbar";
 import { LocationData } from "@/models/meet";
@@ -98,12 +99,14 @@ export default function MeetDetail() {
 	const [date, setDate] = useState<CalendarDate>(today(getLocalTimeZone()))
 	const [startTime, setStartTime] = useState<Time | null>()
 	const [endTime, setEndTime] = useState<Time | null>()
-	const [organizer, setOrganizer] = useState<User | null>()
+	const [organizer, setOrganizer] = useState<ProfileRow | null>()
 
 	const { uid } = useSupabaseUserMetadata()
 
 	// const [incAlertVisible, setIncAlertVisible] = useState(false)
-	const { user } = useAuth();
+	const { user, loading: authLoading } = useAuth();
+	const isGuest = !authLoading && !user;
+	const promptLogin = useLoginPrompt();
 
 	const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = e.target.files;
@@ -306,7 +309,18 @@ export default function MeetDetail() {
 		const resolveAuthor = async () => {
 			if (meet) {
 				const user = await fetchUserByUID(meet.organizerId)
-				if (user) setOrganizer(user)
+				// If the profile can't be loaded (e.g. deleted account), still render the meet
+				setOrganizer(
+					user ?? {
+						id: meet.organizerId,
+						fullname: "Unknown author",
+						username: "",
+						headline: "",
+						bio: "",
+						link: "",
+						profile_color: "",
+					},
+				)
 			}
 		}
 		resolveAuthor()
@@ -314,9 +328,9 @@ export default function MeetDetail() {
 
 	useEffect(() => {
 		const fetchAttendance = async () => {
-			if (!meet || !uid) return
+			if (!meet) return
 
-			// Get total attendee count
+			// Get total attendee count (shown to everyone, including logged-out visitors)
 			const { count: total, error: countError } = await supabase
 				.from('meet_attendees')
 				.select('*', { count: 'exact', head: true })
@@ -328,7 +342,11 @@ export default function MeetDetail() {
 				setAttendeeCount(total ?? 0)
 			}
 
-			// Check if current user is attending
+			// Whether the current user is attending only applies when signed in
+			if (!uid) {
+				setAttendanceStatus(false)
+				return
+			}
 			const { count: userCount } = await supabase
 				.from('meet_attendees')
 				.select('*', { count: 'exact', head: true })
@@ -365,8 +383,18 @@ export default function MeetDetail() {
 	};
 
 	const onDelete = async (idToDelete: number | string) => {
+		if (!user) {
+			console.error("Cannot delete meet: not signed in.");
+			return;
+		}
+		if (!meet || meet.organizerId !== user.id) {
+			console.error("Cannot delete meet: only the organizer can delete.");
+			alert("You can only delete meets you organize.");
+			return;
+		}
+
 		// Delete meet images from Supabase storage by URL
-		const imageUrls = meet?.images ?? [];
+		const imageUrls = meet.images ?? [];
 		if (imageUrls.length > 0) {
 			const bucket = 'images';
 			const paths = imageUrls
@@ -384,17 +412,21 @@ export default function MeetDetail() {
 
 		if (error) {
 			console.error("Error deleting data:", error);
-		} else {
-			console.log("Data deleted successfully:", data);
+			alert("Could not delete this meet. Please try again.");
+			return;
 		}
+
+		console.log("Data deleted successfully:", data);
 		router.push("/seeAllMeets");
 	}
 
 	const handleRsvpToggle = async () => {
-		if (!uid || !meet) {
-			console.warn("User not logged in or meet not loaded. Cannot RSVP.");
+		if (!uid) {
+			// Logged-out visitors can't RSVP; send them to sign in and back here
+			promptLogin();
 			return;
 		}
+		if (!meet) return;
 
 		let error = null;
 
@@ -496,7 +528,12 @@ export default function MeetDetail() {
 					<div className="flex flex-wrap items-center justify-between gap-3">
 						<div className="flex items-center gap-2">
 							<span className="text-sm text-foreground/80">Organized by</span>
-							<Button onPress={onUserOpen} size="sm" style={{ backgroundColor: organizer.profile_color || "#ff0000" }}>{organizer.username ? organizer.username : organizer.fullname}</Button>
+							{isGuest ? (
+								// Guests can't open user profiles, so show the name as plain text
+								<span className="text-sm font-semibold">{organizer.username ? organizer.username : organizer.fullname}</span>
+							) : (
+								<Button onPress={onUserOpen} size="sm" style={{ backgroundColor: organizer.profile_color || "#ff0000" }}>{organizer.username ? organizer.username : organizer.fullname}</Button>
+							)}
 						</div>
 						<div className="flex items-center gap-2">
 							<Button
@@ -508,7 +545,7 @@ export default function MeetDetail() {
 										: "bg-gray-500 hover:bg-gray-600 text-white"
 								}`}
 							>
-								{attendanceStatus ? "Attending!" : "Attend"}
+								{isGuest ? "Sign in to attend" : attendanceStatus ? "Attending!" : "Attend"}
 							</Button>
 							<div className="flex items-center gap-1">
 								<Image
@@ -525,14 +562,12 @@ export default function MeetDetail() {
 				</div>
 			</div>
 
-			<div className="flex flex-col w-2/3 h-full min-h-0 overflow-hidden border-l-4 border-red-400 items-center justify-center">
-				<div className="flex flex-1 w-[60vw] max-h-[60vh] min-h-0 items-center justify-center px-2">
-					<MeetImageGallery
-						key={meet.id}
-						images={meet.images ?? []}
-						title={meet.title}
-					/>
-				</div>
+			<div className="flex h-full min-h-0 w-2/3 flex-col items-center justify-center overflow-hidden border-l-4 border-red-400 px-4 py-6 sm:px-8">
+				<MeetImageGallery
+					key={meet.id}
+					images={meet.images ?? []}
+					title={meet.title}
+				/>
 			</div>
 			
 
@@ -583,33 +618,19 @@ export default function MeetDetail() {
 								
 								<p className="mt-5 text-xl font-bold">NEW Location (Leave blank if not changing)</p>
 								<Searchbar 
-									onSelect={async (suggestion) => {
+									onSelect={(suggestion) => {
 										if (!suggestion) return;
 
-										try {
-											// Use the sessionToken passed from the Searchbar
-											const response = await fetch(
-												`https://api.mapbox.com/search/searchbox/v1/retrieve/${suggestion.mapbox_id}?access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}&session_token=${suggestion.session_token}`
-											);
-
-											if (!response.ok) throw new Error("Failed to retrieve location");
-
-											const data = await response.json();
-											const feature = data.features[0];
-
-											setLocation({
-												name: suggestion.name,
-												address: suggestion.address,
-												mapbox_id: suggestion.mapbox_id,
-												coordinates: feature.geometry.coordinates,
-												metadata: {
-													category: suggestion.metadata.category || "address",
-													is_poi: !!suggestion.metadata.is_poi
-												}
-											});
-										} catch (error) {
-											console.error("Retrieve error:", error);
-										}
+										setLocation({
+											name: suggestion.name,
+											address: suggestion.address,
+											mapbox_id: null,
+											coordinates: suggestion.coordinates,
+											metadata: {
+												category: suggestion.metadata.category || "address",
+												is_poi: !!suggestion.metadata.is_poi
+											}
+										});
 									}} 
 								/>
 								{/* <Input value={address} onChange={e => setAddress(e.target.value)}size="md" type="text" /> */}

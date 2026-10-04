@@ -5,7 +5,7 @@ import { encodeToGoogleMaps } from "@/util/encodeToGoogleMaps";
 export interface LocationData {
     name: string;           // e.g., "Whole Foods" or "595 Redwood Highway"
     address: string;        // The full formatted address string
-    mapbox_id: string | null; // Nullable for your migrated legacy records
+    mapbox_id: string | null; // Legacy (Mapbox-era) records only; new places store null
     coordinates: [number, number]; // Strictly a tuple of [lng, lat]
     metadata?: {
         category?: string;
@@ -156,6 +156,20 @@ class Meet {
 	  }
 
 	  async saveToDatabase(): Promise<boolean> {
+		const {
+			data: { user },
+			error: authError,
+		} = await supabase.auth.getUser();
+		if (authError || !user) {
+			console.error(
+				"Error saving meet data: not signed in.",
+				authError?.message,
+			);
+			return false;
+		}
+
+		this.organizerId = user.id;
+
 		const { data, error } = await supabase
 		  .from('meets')
 		  .insert([this.toMeetsRowPayload()])
@@ -179,12 +193,18 @@ class Meet {
 
 	  async saveEditDatabase(): Promise<boolean> {
 		const {
-			data: { session },
-		} = await supabase.auth.getSession();
-		if (!session) {
-			console.error("Error saving meet data: not signed in (Supabase session missing).");
+			data: { user },
+			error: authError,
+		} = await supabase.auth.getUser();
+		if (authError || !user) {
+			console.error(
+				"Error saving meet data: not signed in.",
+				authError?.message,
+			);
 			return false;
 		}
+
+		this.organizerId = user.id;
 
 		const { data, error } = await supabase
 		  .from('meets')

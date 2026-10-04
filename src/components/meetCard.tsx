@@ -7,6 +7,8 @@ import { fetchUserByUID } from "@/hooks/fetchUserbyUID";
 import { Image } from "@heroui/image";
 import { supabase } from '@/clients/supabaseClient'
 import { usePageAccent } from "@/contexts/PageAccentContext";
+import { useAuth } from "@/clients/authContext";
+import { useLoginPrompt } from "@/hooks/useLoginPrompt";
 
 /** Matches prior `h-90` intent (22.5rem) so grid cards stay a consistent size. */
 const CARD_HEIGHT_CLASS = "h-[22.5rem]";
@@ -67,6 +69,9 @@ export default function MeetCard({
 }: MeetCardProps) {
     const router = useRouter();
     const { accentColor } = usePageAccent();
+    const { user, loading: authLoading } = useAuth();
+    const isGuest = !authLoading && !user;
+    const promptLogin = useLoginPrompt();
     const preloaded =
         attendeeCountProp !== undefined &&
         attendanceStatusProp !== undefined &&
@@ -124,7 +129,8 @@ export default function MeetCard({
 
     const handleRsvpToggle = async () => {
         if (!profileId) {
-            console.warn("User not logged in. Cannot RSVP.");
+            // Logged-out visitors can't RSVP; send them to sign in and back to this page
+            promptLogin();
             return;
         }
 
@@ -256,15 +262,22 @@ export default function MeetCard({
                         <div className="mt-auto flex min-h-0 min-w-0 shrink-0 items-center gap-2 pt-1.5 text-xs">
                             <div className="flex min-h-0 min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
                                 <span className="shrink-0 text-white/60">Host</span>
-                                <Link
-                                    href={`/user/${meet.organizerId}`}
-                                    onClick={stopCardPress}
-                                    onKeyDown={stopCardPress}
-                                    onPointerDown={(e) => e.stopPropagation()}
-                                    className="min-w-0 truncate rounded-md bg-white/15 px-1.5 py-0.5 font-medium text-white underline-offset-2 transition hover:bg-white/25 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-                                >
-                                    {username || "Unknown"}
-                                </Link>
+                                {isGuest ? (
+                                    // Guests can't open user profiles, so the host is plain text
+                                    <span className="min-w-0 truncate rounded-md bg-white/15 px-1.5 py-0.5 font-medium text-white">
+                                        {username || "Unknown"}
+                                    </span>
+                                ) : (
+                                    <Link
+                                        href={`/user/${meet.organizerId}`}
+                                        onClick={stopCardPress}
+                                        onKeyDown={stopCardPress}
+                                        onPointerDown={(e) => e.stopPropagation()}
+                                        className="min-w-0 truncate rounded-md bg-white/15 px-1.5 py-0.5 font-medium text-white underline-offset-2 transition hover:bg-white/25 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                                    >
+                                        {username || "Unknown"}
+                                    </Link>
+                                )}
                             </div>
                             <div className="flex shrink-0 items-center gap-1 text-white/90">
                                 <Image
@@ -290,11 +303,12 @@ export default function MeetCard({
                                     color="default"
                                     variant="flat"
                                     isDisabled={isPast}
+                                    title={isGuest ? "Sign in to attend this meet" : undefined}
                                     onPress={() => {
                                         handleRsvpToggle();
                                     }}
                                 >
-                                    {attendanceStatus ? "Attending" : "Attend"}
+                                    {isGuest ? "Sign in" : attendanceStatus ? "Attending" : "Attend"}
                                 </Button>
                             </div>
                         </div>

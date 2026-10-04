@@ -4,12 +4,21 @@ export interface ProfileRow {
     id: string;
     fullname: string;
     username: string;
-	email: string;
+	/** Only present on the signed-in user's own profile; other people's rows never include it. */
+	email?: string;
     headline: string;
     bio: string;
     link: string;
     profile_color: string;
 }
+
+/**
+ * Profile columns that are safe to show other people. Never includes `email`.
+ * Use this instead of select('*') for anything other than the signed-in user's own profile:
+ * the database hides `email` from logged-out visitors, so select('*') fails for them.
+ */
+export const PUBLIC_PROFILE_COLUMNS: string =
+	"id, fullname, username, headline, bio, link, profile_color"
 
 class User {
 	id: string
@@ -35,6 +44,20 @@ class User {
 	}
 
 	async saveProfile(): Promise<ProfileRow|null> {
+		const {
+			data: { user },
+			error: authError,
+		} = await supabase.auth.getUser();
+		if (authError || !user) {
+			console.error(
+				"Error saving profile data: not signed in.",
+				authError?.message,
+			);
+			return null;
+		}
+
+		this.id = user.id;
+
 		const { data, error } = await supabase
 		  .from('profiles')
 		  .update({
@@ -45,7 +68,7 @@ class User {
 				link: this.link,
 				profile_color: this.profile_color
 		  })
-		  .eq("id", this.id)
+		  .eq("id", user.id)
 		  .select("*")
 
 		if (error) {

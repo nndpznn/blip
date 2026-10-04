@@ -32,7 +32,8 @@ export default function RootLayout({
 
   return (
     <html lang="en" className="bg-[#0d0d0d]" data-theme="blip-main">
-      <body className={`${geistSans.variable} ${geistMono.variable} flex flex-col h-screen antialiased overflow-hidden`} >
+      {/* suppressHydrationWarning: browser extensions (e.g. Grammarly) inject attributes onto <body> before hydration */}
+      <body suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} flex flex-col h-screen antialiased overflow-hidden`} >
         <AuthProvider>
           <Providers>
             <PageAccentProvider>

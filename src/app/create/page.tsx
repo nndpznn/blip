@@ -24,8 +24,6 @@ export default function Create() {
 	const router = useRouter()
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
 	// const mapContainer = useRef<HTMLDivElement | null>(null);
-	// const map = useRef<mapboxgl.Map | null>(null);
-
 	const [title, setTitle] = useState('')
 	const [location, setLocation] = useState<LocationData | null>(null);
 	const [body, setBody] = useState('')
@@ -133,7 +131,12 @@ export default function Create() {
 			return;
 		}
 
-		const meet = new Meet(user!.id, title, body, links, location)
+		if (!user) {
+			console.error("Cannot create meet: not signed in.");
+			return;
+		}
+
+		const meet = new Meet(user.id, title, body, links, location)
 		meet.date = date
 		meet.startTime = startTime
 		meet.endTime = endTime
@@ -187,33 +190,19 @@ export default function Create() {
 						
 						<p className="mt-5 text-xl font-bold">Location</p>
 						<Searchbar 
-							onSelect={async (suggestion) => {
+							onSelect={(suggestion) => {
 								if (!suggestion) return;
 
-								try {
-									// Use the sessionToken passed from the Searchbar
-									const response = await fetch(
-										`https://api.mapbox.com/search/searchbox/v1/retrieve/${suggestion.mapbox_id}?access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}&session_token=${suggestion.session_token}`
-									);
-
-									if (!response.ok) throw new Error("Failed to retrieve location");
-
-									const data = await response.json();
-									const feature = data.features[0];
-
-									setLocation({
-										name: suggestion.name,
-										address: suggestion.address,
-										mapbox_id: suggestion.mapbox_id,
-										coordinates: feature.geometry.coordinates,
-										metadata: {
-											category: suggestion.metadata.category || "address",
-											is_poi: !!suggestion.metadata.is_poi
-										}
-									});
-								} catch (error) {
-									console.error("Retrieve error:", error);
-								}
+								setLocation({
+									name: suggestion.name,
+									address: suggestion.address,
+									mapbox_id: null,
+									coordinates: suggestion.coordinates,
+									metadata: {
+										category: suggestion.metadata.category || "address",
+										is_poi: !!suggestion.metadata.is_poi
+									}
+								});
 							}} 
 						/>
 						{/* <Input value={address} onChange={e => setAddress(e.target.value)}size="md" type="text" /> */}
