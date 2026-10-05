@@ -1,7 +1,7 @@
 # Blip — Big-Picture Audit
 
 **Date:** 2026-09-23  
-**Updated:** 2026-09-23 (items 1–2 status)  
+**Updated:** 2026-10-04 (MapLibre swap, guest access, profile email exposure, middleware location — all deployed to production; item 3 CI + tests added)  
 **Repo:** `/Users/nndpznn/Desktop/CMSI/personal/blip`  
 **Constraint (original):** Report only — no application code changes. Secret values are not printed.
 
@@ -9,9 +9,9 @@
 
 ## Snapshot
 
-Blip is a California-focused car/coffee meet discovery app (map + list, RSVP, create/edit, profiles). Stack: **Next.js 16.1.6** App Router, **React 19**, TypeScript, **Supabase** (auth + Postgres + storage), Mapbox GL, HeroUI, Tailwind 4. Hosted on Vercel.
+Blip is a California-focused car/coffee meet discovery app (map + list, RSVP, create/edit, profiles). Stack: **Next.js 16.1.6** App Router, **React 19**, TypeScript, **Supabase** (auth + Postgres + storage), MapLibre GL (OpenFreeMap tiles) + Photon search, HeroUI, Tailwind 4. Hosted on Vercel.
 
-**Auth boundary (current):** Cookie-backed `@supabase/ssr` clients, root [`middleware.ts`](../middleware.ts) (session refresh, `/create` + `/profile` gates, prod `/sandbox` block, security headers), and `/auth/callback` for OAuth. Client screens still talk to Supabase with the anon key; **RLS on the Supabase project is the data-authorization boundary**. Product maturity is pre-1.0 (`package.json` version `0.5.0`).
+**Auth boundary (current):** Cookie-backed `@supabase/ssr` clients, [`src/middleware.ts`](../src/middleware.ts) (session refresh, `/create` + `/profile` + `/user` gates, prod `/sandbox` block, security headers), and `/auth/callback` for OAuth. Logged-out visitors can browse the map, meet list and meet details; attending, creating and profile pages prompt sign-in (deployed and stable as of 2026-10-04). **Correction (2026-09-30):** the middleware previously sat at the repo root while the app uses `src/`, so Next never ran it and the `/create` / `/profile` gates and security headers were not active; it now lives in `src/` and the redirects and headers are verified. Client screens still talk to Supabase with the anon key; **RLS on the Supabase project is the data-authorization boundary**. Product maturity is pre-1.0 (`package.json` version `0.5.0`).
 
 ---
 
@@ -42,7 +42,7 @@ Priority order used: **security → reliability → efficiency → organization*
 
 | Requirement | Where |
 |-------------|--------|
-| Cookie sessions + middleware redirects for `/create`, `/profile` → `/loginrequired?next=…` | [`middleware.ts`](../middleware.ts), [`src/clients/supabase/`](../src/clients/supabase/) |
+| Cookie sessions + middleware redirects for `/create`, `/profile`, `/user` → `/loginrequired?next=…` (effective only since the 2026-09-30 move to `src/`) | [`src/middleware.ts`](../src/middleware.ts), [`src/clients/supabase/`](../src/clients/supabase/) |
 | `saveToDatabase` / `saveEditDatabase`: `getUser()`, force `organizerId` | [`src/models/meet.ts`](../src/models/meet.ts) |
 | Delete: require user + assert organizer before storage/row delete | [`src/app/meet/[id]/page.tsx`](../src/app/meet/[id]/page.tsx) |
 | Profile save: `getUser()`, `.eq('id', user.id)` | [`src/models/user.ts`](../src/models/user.ts) |
@@ -52,7 +52,11 @@ UI organizer gates remain for UX only; RLS (item 1) + write-path identity are th
 
 ---
 
-### 3. No CI, no tests, lockfile gitignored (Reliability)
+### 3. No CI, no tests, lockfile gitignored (Reliability) — DONE
+
+**Status (2026-10-04):** `package-lock.json` is tracked (no longer gitignored). [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs `npm ci`, `lint`, `typecheck`, `test` and `build` on every PR and on pushes to `main`/`dev`. Lint is clean of errors (the three blocking `set-state-in-effect` / `require()` errors were fixed; two config-file warnings remain). The broken `migrate:meet-images` script was removed. Tests use Node's built-in runner via `tsx` (`npm test`) and cover the image-limit helpers (extracted to `src/util/meetImageLimits.ts`), `safeNextPath`, and Photon search mapping/filtering/dedupe/retry. Writing them exposed and fixed a bug where `fetchPhoton` retried non-retryable 4xx errors. **Still to do in GitHub:** mark the `verify` check as required in branch protection for `main` so red CI blocks merges.
+
+**Original concern (kept for history):**
 
 `.gitignore` ignores `package-lock.json`, so installs on Vercel/CI are non-reproducible. There is no `.github/workflows`, no `*.test.*` / `*.spec.*`, and `npm run migrate:meet-images` points at a missing `scripts/migrate-meet-images.ts`. Past dependency/Vercel breakage is a predictable outcome of this setup. Regressions in RSVP, image limits, and auth gates have no automated net.
 
@@ -66,7 +70,7 @@ UI organizer gates remain for UX only; RLS (item 1) + write-path identity are th
 
 The map does `supabase.from('meets').select('*')` with no filter (`src/app/map/page.tsx`). Browse does an ordered full-table `select()` (`src/app/seeAllMeets/page.tsx`). As the community grows, this becomes slow loads, large client memory, heavy GeoJSON, and possible mobile failure—before any feature work.
 
-**Action item:** Paginate the list view (`range` + infinite scroll or “load more”), defaulting to upcoming meets by date. For the map, query by viewport bbox and an upcoming date window (store lng/lat columns or use PostGIS/`location` JSON operators). Stop selecting `*` for cards/markers—pull only fields needed for pins and card chrome; fetch full bodies on the detail route. Cap `.in('meet_id', …)` attendee batches (e.g. chunks of 100). Re-check Mapbox layer update effects so full rebinds are not paid on every meets array identity change.
+**Action item:** Paginate the list view (`range` + infinite scroll or “load more”), defaulting to upcoming meets by date. For the map, query by viewport bbox and an upcoming date window (store lng/lat columns or use PostGIS/`location` JSON operators). Stop selecting `*` for cards/markers—pull only fields needed for pins and card chrome; fetch full bodies on the detail route. Cap `.in('meet_id', …)` attendee batches (e.g. chunks of 100). Re-check MapLibre layer update effects so full rebinds are not paid on every meets array identity change.
 
 **Alternatives:** A materialized “upcoming_meets” view or edge-cached public feed for anonymous browse. Overkill until pagination/bbox exist.
 
@@ -74,11 +78,13 @@ The map does `supabase.from('meets').select('*')` with no filter (`src/app/map/p
 
 ### 5. Fragmented auth/loading and false “not found” UX (Reliability) — PARTIAL
 
+**Done since (2026-09-30):** `fetchUserByUID` now returns `null` on error (no more Postgrest error object treated as a profile); the meet detail page falls back to an “Unknown author” organizer so a missing profile no longer renders as “not found”; the expected “Auth session missing” result for guests is no longer logged as an error.
+
 **Done with item 2:** Single auth source via `AuthProvider` (`getUser` + `onAuthStateChange`); `useSupabaseUser` removed; `useSupabaseUserMetadata` wraps `useAuth`; create no longer uses `user!` (middleware + guard).
 
-**Still open:** Meet detail still conflates loading with “not found” (`!meet || !organizer`). `fetchUserByUID` can return a Postgrest error object as if it were a profile. RSVP toggles have no in-flight lock. Username uniqueness is a client TOCTOU check (add a unique DB constraint on `profiles.username`).
+**Still open:** Meet detail still has no explicit `loading` / `error` / `ready` split. RSVP toggles have no in-flight lock. Username uniqueness is a client TOCTOU check (add a unique DB constraint on `profiles.username`).
 
-**Action item (remaining):** Split meet detail into `loading` / `error` / `ready`. Fix `fetchUserByUID` to return `null` on error. Disable RSVP while a request is in flight; enforce username uniqueness in the database.
+**Action item (remaining):** Split meet detail into `loading` / `error` / `ready`. Disable RSVP while a request is in flight; enforce username uniqueness in the database.
 
 ---
 
@@ -86,16 +92,16 @@ The map does `supabase.from('meets').select('*')` with no filter (`src/app/map/p
 
 | Issue | Why it matters less *right now* |
 |--------|----------------------------------|
-| Public Mapbox token in Search Box query strings | Expected for GL; still restrict token URLs/scopes in Mapbox dashboard and consider a rate-limited proxy later (cost/abuse). |
+| ~~Public Mapbox token in Search Box query strings~~ | **Resolved (2026-09-30):** Mapbox removed in favor of MapLibre + OpenFreeMap + Photon (no token). Old token rotated/revoked (2026-10-04). Photon's public endpoint has no SLA; consider a self-hosted/paid geocoder if search volume grows. |
 | `/sandbox` routes | **Mitigated:** middleware returns 404 for `/sandbox*` when `NODE_ENV === 'production'`. |
 | Dead code | **Culled (2026-09-23):** removed unused ThemeProvider, logoutButton, fetchUserByUsername, addEventMarkers, GoogleOAuthProvider/`@react-oauth/google`, and accidental `"npm"` dependency. |
 | `encodeToGoogleMaps` puts coordinates in `query_place_id` | Broken/weak Maps deep links (`src/util/encodeToGoogleMaps.ts`) — quick fix after remaining P-items. |
 | Client-only California substring check | Bypassable without server/RLS validation; product rule, not a vault. |
-| Possible public `email` on profile `select('*')` | Confirm column grants / RLS so public user pages do not leak emails. |
+| ~~Public `email` on `profiles`~~ | **Resolved (2026-10-04):** app code selects only public columns (email only for the user's own profile), and migration `20260930230000_hide_profile_email_from_anon.sql` was applied after deploy, revoking anon access to `email`. Logged-out pages confirmed working afterward. |
 | Hardcoded Formspree form id | Spam/lock-in surface on `/issue`. |
-| Misleading `src/api/` name | Client Mapbox helpers only — rename when cleaning structure. |
+| Misleading `src/api/` name | Client MapLibre helper only (`src/api/map.ts`) — rename when cleaning structure. |
 | Triplicated date/sort helpers across cards/list/user pages | Maintainability tax once features stabilize. |
-| RLS SQL not in `supabase/migrations/` | Residual from item 1 — export for reviewability, not a live auth hole if dashboard policies stay correct. |
+| RLS SQL not in `supabase/migrations/` | Residual from item 1 — `supabase/migrations/` now holds only the email-hiding grant migration; export the RLS policies for reviewability, not a live auth hole if dashboard policies stay correct. |
 
 ### Dead code inventory — CULLED (2026-09-23)
 
@@ -117,9 +123,10 @@ The map does `supabase.from('meets').select('*')` with no filter (`src/app/map/p
 1. ~~**Verify/fix Supabase RLS** and compartmentalize the service-role key.~~ **Done** (export migrations still nice-to-have).  
 2. ~~**Middleware + harden create/delete/profile writes**~~ **Done.**  
 3. ~~**Cull dead code**~~ **Done.**  
-4. **Commit lockfile + add CI** (`lint` / `tsc` / `build`).  
+3b. ~~**Apply the profile-email migration**, then revoke the old Mapbox token.~~ **Done** (2026-10-04).  
+4. ~~**Commit lockfile + add CI** (`lint` / `tsc` / `build`).~~ **Done** (2026-10-04); require the check in branch protection.  
 5. **Paginate list + bbox/upcoming filter on map.**  
-6. **Finish item 5 UX/reliability** (meet detail states, `fetchUserByUID`, RSVP lock, username unique constraint); then Maps URL fix.
+6. **Finish item 5 UX/reliability** (meet detail states, RSVP lock, username unique constraint); then Maps URL fix.
 
 ---
 
@@ -127,13 +134,13 @@ The map does `supabase.from('meets').select('*')` with no filter (`src/app/map/p
 
 | Path | Role |
 |------|------|
-| `middleware.ts` | Session refresh, auth redirects, sandbox gate, security headers |
+| `src/middleware.ts` | Session refresh, auth redirects, sandbox gate, security headers |
 | `src/app/` | Routes: `/`, `/map`, `/seeAllMeets`, `/meet/[id]`, `/create`, `/profile`, `/user/[id]`, `/loginrequired`, `/issue`, `/auth/callback`, `/sandbox/*` |
 | `src/clients/` | Browser/server Supabase helpers + `AuthProvider` |
 | `src/models/` | `Meet` / `User` write + image upload helpers |
 | `src/components/` | Nav, cards, popup, search, galleries |
 | `src/hooks/` | Profile fetchers + metadata thin wrap of `useAuth` |
-| `src/api/mapbox.ts` | Client Mapbox init (not an HTTP API) |
-| `supabase/` | CLI `config.toml` (migrations folder still empty) |
+| `src/api/map.ts` | Client MapLibre init + dark theme overrides (not an HTTP API); search via `src/util/photon.ts` |
+| `supabase/` | CLI `config.toml`; `migrations/` has the profile-email grant migration (applied) |
 
 **Core tables (inferred):** `meets`, `profiles`, `meet_attendees`; storage bucket `images`.
