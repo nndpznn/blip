@@ -6,7 +6,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from 'react-dom/client';
 import { initMap, MAP_TEXT_FONT } from "../../api/map";
 import * as maplibregl from 'maplibre-gl';
-import { supabase } from '@/clients/supabaseClient';
+import { fetchUpcomingMapMeets } from '@/api/meets';
 
 // components
 import type { Point } from 'geojson';
@@ -117,13 +117,8 @@ export default function Map() {
             if (map.queryRenderedFeatures(e.point, { layers }).length > 0) clearSearchPing();
         });
 
-        // Fetch data
-        const fetchMeets = async () => {
-            const { data, error } = await supabase.from('meets').select('*');
-            if (!error && data) setMeets(data);
-        };
-
-        fetchMeets();
+        // Fetch data: upcoming meets only, with just the columns pins and popups use
+        fetchUpcomingMapMeets().then(setMeets);
 
         return () => {
             clearSearchPing();
