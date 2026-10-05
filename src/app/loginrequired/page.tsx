@@ -28,7 +28,7 @@ function LoginRequiredContent() {
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-var(--nav-height,4rem))] items-center justify-center font-(--font-geist-sans) px-6">
-	  <Image alt="blip-bg" src="/assets/blip-bg.png" className="w-screen fixed top-0 left-0 z-0" width={1} height={1}></Image>
+	  <Image alt="blip-bg" src="/assets/blip-bg.png" className="fixed top-0 left-0 w-full h-full object-cover z-0" fill={true} sizes="100vw" style={{objectFit: 'cover'}}></Image>
 	  
       <div className="z-1 flex flex-col gap-8 items-center text-center max-w-md">
         <Image
