@@ -98,7 +98,13 @@ export default function Profile() {
 				currentUser.link,
 				profileColor)
 
-			const updatedData = await profile.saveProfile()
+			const { profile: updatedData, usernameTaken } = await profile.saveProfile()
+
+			if (usernameTaken) {
+				// The database rejected a duplicate the pre-check missed (two people claiming it at once); stay in edit mode.
+				setUsernameTakenWarning(`Username "${username.trim()}" is already taken. Please choose a different one.`)
+				return
+			}
 
 			if (updatedData) {
 				// updatedData is a ProfileRow (plain object), so this works!
