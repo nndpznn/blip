@@ -361,6 +361,8 @@ export default function MeetDetail() {
 	useEffect(() => {
 
 		if (isEditOpen && meet) {
+			// Intentional: seed the edit form from the meet each time the edit modal opens.
+			/* eslint-disable react-hooks/set-state-in-effect */
 			setTitle(meet?.title || '')
 			setBody(meet?.body || '')
 			setLinks((meet as { links?: string; link?: string }).links ?? meet?.link ?? '')
@@ -371,6 +373,7 @@ export default function MeetDetail() {
 			setStartTime(meet?.startTime != null ? (typeof meet.startTime === 'string' ? parseTime(meet.startTime) : meet.startTime) : null)
 			setEndTime(meet?.endTime != null ? (typeof meet.endTime === 'string' ? parseTime(meet.endTime) : meet.endTime) : null)
 			setLocation(meet.location)
+			/* eslint-enable react-hooks/set-state-in-effect */
 		}
 	  }, [meet, isEditOpen])
 

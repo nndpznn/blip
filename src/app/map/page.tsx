@@ -9,7 +9,6 @@ import * as maplibregl from 'maplibre-gl';
 import { supabase } from '@/clients/supabaseClient';
 
 // components
-import { Button } from "@heroui/button";
 import type { Point } from 'geojson';
 import MeetPopup from '@/components/meetPopup';
 

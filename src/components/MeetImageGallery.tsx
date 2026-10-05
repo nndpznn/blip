@@ -19,19 +19,8 @@ function CoverPhoto({ src, alt }: { src: string; alt: string }) {
 	const [failed, setFailed] = useState(false);
 	const imgRef = useRef<HTMLImageElement | null>(null);
 
-	useEffect(() => {
-		setLoaded(false);
-		setFailed(false);
-		const el = imgRef.current;
-		if (el) {
-			if (el.complete && el.naturalWidth > 0) {
-				setLoaded(true);
-			} else if (el.complete) {
-				setFailed(true);
-			}
-		}
-	}, [src]);
-
+	// No reset effect needed: parents key each CoverPhoto by its src, so a new src
+	// remounts it with fresh state. The ref callback below picks up already-cached images.
 	const syncFromImg = (el: HTMLImageElement | null) => {
 		if (!el || !el.complete) return;
 		if (el.naturalWidth > 0) {
