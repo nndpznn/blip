@@ -8,6 +8,7 @@ import { useParams } from 'next/navigation'
 import { useEffect, useState, useMemo } from "react";
 
 import { supabase } from '@/clients/supabaseClient'
+import { fetchAttendeeSummary } from '@/api/meets'
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button, Checkbox } from "@heroui/react";
 import { usePageAccent } from "@/contexts/PageAccentContext";
 
@@ -118,20 +119,14 @@ export default function UserDetail() {
 
 			const meetIds = meetsData.map((m: { id: number | string }) => m.id)
 
-			// 3. Single batch: all meet_attendees for these meets (counts + current user attendance)
-			const { data: attendeesData } = await supabase
-				.from('meet_attendees')
-				.select('meet_id, profile_id')
-				.in('meet_id', meetIds)
+			// 3. Counts + current user attendance, aggregated in the database
+			const summary = await fetchAttendeeSummary(meetIds)
 
 			const countMap: AttendeeCountMap = {}
 			const attendingSet = new Set<string>()
-			if (attendeesData) {
-				for (const row of attendeesData) {
-					const key = String(row.meet_id)
-					countMap[key] = (countMap[key] ?? 0) + 1
-					if (currentProfileId && row.profile_id === currentProfileId) attendingSet.add(key)
-				}
+			for (const [key, value] of Object.entries(summary)) {
+				countMap[key] = value.count
+				if (value.attending) attendingSet.add(key)
 			}
 			setAttendeeCountByMeet(countMap)
 			setAttendingMeetIds(attendingSet)
