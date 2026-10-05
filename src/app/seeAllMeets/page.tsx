@@ -1,172 +1,151 @@
 'use client'
 
-import { useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Meet from "@/models/meet";
 import MeetCard from "@/components/meetCard"
 import { supabase } from "@/clients/supabaseClient";
 import { useAuth } from "@/clients/authContext";
+import { fetchAttendeeSummary, fetchMeetPage } from "@/api/meets";
+import {
+	initialCursor,
+	nextCursor,
+	type MeetCursor,
+	type MeetSort,
+} from "@/util/meetPaging";
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button, Checkbox, Spinner } from "@heroui/react";
 
-/** Maps meet id -> attendee count (from batch fetch). Keys are String(meet.id) for UUID-safe lookup. */
+/** Maps meet id -> attendee count. Keys are String(meet.id) for UUID-safe lookup. */
 type AttendeeCountMap = Record<string, number>;
 /** Set of meet ids the current user is attending. */
 type AttendingSet = Set<string>;
 /** Maps organizer profile id -> display name. */
 type OrganizerNameMap = Record<string, string>;
 
-type SortOption = "newest" | "oldest" | "upcoming" | "furthest";
-
-const SORT_LABELS: Record<SortOption, string> = {
-	newest: "Newest first",
-	oldest: "Oldest first",
+const SORT_LABELS: Record<MeetSort, string> = {
+	recent: "Most recent",
 	upcoming: "Upcoming first",
-	furthest: "Furthest first",
 };
-
-/** Raw meet row from Supabase may use date/startTime or date/start_time (strings). */
-type MeetRow = { date?: string | null; startTime?: string | null; start_time?: string | null; created_at?: string };
-
-function getMeetDateTime(meet: MeetRow): Date | null {
-	const dateStr = meet.date != null ? String(meet.date) : null;
-	if (!dateStr) return null;
-	const timeStr = meet.startTime ?? meet.start_time;
-	let iso = dateStr;
-	if (timeStr) {
-		const t = String(timeStr).replace("Z", "");
-		iso = dateStr.includes("T") ? dateStr : `${dateStr}T${t.length <= 5 ? t + ":00" : t}`;
-	} else if (!dateStr.includes("T")) {
-		iso = `${dateStr}T23:59:59`;
-	}
-	const d = new Date(iso);
-	return isNaN(d.getTime()) ? null : d;
-}
-
-function isMeetInFuture(meet: Meet): boolean {
-	const d = getMeetDateTime(meet as unknown as MeetRow);
-	return d != null && d.getTime() > Date.now();
-}
-
-function compareMeets(a: Meet, b: Meet, sortOrder: Exclude<SortOption, "furthest">): number {
-	if (sortOrder === "newest" || sortOrder === "oldest") {
-		const aCt = (a as { created_at?: string }).created_at ?? "";
-		const bCt = (b as { created_at?: string }).created_at ?? "";
-		return sortOrder === "oldest" ? aCt.localeCompare(bCt) : bCt.localeCompare(aCt);
-	}
-	const nullTime = Infinity;
-	const aT = getMeetDateTime(a as unknown as MeetRow)?.getTime() ?? nullTime;
-	const bT = getMeetDateTime(b as unknown as MeetRow)?.getTime() ?? nullTime;
-	return aT - bT;
-}
-
-function sortMeetGroup(meets: Meet[], sortOrder: Exclude<SortOption, "furthest">): Meet[] {
-	return [...meets].sort((a, b) => compareMeets(a, b, sortOrder));
-}
 
 export default function AllMeets() {
 	const { user, loading: authLoading } = useAuth()
 	const [fetchError, setFetchError] = useState<string>("")
-	const [meets, setMeets] = useState<Meet[] | null>(null)
-	const [meetsLoading, setMeetsLoading] = useState(true)
-	const [profileId, setProfileId] = useState<string | null>(null)
+	const [meets, setMeets] = useState<Meet[]>([])
+	const [firstPageLoading, setFirstPageLoading] = useState(true)
+	const [loadingMore, setLoadingMore] = useState(false)
+	const [hasMore, setHasMore] = useState(false)
 	const [attendeeCountByMeet, setAttendeeCountByMeet] = useState<AttendeeCountMap>({})
 	const [attendingMeetIds, setAttendingMeetIds] = useState<AttendingSet>(new Set())
 	const [organizerNames, setOrganizerNames] = useState<OrganizerNameMap>({})
-	const [sortOrder, setSortOrder] = useState<SortOption>("newest")
+	const [sortOrder, setSortOrder] = useState<MeetSort>("recent")
 	const [showPast, setShowPast] = useState(false)
 
+	const profileId = user?.id ?? null
+
+	// Paging state lives in refs so scroll-triggered loads never see stale values.
+	const cursorRef = useRef<MeetCursor | null>(null)
+	const loadingRef = useRef(false)
+	// Bumped whenever the query (sort, toggle, user) changes so late responses are discarded.
+	const generationRef = useRef(0)
+	const knownOrganizersRef = useRef<Set<string>>(new Set())
+
+	const scrollRef = useRef<HTMLDivElement | null>(null)
+	const sentinelRef = useRef<HTMLDivElement | null>(null)
+
+	const loadNextPage = useCallback(async (isFirstPage: boolean) => {
+		const cursor = cursorRef.current
+		if (!cursor || loadingRef.current) return
+
+		const generation = generationRef.current
+		loadingRef.current = true
+		if (isFirstPage) setFirstPageLoading(true)
+		else setLoadingMore(true)
+
+		try {
+			const { meets: page, error } = await fetchMeetPage(cursor, sortOrder)
+			if (generation !== generationRef.current) return
+
+			if (error) {
+				setFetchError('Error fetching meets.')
+				cursorRef.current = null
+				setHasMore(false)
+				return
+			}
+			setFetchError("")
+
+			const next = nextCursor(cursor, sortOrder, showPast, page.length)
+			cursorRef.current = next
+			setHasMore(next !== null)
+			setMeets((prev) => (isFirstPage ? page : [...prev, ...page]))
+
+			if (page.length === 0) return
+
+			// Counts and "you're attending" for just this page, plus organizer names not seen yet.
+			const newOrganizerIds = [...new Set(
+				page.map((m) => m.organizerId).filter((id): id is string => !!id && !knownOrganizersRef.current.has(id)),
+			)]
+			newOrganizerIds.forEach((id) => knownOrganizersRef.current.add(id))
+
+			const [summary, profiles] = await Promise.all([
+				fetchAttendeeSummary(page.map((m) => m.id)),
+				newOrganizerIds.length > 0
+					? supabase.from('profiles').select('id, username').in('id', newOrganizerIds)
+					: Promise.resolve({ data: [] as Array<{ id: string; username: string | null }> }),
+			])
+			if (generation !== generationRef.current) return
+
+			setAttendeeCountByMeet((prev) => {
+				const merged = { ...prev }
+				for (const m of page) merged[String(m.id)] = summary[String(m.id)]?.count ?? 0
+				return merged
+			})
+			setAttendingMeetIds((prev) => {
+				const merged = new Set(prev)
+				for (const m of page) {
+					if (summary[String(m.id)]?.attending) merged.add(String(m.id))
+				}
+				return merged
+			})
+			setOrganizerNames((prev) => {
+				const merged = { ...prev }
+				for (const p of profiles.data ?? []) merged[p.id] = p.username ?? 'Unknown author'
+				return merged
+			})
+		} finally {
+			if (generation === generationRef.current) {
+				loadingRef.current = false
+				setFirstPageLoading(false)
+				setLoadingMore(false)
+			}
+		}
+	}, [sortOrder, showPast])
+
+	// (Re)start from page one whenever the query changes. Wait for auth so attendance is correct.
 	useEffect(() => {
 		if (authLoading) return
-
-		let cancelled = false
-		setMeetsLoading(true)
-
-		;(async () => {
-			try {
-				const currentProfileId = user?.id ?? null
-				if (cancelled) return
-				setProfileId(currentProfileId)
-
-				const { data: meetsData, error: meetsError } = await supabase
-					.from('meets')
-					.select()
-					.order('created_at', { ascending: false })
-
-				if (cancelled) return
-
-				if (meetsError) {
-					setFetchError('Error fetching meets for this user.')
-					setMeets(null)
-					return
-				}
-				if (!meetsData?.length) {
-					setMeets([])
-					setFetchError("")
-					return
-				}
-				setMeets(meetsData as Meet[])
-				setFetchError("")
-
-				const meetIds = meetsData.map((m: { id: number | string }) => m.id)
-				const organizerIds = [...new Set(meetsData.map((m: { organizerId?: string; organizer_id?: string }) => m.organizerId ?? m.organizer_id).filter(Boolean))] as string[]
-
-				const { data: attendeesData } = await supabase
-					.from('meet_attendees')
-					.select('meet_id, profile_id')
-					.in('meet_id', meetIds)
-
-				if (cancelled) return
-
-				const countMap: AttendeeCountMap = {}
-				const attendingSet = new Set<string>()
-				if (attendeesData) {
-					for (const row of attendeesData) {
-						const key = String(row.meet_id)
-						countMap[key] = (countMap[key] ?? 0) + 1
-						if (currentProfileId && row.profile_id === currentProfileId) attendingSet.add(key)
-					}
-				}
-				setAttendeeCountByMeet(countMap)
-				setAttendingMeetIds(attendingSet)
-
-				if (organizerIds.length > 0) {
-					const { data: profiles } = await supabase
-						.from('profiles')
-						.select('id, username')
-						.in('id', organizerIds)
-					if (cancelled) return
-					const nameMap: OrganizerNameMap = {}
-					if (profiles) for (const p of profiles) nameMap[p.id] = p.username ?? 'Unknown author'
-					setOrganizerNames(nameMap)
-				}
-			} finally {
-				if (!cancelled) setMeetsLoading(false)
-			}
-		})()
-
-		return () => {
-			cancelled = true
-		}
+		generationRef.current += 1
+		loadingRef.current = false
+		cursorRef.current = initialCursor(sortOrder, showPast)
+		knownOrganizersRef.current = new Set()
+		void loadNextPage(true)
 		// Use user id, not `user`: Supabase refreshes the session when the tab is focused and
-		// passes a new User object reference, which would otherwise re-run this effect and
-		// flash the loading state even though nothing meaningful changed.
-	}, [user?.id, authLoading])
+		// passes a new User object reference, which would otherwise restart the list.
+	}, [authLoading, user?.id, sortOrder, showPast, loadNextPage])
 
-	const displayedMeets = useMemo(() => {
-		if (!meets) return null;
-		const list = showPast ? meets : meets.filter(isMeetInFuture);
+	// Infinite scroll: load the next page when the sentinel at the end of the grid comes into view.
+	useEffect(() => {
+		const sentinel = sentinelRef.current
+		if (!sentinel || !hasMore || firstPageLoading || loadingMore) return
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries.some((e) => e.isIntersecting)) void loadNextPage(false)
+			},
+			{ root: scrollRef.current, rootMargin: "300px" },
+		)
+		observer.observe(sentinel)
+		return () => observer.disconnect()
+	}, [hasMore, firstPageLoading, loadingMore, meets.length, loadNextPage])
 
-		if (sortOrder === "furthest") {
-			const getSortTime = (meet: Meet) =>
-				getMeetDateTime(meet as unknown as MeetRow)?.getTime() ?? -Infinity;
-			return [...list].sort((a, b) => getSortTime(b) - getSortTime(a));
-		}
-
-		const upcoming = list.filter(isMeetInFuture);
-		const past = list.filter((m) => !isMeetInFuture(m));
-		return [...sortMeetGroup(upcoming, sortOrder), ...sortMeetGroup(past, sortOrder)];
-	}, [meets, sortOrder, showPast]);
-
-	if (authLoading || meetsLoading) {
+	if (authLoading || (firstPageLoading && meets.length === 0)) {
 		return (
 			<div className="flex">
 				<div className="flex-1 mx-[5vw] mt-5 min-h-[50vh] flex flex-col items-center justify-center gap-4">
@@ -194,14 +173,12 @@ export default function AllMeets() {
 							selectedKeys={new Set([sortOrder])}
 							selectionMode="single"
 							onSelectionChange={(keys) => {
-								const key = Array.from(keys)[0] as SortOption;
+								const key = Array.from(keys)[0] as MeetSort;
 								if (key) setSortOrder(key);
 							}}
 						>
-							<DropdownItem key="newest">{SORT_LABELS.newest}</DropdownItem>
-							<DropdownItem key="oldest">{SORT_LABELS.oldest}</DropdownItem>
+							<DropdownItem key="recent">{SORT_LABELS.recent}</DropdownItem>
 							<DropdownItem key="upcoming">{SORT_LABELS.upcoming}</DropdownItem>
-							<DropdownItem key="furthest">{SORT_LABELS.furthest}</DropdownItem>
 						</DropdownMenu>
 					</Dropdown>
 					<Checkbox
@@ -218,24 +195,35 @@ export default function AllMeets() {
 				<div className="text-red-500 text-center py-2" role="alert">{fetchError}</div>
 			)}
 
-			<div className="scrollbar-modern flex-1 min-h-0 min-w-0 grid grid-cols-1 content-start items-start sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 overflow-y-auto overflow-x-hidden pb-4">
-				{displayedMeets?.map((meet: Meet) => {
-					const organizerId = (meet as { organizerId?: string; organizer_id?: string }).organizerId ?? (meet as { organizerId?: string; organizer_id?: string }).organizer_id
-					return (
-						<div
-							key={meet.id}
-							className="min-w-0 w-full max-w-full self-start origin-center opacity-100 transition-opacity duration-200 ease-out hover:opacity-70"
-						>
-							<MeetCard
-								meet={meet}
-								profileId={profileId}
-								organizerName={organizerNames[organizerId ?? ''] ?? undefined}
-								attendeeCount={attendeeCountByMeet[String(meet.id)] ?? 0}
-								attendanceStatus={attendingMeetIds.has(String(meet.id))}
-							/>
-						</div>
-					)
-				})}
+			<div
+				ref={scrollRef}
+				className="scrollbar-modern flex-1 min-h-0 min-w-0 grid grid-cols-1 content-start items-start sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 overflow-y-auto overflow-x-hidden pb-4"
+			>
+				{meets.map((meet: Meet) => (
+					<div
+						key={meet.id}
+						className="min-w-0 w-full max-w-full self-start origin-center opacity-100 transition-opacity duration-200 ease-out hover:opacity-70"
+					>
+						<MeetCard
+							meet={meet}
+							profileId={profileId}
+							organizerName={organizerNames[meet.organizerId ?? ''] ?? undefined}
+							attendeeCount={attendeeCountByMeet[String(meet.id)] ?? 0}
+							attendanceStatus={attendingMeetIds.has(String(meet.id))}
+						/>
+					</div>
+				))}
+
+				{!firstPageLoading && !loadingMore && !hasMore && !fetchError && meets.length === 0 && (
+					<p className="col-span-full py-10 text-center text-foreground/70">
+						No meets to show{showPast ? "" : " yet — try “Show past meets”"}.
+					</p>
+				)}
+
+				{/* Sentinel for infinite scroll */}
+				<div ref={sentinelRef} className="col-span-full flex h-10 items-center justify-center">
+					{loadingMore && <Spinner size="sm" label="" />}
+				</div>
 			</div>
 		</div>
 	)
