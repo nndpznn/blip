@@ -32,7 +32,9 @@ Priority order used: **security → reliability → efficiency → organization*
 - Attendees insert/delete only for `profile_id = auth.uid()`
 - Storage writes/deletes scoped to `meetImages/{auth.uid()}/…`
 
-**Residual (non-blocking):** Policies are not yet exported into `supabase/migrations/` for PR review. Export when convenient so dashboard drift is visible in git. Re-run a short smoke checklist after any future policy change: anon JWT absent cannot write; user A cannot edit/delete user B’s meet; user A cannot update user B’s profile.
+**Correction (2026-10-05):** exporting the live policies showed the storage rule above was **not** true for writes. Permissive policies are OR'd, and these were present: `allow anyone to upload` (INSERT `with check (true)` — anyone, even logged out, could upload any file to any bucket/path), `allow anyone to read` (SELECT `true`, lists every object), four leftover dashboard-template policies giving `anon` select/insert/update/delete on `images/public/*.jpg`, and `Users can upload any meet images` (any signed-in user could write anywhere). Fix: migration `20261005001000_scope_storage_policies.sql` drops those and adds `Users can upload own meet images` (bucket `images`, path `meetImages/<own uid>/…`). The table-policy targets for `meets`, `profiles` and `meet_attendees` were confirmed correct. Migration `20261005001100_revoke_unneeded_table_privileges.sql` also removes `TRUNCATE`/`TRIGGER`/`REFERENCES` from `anon`/`authenticated` (RLS does not cover TRUNCATE; the REST API cannot issue it, so defense in depth). **Both migrations applied and verified 2026-10-05** with the anon key: listing `images/meetImages` returns nothing, uploads to `images/` and `images/public/*.jpg` are rejected (403, RLS), public image URLs still serve (200), and an anonymous `PATCH` on another user's meet changes nothing. Signed-in flow confirmed in the UI: photos upload via meets and are removed from storage when the meet is deleted.
+
+**Residual (non-blocking):** A reference snapshot of the live policies, constraints and grants is in `supabase/snapshots/2026-10-05-live-schema-reference.sql` (not a runnable migration; column defaults, `auth.users` triggers and other functions are not captured). Re-export with `supabase db pull` where Docker is available if a true baseline is needed. Re-run a short smoke checklist after any future policy change: anon JWT absent cannot write; user A cannot edit/delete user B’s meet; user A cannot update user B’s profile.
 
 ---
 
@@ -54,7 +56,7 @@ UI organizer gates remain for UX only; RLS (item 1) + write-path identity are th
 
 ### 3. No CI, no tests, lockfile gitignored (Reliability) — DONE
 
-**Status (2026-10-04):** `package-lock.json` is tracked (no longer gitignored). [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs `npm ci`, `lint`, `typecheck`, `test` and `build` on every PR and on pushes to `main`/`dev`. Lint is clean of errors (the three blocking `set-state-in-effect` / `require()` errors were fixed; two config-file warnings remain). The broken `migrate:meet-images` script was removed. Tests use Node's built-in runner via `tsx` (`npm test`) and cover the image-limit helpers (extracted to `src/util/meetImageLimits.ts`), `safeNextPath`, and Photon search mapping/filtering/dedupe/retry. Writing them exposed and fixed a bug where `fetchPhoton` retried non-retryable 4xx errors. **Still to do in GitHub:** mark the `verify` check as required in branch protection for `main` so red CI blocks merges.
+**Status (2026-10-04):** `package-lock.json` is tracked (no longer gitignored). [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs `npm ci`, `lint`, `typecheck`, `test` and `build` on every PR and on pushes to `main`/`dev`. Lint is clean of errors (the three blocking `set-state-in-effect` / `require()` errors were fixed; two config-file warnings remain). The broken `migrate:meet-images` script was removed. Tests use Node's built-in runner via `tsx` (`npm test`) and cover the image-limit helpers (extracted to `src/util/meetImageLimits.ts`), `safeNextPath`, and Photon search mapping/filtering/dedupe/retry. Writing them exposed and fixed a bug where `fetchPhoton` retried non-retryable 4xx errors. The `verify` check is now a required status check on `main` via the active ruleset "merge blocked by failed CI on main" (also blocks force pushes and branch deletion), so red CI blocks merges (verified 2026-10-05).
 
 **Original concern (kept for history):**
 
@@ -92,9 +94,9 @@ The map does `supabase.from('meets').select('*')` with no filter (`src/app/map/p
 
 **Done with item 2:** Single auth source via `AuthProvider` (`getUser` + `onAuthStateChange`); `useSupabaseUser` removed; `useSupabaseUserMetadata` wraps `useAuth`; create no longer uses `user!` (middleware + guard).
 
-**Still open:** Meet detail still has no explicit `loading` / `error` / `ready` split. RSVP toggles have no in-flight lock. Username uniqueness is a client TOCTOU check (add a unique DB constraint on `profiles.username`).
+**Still open:** Meet detail still has no explicit `loading` / `error` / `ready` split. RSVP toggles have no in-flight lock. ~~Username uniqueness is a client TOCTOU check~~ — the database already enforces it (`profiles_username_key` UNIQUE, verified 2026-10-05, no existing duplicates); the profile page now also handles the constraint error (23505) instead of silently closing the editor. The constraint is case-sensitive (`Nolan` ≠ `nolan`); a `lower(username)` unique index would close that if wanted. Duplicate RSVPs are likewise impossible already (`meet_attendees` primary key is `(profile_id, meet_id)`).
 
-**Action item (remaining):** Split meet detail into `loading` / `error` / `ready`. Disable RSVP while a request is in flight; enforce username uniqueness in the database.
+**Action item (remaining):** Split meet detail into `loading` / `error` / `ready`. Disable RSVP while a request is in flight.
 
 ---
 
@@ -111,7 +113,7 @@ The map does `supabase.from('meets').select('*')` with no filter (`src/app/map/p
 | Hardcoded Formspree form id | Spam/lock-in surface on `/issue`. |
 | Misleading `src/api/` name | Client MapLibre helper only (`src/api/map.ts`) — rename when cleaning structure. |
 | Triplicated date/sort helpers across cards/list/user pages | Maintainability tax once features stabilize. |
-| RLS SQL not in `supabase/migrations/` | Residual from item 1 — `supabase/migrations/` now holds only the email-hiding grant migration; export the RLS policies for reviewability, not a live auth hole if dashboard policies stay correct. |
+| RLS SQL not in `supabase/migrations/` | **Partly addressed (2026-10-05):** live policies exported as a reference snapshot (`supabase/snapshots/`) and storage/grant fixes written as migrations. Still no runnable baseline migration. |
 
 ### Dead code inventory — CULLED (2026-09-23)
 
@@ -134,7 +136,7 @@ The map does `supabase.from('meets').select('*')` with no filter (`src/app/map/p
 2. ~~**Middleware + harden create/delete/profile writes**~~ **Done.**  
 3. ~~**Cull dead code**~~ **Done.**  
 3b. ~~**Apply the profile-email migration**, then revoke the old Mapbox token.~~ **Done** (2026-10-04).  
-4. ~~**Commit lockfile + add CI** (`lint` / `tsc` / `build`).~~ **Done** (2026-10-04); require the check in branch protection.  
+4. ~~**Commit lockfile + add CI** (`lint` / `tsc` / `build`).~~ **Done** (2026-10-04); check required on `main` (2026-10-05).  
 5. ~~**Paginate list + bbox/upcoming filter on map.**~~ **Done** (2026-10-04, no bbox); apply the attendee-summary migration before deploying.  
 6. **Finish item 5 UX/reliability** (meet detail states, RSVP lock, username unique constraint); then Maps URL fix.
 
@@ -151,6 +153,6 @@ The map does `supabase.from('meets').select('*')` with no filter (`src/app/map/p
 | `src/components/` | Nav, cards, popup, search, galleries |
 | `src/hooks/` | Profile fetchers + metadata thin wrap of `useAuth` |
 | `src/api/map.ts` | Client MapLibre init + dark theme overrides (not an HTTP API); search via `src/util/photon.ts` |
-| `supabase/` | CLI `config.toml`; `migrations/` has the profile-email grant migration (applied) and the attendee-summary function (apply before deploy) |
+| `supabase/` | CLI `config.toml`; `migrations/` has the profile-email grant migration (applied) the attendee-summary function, and two 2026-10-05 hardening migrations (both applied 2026-10-05); `snapshots/` holds a non-runnable reference of live policies; `profiles` rows are created by a private trigger on `auth.users` (not in the repo) |
 
 **Core tables (inferred):** `meets`, `profiles`, `meet_attendees`; storage bucket `images`.
