@@ -66,7 +66,17 @@ UI organizer gates remain for UX only; RLS (item 1) + write-path identity are th
 
 ---
 
-### 4. Unbounded meet loads on map and list (Efficiency / Reliability)
+### 4. Unbounded meet loads on map and list (Efficiency / Reliability) — DONE (pending migration)
+
+**Status (2026-10-04):** Implemented, with one deploy step outstanding.
+- **Map:** loads only upcoming meets (`date >= today`) and only the columns pins/popups use (`src/api/meets.ts`). No row cap handling by design: upcoming density is expected to stay far below Supabase's 1,000-row default.
+- **List (`/seeAllMeets`):** infinite scroll in pages of 20, server-side date filter and ordering, "Show past meets" toggle. Sorts reduced to "Most recent" (posted date) and "Upcoming first" (soonest first, then past meets newest-first when the toggle is on). Paging plan is pure and unit tested (`src/util/meetPaging.ts`).
+- **Attendee counts:** new SQL function `meet_attendee_summary` replaces downloading every `meet_attendees` row (used by the list and user pages). Migration: `supabase/migrations/20261004235000_meet_attendee_summary.sql`.
+- **Behavior note:** "upcoming" is decided by date only, so a meet earlier today still counts as upcoming until midnight.
+- **Deploy order:** apply the migration BEFORE deploying (it only adds a function). Until it exists, counts show 0 and "attending" is false on lists.
+- **Not done:** viewport (bbox) map queries and lng/lat columns, intentionally deferred. User-page meet list is still unpaged (bounded to one organizer).
+
+**Original concern (kept for history):**
 
 The map does `supabase.from('meets').select('*')` with no filter (`src/app/map/page.tsx`). Browse does an ordered full-table `select()` (`src/app/seeAllMeets/page.tsx`). As the community grows, this becomes slow loads, large client memory, heavy GeoJSON, and possible mobile failure—before any feature work.
 
@@ -125,7 +135,7 @@ The map does `supabase.from('meets').select('*')` with no filter (`src/app/map/p
 3. ~~**Cull dead code**~~ **Done.**  
 3b. ~~**Apply the profile-email migration**, then revoke the old Mapbox token.~~ **Done** (2026-10-04).  
 4. ~~**Commit lockfile + add CI** (`lint` / `tsc` / `build`).~~ **Done** (2026-10-04); require the check in branch protection.  
-5. **Paginate list + bbox/upcoming filter on map.**  
+5. ~~**Paginate list + bbox/upcoming filter on map.**~~ **Done** (2026-10-04, no bbox); apply the attendee-summary migration before deploying.  
 6. **Finish item 5 UX/reliability** (meet detail states, RSVP lock, username unique constraint); then Maps URL fix.
 
 ---
@@ -141,6 +151,6 @@ The map does `supabase.from('meets').select('*')` with no filter (`src/app/map/p
 | `src/components/` | Nav, cards, popup, search, galleries |
 | `src/hooks/` | Profile fetchers + metadata thin wrap of `useAuth` |
 | `src/api/map.ts` | Client MapLibre init + dark theme overrides (not an HTTP API); search via `src/util/photon.ts` |
-| `supabase/` | CLI `config.toml`; `migrations/` has the profile-email grant migration (applied) |
+| `supabase/` | CLI `config.toml`; `migrations/` has the profile-email grant migration (applied) and the attendee-summary function (apply before deploy) |
 
 **Core tables (inferred):** `meets`, `profiles`, `meet_attendees`; storage bucket `images`.
