@@ -96,16 +96,19 @@ export interface SearchBias {
 async function fetchPhoton(url: string, signal?: AbortSignal): Promise<Response> {
 	let lastError: unknown;
 	for (let attempt = 0; attempt < 2; attempt++) {
+		let res: Response | null = null;
 		try {
-			const res = await fetch(url, { signal });
-			if (res.ok) return res;
-			if (res.status !== 429 && res.status < 500) {
-				throw new Error(`Place search failed (${res.status})`);
-			}
-			lastError = new Error(`Place search failed (${res.status})`);
+			res = await fetch(url, { signal });
 		} catch (err) {
 			if ((err as Error).name === "AbortError") throw err;
-			lastError = err;
+			lastError = err; // network failure: retry
+		}
+		if (res) {
+			if (res.ok) return res;
+			const error = new Error(`Place search failed (${res.status})`);
+			// Client errors (other than 429) won't succeed on retry.
+			if (res.status !== 429 && res.status < 500) throw error;
+			lastError = error;
 		}
 		if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 400));
 		if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
