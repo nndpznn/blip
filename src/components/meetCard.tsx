@@ -9,6 +9,7 @@ import { supabase } from '@/clients/supabaseClient'
 import { usePageAccent } from "@/contexts/PageAccentContext";
 import { useAuth } from "@/clients/authContext";
 import { useLoginPrompt } from "@/hooks/useLoginPrompt";
+import { isMeetInFuture, type MeetRow } from "@/util/meetDates";
 
 /** Matches prior `h-90` intent (22.5rem) so grid cards stay a consistent size. */
 const CARD_HEIGHT_CLASS = "h-[22.5rem]";
@@ -22,28 +23,6 @@ interface MeetCardProps {
     attendanceStatus?: boolean;
 }
 
-/** Raw meet row from Supabase may use date/startTime or date/start_time (strings). */
-type MeetRow = { date?: string | null; startTime?: string | null; start_time?: string | null; created_at?: string };
-
-function getMeetDateTime(meet: MeetRow): Date | null {
-	const dateStr = meet.date != null ? String(meet.date) : null;
-	if (!dateStr) return null;
-	const timeStr = meet.startTime ?? meet.start_time;
-	let iso = dateStr;
-	if (timeStr) {
-		const t = String(timeStr).replace("Z", "");
-		iso = dateStr.includes("T") ? dateStr : `${dateStr}T${t.length <= 5 ? t + ":00" : t}`;
-	} else if (!dateStr.includes("T")) {
-		iso = `${dateStr}T23:59:59`;
-	}
-	const d = new Date(iso);
-	return isNaN(d.getTime()) ? null : d;
-}
-
-function isMeetInFuture(meet: Meet): boolean {
-	const d = getMeetDateTime(meet as unknown as MeetRow);
-	return d != null && d.getTime() > Date.now();
-}
 
 const getCurrentProfileId = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -178,7 +157,7 @@ export default function MeetCard({
     })
     : 'No date found';
 
-    const isPast = !isMeetInFuture(meet);
+    const isPast = !isMeetInFuture(meet as unknown as MeetRow);
     const cardBgColor = isPast ? "bg-gray-600" : (accentColor ? "" : "bg-red-400");
     const cardStyle = !isPast && accentColor ? { backgroundColor: accentColor } : undefined;
 
