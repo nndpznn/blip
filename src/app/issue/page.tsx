@@ -4,12 +4,21 @@ import { useState } from 'react'
 import { Button } from '@heroui/button'
 import { Input, Textarea } from '@heroui/react'
 
-const FORMSPREE_ENDPOINT = 'https://formspree.io/f/xgonjape'
+// Form id is public by design (it ships to the browser either way). Set NEXT_PUBLIC_FORMSPREE_FORM_ID
+// to change or rotate it without a code change; the literal is only the fallback for existing deploys.
+const FORMSPREE_FORM_ID = process.env.NEXT_PUBLIC_FORMSPREE_FORM_ID || 'xgonjape'
+const FORMSPREE_ENDPOINT = `https://formspree.io/f/${FORMSPREE_FORM_ID}`
+
+const MAX_NAME = 100
+const MAX_EMAIL = 254
+const MAX_MESSAGE = 5000
 
 export default function IssuePage() {
 	const [name, setName] = useState('')
 	const [email, setEmail] = useState('')
 	const [message, setMessage] = useState('')
+	// Honeypot: real users never see or fill this; bots that auto-fill every field do.
+	const [honeypot, setHoneypot] = useState('')
 	const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>(
 		'idle',
 	)
@@ -19,6 +28,11 @@ export default function IssuePage() {
 		e.preventDefault()
 		if (!name.trim() || !email.trim() || !message.trim()) {
 			alert('Please fill in name, email, and message.')
+			return
+		}
+		if (honeypot) {
+			// Pretend success so bots get no signal, and send nothing.
+			setStatus('success')
 			return
 		}
 		const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
@@ -41,6 +55,8 @@ export default function IssuePage() {
 					name: name.trim(),
 					email: email.trim(),
 					message: message.trim(),
+					// Formspree's built-in honeypot field name; always empty for real submissions.
+					_gotcha: '',
 				}),
 			})
 
@@ -105,6 +121,7 @@ export default function IssuePage() {
 								type="text"
 								autoComplete="name"
 								isRequired
+								maxLength={MAX_NAME}
 								isDisabled={status === 'submitting'}
 								aria-label="Your name"
 							/>
@@ -119,6 +136,7 @@ export default function IssuePage() {
 								type="email"
 								autoComplete="email"
 								isRequired
+								maxLength={MAX_EMAIL}
 								isDisabled={status === 'submitting'}
 								aria-label="Your email"
 							/>
@@ -133,9 +151,25 @@ export default function IssuePage() {
 								onChange={(e) => setMessage(e.target.value)}
 								size="md"
 								isRequired
+								maxLength={MAX_MESSAGE}
 								isDisabled={status === 'submitting'}
 								aria-label="Describe the issue"
 							/>
+						</div>
+
+						{/* Honeypot field, hidden from people and assistive tech */}
+						<div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
+							<label>
+								Leave this field empty
+								<input
+									type="text"
+									name="contact_pref_x"
+									tabIndex={-1}
+									autoComplete="off"
+									value={honeypot}
+									onChange={(e) => setHoneypot(e.target.value)}
+								/>
+							</label>
 						</div>
 
 						{errorMessage ? (
