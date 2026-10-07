@@ -31,6 +31,7 @@ import { useAuth } from "@/clients/authContext";
 import {Calendar} from '@heroui/calendar'
 import { Time, today, getLocalTimeZone, CalendarDate, parseDate, parseTime } from "@internationalized/date";
 import { to12Hour } from "@/util/politeTimeString";
+import { encodeToGoogleMaps } from "@/util/encodeToGoogleMaps";
 
 import { supabase } from '@/clients/supabaseClient'
 import { useSupabaseUserMetadata } from '@/hooks/useSupabaseUserMetadata'
@@ -518,7 +519,7 @@ export default function MeetDetail() {
 						</div>
 						<div className="mt-2 flex items-center justify-start gap-1.5 text-sm text-foreground/80">
 							<MapPinIcon className="shrink-0 size-4 text-red-400/80" />
-							<span className="line-clamp-2 hover:underline hover:cursor-pointer" onClick={() => window.open(meet.mapsLink, "_blank", "noopener,noreferrer")}>{formatAddress(meet.location.address)}</span>
+							<span className="line-clamp-2 hover:underline hover:cursor-pointer" onClick={() => window.open(encodeToGoogleMaps(meet.location.name, meet.location.coordinates), "_blank", "noopener,noreferrer")}>{formatAddress(meet.location.address)}</span>
 						</div>
 					</div>
 
