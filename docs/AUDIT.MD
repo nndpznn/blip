@@ -56,7 +56,7 @@ UI organizer gates remain for UX only; RLS (item 1) + write-path identity are th
 
 ### 3. No CI, no tests, lockfile gitignored (Reliability) — DONE
 
-**Status (2026-10-04):** `package-lock.json` is tracked (no longer gitignored). [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs `npm ci`, `lint`, `typecheck`, `test` and `build` on every PR and on pushes to `main`/`dev`. Lint is clean of errors (the three blocking `set-state-in-effect` / `require()` errors were fixed; two config-file warnings remain). The broken `migrate:meet-images` script was removed. Tests use Node's built-in runner via `tsx` (`npm test`) and cover the image-limit helpers (extracted to `src/util/meetImageLimits.ts`), `safeNextPath`, and Photon search mapping/filtering/dedupe/retry. Writing them exposed and fixed a bug where `fetchPhoton` retried non-retryable 4xx errors. The `verify` check is now a required status check on `main` via the active ruleset "merge blocked by failed CI on main" (also blocks force pushes and branch deletion), so red CI blocks merges (verified 2026-10-05).
+**Status (2026-10-04):** `package-lock.json` is tracked (no longer gitignored). [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs `npm ci`, `lint`, `typecheck`, `test` and `build` on every PR and on pushes to `main`/`dev`. Lint is clean of errors (the three blocking `set-state-in-effect` / `require()` errors were fixed; the last two config-file warnings were cleared 2026-10-06, so lint is fully clean). The broken `migrate:meet-images` script was removed. Tests use Node's built-in runner via `tsx` (`npm test`) and cover the image-limit helpers (extracted to `src/util/meetImageLimits.ts`), `safeNextPath`, and Photon search mapping/filtering/dedupe/retry. Writing them exposed and fixed a bug where `fetchPhoton` retried non-retryable 4xx errors. The `verify` check is now a required status check on `main` via the active ruleset "merge blocked by failed CI on main" (also blocks force pushes and branch deletion), so red CI blocks merges (verified 2026-10-05).
 
 **Original concern (kept for history):**
 
@@ -94,9 +94,11 @@ The map does `supabase.from('meets').select('*')` with no filter (`src/app/map/p
 
 **Done with item 2:** Single auth source via `AuthProvider` (`getUser` + `onAuthStateChange`); `useSupabaseUser` removed; `useSupabaseUserMetadata` wraps `useAuth`; create no longer uses `user!` (middleware + guard).
 
-**Still open:** Meet detail still has no explicit `loading` / `error` / `ready` split. RSVP toggles have no in-flight lock. ~~Username uniqueness is a client TOCTOU check~~ — the database already enforces it (`profiles_username_key` UNIQUE, verified 2026-10-05, no existing duplicates); the profile page now also handles the constraint error (23505) instead of silently closing the editor. The constraint is case-sensitive (`Nolan` ≠ `nolan`); a `lower(username)` unique index would close that if wanted. Duplicate RSVPs are likewise impossible already (`meet_attendees` primary key is `(profile_id, meet_id)`).
+**Done (2026-10-06):** RSVP toggles now have an in-flight lock on both the meet card and meet detail page (`useSingleFlight`; rapid clicks are ignored and the button disables while a request runs). RSVP writes go through `src/api/rsvp.ts`, which treats a duplicate insert (23505) or a delete of a missing row as "already in that state" and leaves the attendee count unchanged.
 
-**Action item (remaining):** Split meet detail into `loading` / `error` / `ready`. Disable RSVP while a request is in flight.
+**Still open:** Meet detail still has no explicit `loading` / `error` / `ready` split. ~~Username uniqueness is a client TOCTOU check~~ — the database already enforces it (`profiles_username_key` UNIQUE, verified 2026-10-05, no existing duplicates); the profile page now also handles the constraint error (23505) instead of silently closing the editor. The constraint is case-sensitive (`Nolan` ≠ `nolan`); a `lower(username)` unique index would close that if wanted. Duplicate RSVPs are likewise impossible already (`meet_attendees` primary key is `(profile_id, meet_id)`).
+
+**Action item (remaining):** Split meet detail into `loading` / `error` / `ready`. Split meet detail into `loading` / `error` / `ready`.
 
 ---
 
@@ -107,12 +109,12 @@ The map does `supabase.from('meets').select('*')` with no filter (`src/app/map/p
 | ~~Public Mapbox token in Search Box query strings~~ | **Resolved (2026-09-30):** Mapbox removed in favor of MapLibre + OpenFreeMap + Photon (no token). Old token rotated/revoked (2026-10-04). Photon's public endpoint has no SLA; consider a self-hosted/paid geocoder if search volume grows. |
 | `/sandbox` routes | **Mitigated:** middleware returns 404 for `/sandbox*` when `NODE_ENV === 'production'`. |
 | Dead code | **Culled (2026-09-23):** removed unused ThemeProvider, logoutButton, fetchUserByUsername, addEventMarkers, GoogleOAuthProvider/`@react-oauth/google`, and accidental `"npm"` dependency. |
-| `encodeToGoogleMaps` puts coordinates in `query_place_id` | Broken/weak Maps deep links (`src/util/encodeToGoogleMaps.ts`) — quick fix after remaining P-items. |
+| ~~`encodeToGoogleMaps` puts coordinates in `query_place_id`~~ | **Fixed (2026-10-06):** links now use `query=lat,lng` (name search only as a fallback for invalid coordinates), with tests. The meet detail page builds the link from `location` at render time, because existing rows still store the old broken `mapsLink`. |
 | Client-only California substring check | Bypassable without server/RLS validation; product rule, not a vault. |
 | ~~Public `email` on `profiles`~~ | **Resolved (2026-10-04):** app code selects only public columns (email only for the user's own profile), and migration `20260930230000_hide_profile_email_from_anon.sql` was applied after deploy, revoking anon access to `email`. Logged-out pages confirmed working afterward. |
-| Hardcoded Formspree form id | Spam/lock-in surface on `/issue`. |
+| ~~Hardcoded Formspree form id~~ | **Improved (2026-10-06):** id read from `NEXT_PUBLIC_FORMSPREE_FORM_ID` (the old id remains the fallback so existing deploys keep working), honeypot field added, input length caps. The id is public by design; set the env var in Vercel to rotate it, then remove the fallback. |
 | Misleading `src/api/` name | Client MapLibre helper only (`src/api/map.ts`) — rename when cleaning structure. |
-| Triplicated date/sort helpers across cards/list/user pages | Maintainability tax once features stabilize. |
+| ~~Triplicated date/sort helpers across cards/list/user pages~~ | **Done (2026-10-06):** `getMeetDateTime` / `isMeetInFuture` live in `src/util/meetDates.ts` (tested); the card and user page use it, and the list page was rewritten onto `meetPaging.ts` earlier. The popup's display formatters remain single-use. |
 | RLS SQL not in `supabase/migrations/` | **Partly addressed (2026-10-05):** live policies exported as a reference snapshot (`supabase/snapshots/`) and storage/grant fixes written as migrations. Still no runnable baseline migration. |
 
 ### Dead code inventory — CULLED (2026-09-23)
@@ -138,7 +140,7 @@ The map does `supabase.from('meets').select('*')` with no filter (`src/app/map/p
 3b. ~~**Apply the profile-email migration**, then revoke the old Mapbox token.~~ **Done** (2026-10-04).  
 4. ~~**Commit lockfile + add CI** (`lint` / `tsc` / `build`).~~ **Done** (2026-10-04); check required on `main` (2026-10-05).  
 5. ~~**Paginate list + bbox/upcoming filter on map.**~~ **Done** (2026-10-04, no bbox); apply the attendee-summary migration before deploying.  
-6. **Finish item 5 UX/reliability** (meet detail states, RSVP lock, username unique constraint); then Maps URL fix.
+6. **Finish item 5 UX/reliability:** only the meet detail loading/error/ready split remains (RSVP lock, username constraint and Maps URL fix are done).
 
 ---
 
