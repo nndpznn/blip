@@ -32,6 +32,8 @@ import {Calendar} from '@heroui/calendar'
 import { Time, today, getLocalTimeZone, CalendarDate, parseDate, parseTime } from "@internationalized/date";
 import { to12Hour } from "@/util/politeTimeString";
 import { encodeToGoogleMaps } from "@/util/encodeToGoogleMaps";
+import { useSingleFlight } from "@/hooks/useSingleFlight";
+import { setRsvp } from "@/api/rsvp";
 
 import { supabase } from '@/clients/supabaseClient'
 import { useSupabaseUserMetadata } from '@/hooks/useSupabaseUserMetadata'
@@ -424,44 +426,28 @@ export default function MeetDetail() {
 		router.push("/seeAllMeets");
 	}
 
-	const handleRsvpToggle = async () => {
+	// One RSVP request at a time: rapid clicks are ignored while a request is in flight.
+	const { pending: rsvpPending, run: runRsvp } = useSingleFlight();
+
+	const handleRsvpToggle = () => {
 		if (!uid) {
 			// Logged-out visitors can't RSVP; send them to sign in and back here
 			promptLogin();
-			return;
+			return Promise.resolve();
 		}
-		if (!meet) return;
+		if (!meet) return Promise.resolve();
 
-		let error = null;
-
-		if (attendanceStatus) {
-			// User is attending, so they want to un-RSVP (DELETE the record)
-			const { error: deleteError } = await supabase
-				.from('meet_attendees')
-				.delete()
-				.eq('profile_id', uid)
-				.eq('meet_id', meet.id);
-			error = deleteError;
-		} else {
-			// User is not attending, so they want to RSVP (INSERT a new record)
-			const { error: insertError } = await supabase
-				.from('meet_attendees')
-				.insert([
-					{ 
-						profile_id: uid, 
-						meet_id: meet.id,
-					}
-				]);
-			error = insertError;
-		}
-
-		if (error) {
-			console.error("Error updating RSVP:", error);
-		} else {
-			// Flip the local state to reflect the successful database change
-			setAttendeeCount(prev => attendanceStatus ? prev - 1 : prev + 1);
-			setAttendanceStatus(!attendanceStatus);
-		}
+		return runRsvp(async () => {
+			const newAttending = !attendanceStatus;
+			const { error, changed } = await setRsvp(uid, meet.id, newAttending);
+			if (error) {
+				console.error("Error updating RSVP:", error);
+				return;
+			}
+			// If the database was already in the requested state (stale view), show it without moving the count.
+			if (changed) setAttendeeCount(prev => newAttending ? prev + 1 : prev - 1);
+			setAttendanceStatus(newAttending);
+		});
 	};
 
 	if (!meet || !organizer)
@@ -542,6 +528,7 @@ export default function MeetDetail() {
 						<div className="flex items-center gap-2">
 							<Button
 								onPress={handleRsvpToggle}
+								isDisabled={rsvpPending}
 								size="sm"
 								className={`px-4 transition-colors ${
 									attendanceStatus
