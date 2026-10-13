@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 /**
  * Returns a function that sends a logged-out visitor to the sign-in page and brings
  * them back to the page they were on afterwards (same flow the route gate in
- * middleware.ts uses: /loginrequired?next=<path>).
+ * proxy.ts uses: /loginrequired?next=<path>).
  */
 export function useLoginPrompt() {
 	const router = useRouter()
