@@ -20,6 +20,7 @@ import {
   DropdownMenu,
   DropdownItem,
   Input,
+  Spinner,
   Textarea,
   TimeInput,
 } from "@heroui/react";
@@ -42,6 +43,7 @@ import { fetchUserByUID } from "@/hooks/fetchUserbyUID";
 import Searchbar from "@/components/searchbar";
 import { LocationData } from "@/models/meet";
 import { moveItemDown, moveItemUp } from "@/util/reorderArray";
+import { meetFetchStatus, type MeetLoadStatus } from "@/util/meetLoadStatus";
 
 import UserCard from "@/components/userCard";
 import MeetImageGallery from "@/components/MeetImageGallery";
@@ -102,7 +104,7 @@ export default function MeetDetail() {
 	const [date, setDate] = useState<CalendarDate>(today(getLocalTimeZone()))
 	const [startTime, setStartTime] = useState<Time | null>()
 	const [endTime, setEndTime] = useState<Time | null>()
-	const [organizer, setOrganizer] = useState<ProfileRow | null>()
+	const [organizerRow, setOrganizerRow] = useState<ProfileRow | null>(null)
 
 	const { uid } = useSupabaseUserMetadata()
 
@@ -286,34 +288,57 @@ export default function MeetDetail() {
 	const params = useParams<{ id: string }>();
     const meetId = params.id;
 
-	const [meet, setMeet] = useState<Meet | null>(null)
+	// Result of the last meet fetch, tagged with the id it was for so a stale result is never shown for a new id.
+	const [meetResult, setMeetResult] = useState<{
+		id: string
+		meet: Meet | null
+		status: MeetLoadStatus
+	} | null>(null)
+	const [reloadKey, setReloadKey] = useState(0)
 	const [attendanceStatus, setAttendanceStatus] = useState(false)
 	const [attendeeCount, setAttendeeCount] = useState(0)
 
+	const loadStatus: MeetLoadStatus =
+		meetResult && meetResult.id === meetId ? meetResult.status : "loading"
+	const meet = loadStatus === "ready" ? meetResult!.meet : null
+	// Ignore an organizer resolved for a different meet.
+	const organizer = organizerRow && meet && organizerRow.id === meet.organizerId ? organizerRow : null
+
 	// Fetching project information from Supabase based on page ID.
 	useEffect(() => {
-	if (!meetId) return
+		if (!meetId) return
+		let cancelled = false
 
-	const fetchData = async () => {
-		const { data, error } = await supabase.from('meets').select('*').eq('id', meetId).single()
+		const fetchData = async () => {
+			const { data, error } = await supabase.from('meets').select('*').eq('id', meetId).single()
+			if (cancelled) return
 
-		if (error) {
-		console.error('There was an error fetching the meet.', error)
-		} else {
-		setMeet(data)
+			const status = meetFetchStatus(error, data != null)
+			if (status === "error") {
+				console.error('There was an error fetching the meet.', error)
+			}
+			setMeetResult({ id: meetId, meet: status === "ready" ? (data as Meet) : null, status })
 		}
-	//   setLoading(false)
+
+		fetchData()
+		return () => {
+			cancelled = true
+		}
+	}, [meetId, reloadKey])
+
+	const retryLoad = () => {
+		setMeetResult(null)
+		setReloadKey((k) => k + 1)
 	}
 
-	fetchData()
-	}, [meetId])
-
 	useEffect(() => {
+		let cancelled = false
 		const resolveAuthor = async () => {
 			if (meet) {
 				const user = await fetchUserByUID(meet.organizerId)
+				if (cancelled) return
 				// If the profile can't be loaded (e.g. deleted account), still render the meet
-				setOrganizer(
+				setOrganizerRow(
 					user ?? {
 						id: meet.organizerId,
 						fullname: "Unknown author",
@@ -327,6 +352,9 @@ export default function MeetDetail() {
 			}
 		}
 		resolveAuthor()
+		return () => {
+			cancelled = true
+		}
 	}, [meet])
 
 	useEffect(() => {
@@ -450,7 +478,24 @@ export default function MeetDetail() {
 		});
 	};
 
-	if (!meet || !organizer)
+	if (loadStatus === "loading")
+	return (
+		<div className="flex min-h-[50vh] flex-col items-center justify-center gap-4">
+			<Spinner size="lg" label="" />
+			<p className="text-lg text-foreground/80">Loading meet…</p>
+		</div>
+	)
+
+	if (loadStatus === "error")
+	return (
+		<div className="flex min-h-[50vh] flex-col items-center justify-center gap-4">
+			<p className="text-xl">Couldn&apos;t load this meet.</p>
+			<p className="text-foreground/70">Check your connection and try again.</p>
+			<Button color="primary" onPress={retryLoad}>Retry</Button>
+		</div>
+	)
+
+	if (loadStatus === "notFound" || !meet)
 	return (
 		<div className="flex flex-col justify-center items-center">
 			<p className="text-3xl my-3">...</p>
@@ -518,7 +563,10 @@ export default function MeetDetail() {
 					<div className="flex flex-wrap items-center justify-between gap-3">
 						<div className="flex items-center gap-2">
 							<span className="text-sm text-foreground/80">Organized by</span>
-							{isGuest ? (
+							{!organizer ? (
+								// Organizer profile still loading
+								<span className="text-sm text-foreground/60">…</span>
+							) : isGuest ? (
 								// Guests can't open user profiles, so show the name as plain text
 								<span className="text-sm font-semibold">{organizer.username ? organizer.username : organizer.fullname}</span>
 							) : (
@@ -562,11 +610,13 @@ export default function MeetDetail() {
 			</div>
 			
 
-			<ReusableFadeInComponent isOpen={isUserOpen} onClose={onUserOpenChange}>
-				<UserCard 
-					user={organizer}
-				/>
-			</ReusableFadeInComponent>
+			{organizer && (
+				<ReusableFadeInComponent isOpen={isUserOpen} onClose={onUserOpenChange}>
+					<UserCard 
+						user={organizer}
+					/>
+				</ReusableFadeInComponent>
+			)}
 
 			{/* DELETE CONFIRM PROTOCOL */}
 			<Drawer className="bg-black blip-main" isOpen={isDeleteOpen} onOpenChange={onDeleteOpenChange} size="xs">

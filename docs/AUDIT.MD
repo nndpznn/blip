@@ -96,9 +96,11 @@ The map does `supabase.from('meets').select('*')` with no filter (`src/app/map/p
 
 **Done (2026-10-06):** RSVP toggles now have an in-flight lock on both the meet card and meet detail page (`useSingleFlight`; rapid clicks are ignored and the button disables while a request runs). RSVP writes go through `src/api/rsvp.ts`, which treats a duplicate insert (23505) or a delete of a missing row as "already in that state" and leaves the attendee count unchanged.
 
-**Still open:** Meet detail still has no explicit `loading` / `error` / `ready` split. ~~Username uniqueness is a client TOCTOU check~~ — the database already enforces it (`profiles_username_key` UNIQUE, verified 2026-10-05, no existing duplicates); the profile page now also handles the constraint error (23505) instead of silently closing the editor. The constraint is case-sensitive (`Nolan` ≠ `nolan`); a `lower(username)` unique index would close that if wanted. Duplicate RSVPs are likewise impossible already (`meet_attendees` primary key is `(profile_id, meet_id)`).
+**Done (2026-10-11):** Meet detail now has an explicit `loading` / `error` / `notFound` / `ready` status (`src/util/meetLoadStatus.ts`, tested). It shows a spinner while loading instead of flashing "not found", reserves "not found" for a missing row (`PGRST116`) or malformed id (`22P02`), and shows a "Couldn't load this meet" message with a Retry button for any other failure. The organizer profile no longer blocks the page; a placeholder shows until it resolves, and a result for a previous meet id is never shown after navigating.
 
-**Action item (remaining):** Split meet detail into `loading` / `error` / `ready`. Split meet detail into `loading` / `error` / `ready`.
+**Still open:** ~~Meet detail has no `loading` / `error` / `ready` split.~~ ~~Username uniqueness is a client TOCTOU check~~ — the database already enforces it (`profiles_username_key` UNIQUE, verified 2026-10-05, no existing duplicates); the profile page now also handles the constraint error (23505) instead of silently closing the editor. The constraint is case-sensitive (`Nolan` ≠ `nolan`); a `lower(username)` unique index would close that if wanted. Duplicate RSVPs are likewise impossible already (`meet_attendees` primary key is `(profile_id, meet_id)`).
+
+**Action item (remaining):** None for this section. Optional: show an error state for the attendee count and RSVP status fetches, which still only log to the console.
 
 ---
 
@@ -140,7 +142,7 @@ The map does `supabase.from('meets').select('*')` with no filter (`src/app/map/p
 3b. ~~**Apply the profile-email migration**, then revoke the old Mapbox token.~~ **Done** (2026-10-04).  
 4. ~~**Commit lockfile + add CI** (`lint` / `tsc` / `build`).~~ **Done** (2026-10-04); check required on `main` (2026-10-05).  
 5. ~~**Paginate list + bbox/upcoming filter on map.**~~ **Done** (2026-10-04, no bbox); apply the attendee-summary migration before deploying.  
-6. **Finish item 5 UX/reliability:** only the meet detail loading/error/ready split remains (RSVP lock, username constraint and Maps URL fix are done).
+6. ~~**Finish item 5 UX/reliability.**~~ **Done** (2026-10-11): RSVP lock, username constraint, Maps URL fix and the meet detail loading/error/ready split.
 
 ---
 
