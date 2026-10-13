@@ -9,6 +9,9 @@ import { supabase } from '@/clients/supabaseClient'
 import { usePageAccent } from "@/contexts/PageAccentContext";
 import { useAuth } from "@/clients/authContext";
 import { useLoginPrompt } from "@/hooks/useLoginPrompt";
+import { useSingleFlight } from "@/hooks/useSingleFlight";
+import { setRsvp } from "@/lib/rsvp";
+import { isMeetInFuture, type MeetRow } from "@/util/meetDates";
 
 /** Matches prior `h-90` intent (22.5rem) so grid cards stay a consistent size. */
 const CARD_HEIGHT_CLASS = "h-[22.5rem]";
@@ -20,29 +23,6 @@ interface MeetCardProps {
     organizerName?: string | null;
     attendeeCount?: number;
     attendanceStatus?: boolean;
-}
-
-/** Raw meet row from Supabase may use date/startTime or date/start_time (strings). */
-type MeetRow = { date?: string | null; startTime?: string | null; start_time?: string | null; created_at?: string };
-
-function getMeetDateTime(meet: MeetRow): Date | null {
-	const dateStr = meet.date != null ? String(meet.date) : null;
-	if (!dateStr) return null;
-	const timeStr = meet.startTime ?? meet.start_time;
-	let iso = dateStr;
-	if (timeStr) {
-		const t = String(timeStr).replace("Z", "");
-		iso = dateStr.includes("T") ? dateStr : `${dateStr}T${t.length <= 5 ? t + ":00" : t}`;
-	} else if (!dateStr.includes("T")) {
-		iso = `${dateStr}T23:59:59`;
-	}
-	const d = new Date(iso);
-	return isNaN(d.getTime()) ? null : d;
-}
-
-function isMeetInFuture(meet: Meet): boolean {
-	const d = getMeetDateTime(meet as unknown as MeetRow);
-	return d != null && d.getTime() > Date.now();
 }
 
 const getCurrentProfileId = async () => {
@@ -127,48 +107,32 @@ export default function MeetCard({
         fetchAttendance();
     }, [preloaded, profileId, meet.id, attendeeCountProp, attendanceStatusProp]);
 
-    const handleRsvpToggle = async () => {
+    // One RSVP request at a time: rapid clicks are ignored while a request is in flight.
+    const { pending: rsvpPending, run: runRsvp } = useSingleFlight();
+
+    const handleRsvpToggle = () => {
         if (!profileId) {
             // Logged-out visitors can't RSVP; send them to sign in and back to this page
             promptLogin();
-            return;
+            return Promise.resolve();
         }
 
-        let error = null;
-
-        if (attendanceStatus) {
-            // User is attending, so they want to un-RSVP (DELETE the record)
-            const { error: deleteError } = await supabase
-                .from('meet_attendees')
-                .delete()
-                .eq('profile_id', profileId)
-                .eq('meet_id', meet.id);
-            error = deleteError;
-        } else {
-            // User is not attending, so they want to RSVP (INSERT a new record)
-            const { error: insertError } = await supabase
-                .from('meet_attendees')
-                .insert([
-                    { 
-                        profile_id: profileId, 
-                        meet_id: meet.id,
-                    }
-                ]);
-            error = insertError;
-        }
-
-        if (error) {
-            console.error("Error updating RSVP:", error);
-        } else {
-            const newCount = attendanceStatus ? attendeeCount - 1 : attendeeCount + 1;
+        return runRsvp(async () => {
             const newAttending = !attendanceStatus;
+            const { error, changed } = await setRsvp(profileId, meet.id, newAttending);
+            if (error) {
+                console.error("Error updating RSVP:", error);
+                return;
+            }
+            // If the database was already in the requested state (stale view), show it without moving the count.
+            const newCount = changed ? (newAttending ? attendeeCount + 1 : attendeeCount - 1) : attendeeCount;
             if (preloaded) {
                 setAttendanceOverride({ count: newCount, attending: newAttending });
             } else {
                 setResolvedAttendeeCount(newCount);
                 setResolvedAttendanceStatus(newAttending);
             }
-        }
+        });
     };
 
     const formattedDate = meet.date ? new Date(meet.date.toString()).toLocaleDateString('en-US', {
@@ -178,7 +142,7 @@ export default function MeetCard({
     })
     : 'No date found';
 
-    const isPast = !isMeetInFuture(meet);
+    const isPast = !isMeetInFuture(meet as unknown as MeetRow);
     const cardBgColor = isPast ? "bg-gray-600" : (accentColor ? "" : "bg-red-400");
     const cardStyle = !isPast && accentColor ? { backgroundColor: accentColor } : undefined;
 
@@ -302,7 +266,7 @@ export default function MeetCard({
                                     className="h-7 min-h-7 min-w-0 px-2.5 text-xs font-semibold"
                                     color="default"
                                     variant="flat"
-                                    isDisabled={isPast}
+                                    isDisabled={isPast || rsvpPending}
                                     title={isGuest ? "Sign in to attend this meet" : undefined}
                                     onPress={() => {
                                         handleRsvpToggle();

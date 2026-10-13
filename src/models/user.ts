@@ -43,7 +43,11 @@ class User {
 	  this.profile_color = profile_color
 	}
 
-	async saveProfile(): Promise<ProfileRow|null> {
+	/**
+	 * `usernameTaken` is true when the database's unique constraint on `profiles.username`
+	 * rejected the save (Postgres 23505), e.g. someone claimed the name after the client-side check.
+	 */
+	async saveProfile(): Promise<{ profile: ProfileRow | null; usernameTaken: boolean }> {
 		const {
 			data: { user },
 			error: authError,
@@ -53,7 +57,7 @@ class User {
 				"Error saving profile data: not signed in.",
 				authError?.message,
 			);
-			return null;
+			return { profile: null, usernameTaken: false };
 		}
 
 		this.id = user.id;
@@ -72,14 +76,15 @@ class User {
 		  .select("*")
 
 		if (error) {
-			console.error("Error saving profile data:", error);
-			return null;
+			const usernameTaken = error.code === "23505";
+			if (!usernameTaken) console.error("Error saving profile data:", error);
+			return { profile: null, usernameTaken };
 		}
 		
-		if (!data || data.length === 0) return null;
+		if (!data || data.length === 0) return { profile: null, usernameTaken: false };
 
 		console.log("Profile data edited:", data[0]);
-		return data[0];
+		return { profile: data[0], usernameTaken: false };
 	}
 }
   

@@ -13,29 +13,19 @@ export interface LocationData {
     };
 }
 
-/** Max size per meet image (10 MiB). */
-export const MEET_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
-
-/** Max images per meet (each slot counts, including duplicates). */
-export const MEET_IMAGE_MAX_COUNT = 10;
-
-export function isMeetImageOverLimit(file: File): boolean {
-	return file.size > MEET_IMAGE_MAX_BYTES;
-}
-
-/** Splits `files` so only `MEET_IMAGE_MAX_COUNT - currentCount` are accepted. */
-export function filesWithinMeetImageLimit(
-	currentCount: number,
-	files: File[],
-): { accepted: File[]; skippedNames: string[] } {
-	const remaining = MEET_IMAGE_MAX_COUNT - currentCount;
-	if (remaining <= 0) {
-		return { accepted: [], skippedNames: files.map((f) => f.name) };
-	}
-	const accepted = files.slice(0, remaining);
-	const skippedNames = files.slice(remaining).map((f) => f.name);
-	return { accepted, skippedNames };
-}
+// Image-limit helpers live in a dependency-free module so they can be unit tested; re-exported for existing imports.
+import {
+	MEET_IMAGE_MAX_BYTES,
+	MEET_IMAGE_MAX_COUNT,
+	isMeetImageOverLimit,
+	filesWithinMeetImageLimit,
+} from "@/util/meetImageLimits";
+export {
+	MEET_IMAGE_MAX_BYTES,
+	MEET_IMAGE_MAX_COUNT,
+	isMeetImageOverLimit,
+	filesWithinMeetImageLimit,
+};
 
 class Meet {
 	// supabase generates a unique meet ID upon data entry, and can be retrieved later...

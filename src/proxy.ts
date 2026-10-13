@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { updateSession } from '@/clients/supabase/middleware'
+import { updateSession } from '@/clients/supabase/session'
 
 const SECURITY_HEADERS: Record<string, string> = {
 	'X-Frame-Options': 'DENY',
@@ -24,7 +24,7 @@ function copyCookies(from: NextResponse, to: NextResponse) {
 	return to
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
 	const { user, supabaseResponse } = await updateSession(request)
 	const pathname = request.nextUrl.pathname
 

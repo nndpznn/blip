@@ -8,8 +8,10 @@ import { useParams } from 'next/navigation'
 import { useEffect, useState, useMemo } from "react";
 
 import { supabase } from '@/clients/supabaseClient'
+import { fetchAttendeeSummary } from '@/lib/meets'
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button, Checkbox } from "@heroui/react";
 import { usePageAccent } from "@/contexts/PageAccentContext";
+import { getMeetDateTime, isMeetInFuture, type MeetRow } from "@/util/meetDates";
 
 /** Maps meet id -> attendee count (from batch fetch). Keys are String(meet.id) for UUID-safe lookup. */
 type AttendeeCountMap = Record<string, number>;
@@ -25,28 +27,7 @@ const SORT_LABELS: Record<SortOption, string> = {
 	furthest: "Furthest first",
 };
 
-/** Raw meet row from Supabase may use date/startTime or date/start_time (strings). */
-type MeetRow = { date?: string | null; startTime?: string | null; start_time?: string | null; created_at?: string };
-
-function getMeetDateTime(meet: MeetRow): Date | null {
-	const dateStr = meet.date != null ? String(meet.date) : null;
-	if (!dateStr) return null;
-	const timeStr = meet.startTime ?? meet.start_time;
-	let iso = dateStr;
-	if (timeStr) {
-		const t = String(timeStr).replace("Z", "");
-		iso = dateStr.includes("T") ? dateStr : `${dateStr}T${t.length <= 5 ? t + ":00" : t}`;
-	} else if (!dateStr.includes("T")) {
-		iso = `${dateStr}T23:59:59`;
-	}
-	const d = new Date(iso);
-	return isNaN(d.getTime()) ? null : d;
-}
-
-function isMeetInFuture(meet: Meet): boolean {
-	const d = getMeetDateTime(meet as unknown as MeetRow);
-	return d != null && d.getTime() > Date.now();
-}
+const isFuture = (meet: Meet) => isMeetInFuture(meet as unknown as MeetRow);
 
 export default function UserDetail() {
 
@@ -118,20 +99,14 @@ export default function UserDetail() {
 
 			const meetIds = meetsData.map((m: { id: number | string }) => m.id)
 
-			// 3. Single batch: all meet_attendees for these meets (counts + current user attendance)
-			const { data: attendeesData } = await supabase
-				.from('meet_attendees')
-				.select('meet_id, profile_id')
-				.in('meet_id', meetIds)
+			// 3. Counts + current user attendance, aggregated in the database
+			const summary = await fetchAttendeeSummary(meetIds)
 
 			const countMap: AttendeeCountMap = {}
 			const attendingSet = new Set<string>()
-			if (attendeesData) {
-				for (const row of attendeesData) {
-					const key = String(row.meet_id)
-					countMap[key] = (countMap[key] ?? 0) + 1
-					if (currentProfileId && row.profile_id === currentProfileId) attendingSet.add(key)
-				}
+			for (const [key, value] of Object.entries(summary)) {
+				countMap[key] = value.count
+				if (value.attending) attendingSet.add(key)
 			}
 			setAttendeeCountByMeet(countMap)
 			setAttendingMeetIds(attendingSet)
@@ -141,7 +116,7 @@ export default function UserDetail() {
 
 	const displayedMeets = useMemo(() => {
 		if (!meets) return null;
-		let list = showPast ? meets : meets.filter(isMeetInFuture);
+		let list = showPast ? meets : meets.filter(isFuture);
 		// Treat null meet time as end of list for time-based sorts
 		const getSortTime = (meet: Meet) => getMeetDateTime(meet as unknown as MeetRow)?.getTime() ?? (sortOrder === "upcoming" ? Infinity : -Infinity);
 		list = [...list].sort((a, b) => {

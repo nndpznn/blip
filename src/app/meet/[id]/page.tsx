@@ -20,6 +20,7 @@ import {
   DropdownMenu,
   DropdownItem,
   Input,
+  Spinner,
   Textarea,
   TimeInput,
 } from "@heroui/react";
@@ -31,6 +32,9 @@ import { useAuth } from "@/clients/authContext";
 import {Calendar} from '@heroui/calendar'
 import { Time, today, getLocalTimeZone, CalendarDate, parseDate, parseTime } from "@internationalized/date";
 import { to12Hour } from "@/util/politeTimeString";
+import { encodeToGoogleMaps } from "@/util/encodeToGoogleMaps";
+import { useSingleFlight } from "@/hooks/useSingleFlight";
+import { setRsvp } from "@/lib/rsvp";
 
 import { supabase } from '@/clients/supabaseClient'
 import { useSupabaseUserMetadata } from '@/hooks/useSupabaseUserMetadata'
@@ -39,6 +43,7 @@ import { fetchUserByUID } from "@/hooks/fetchUserbyUID";
 import Searchbar from "@/components/searchbar";
 import { LocationData } from "@/models/meet";
 import { moveItemDown, moveItemUp } from "@/util/reorderArray";
+import { meetFetchStatus, type MeetLoadStatus } from "@/util/meetLoadStatus";
 
 import UserCard from "@/components/userCard";
 import MeetImageGallery from "@/components/MeetImageGallery";
@@ -99,7 +104,7 @@ export default function MeetDetail() {
 	const [date, setDate] = useState<CalendarDate>(today(getLocalTimeZone()))
 	const [startTime, setStartTime] = useState<Time | null>()
 	const [endTime, setEndTime] = useState<Time | null>()
-	const [organizer, setOrganizer] = useState<ProfileRow | null>()
+	const [organizerRow, setOrganizerRow] = useState<ProfileRow | null>(null)
 
 	const { uid } = useSupabaseUserMetadata()
 
@@ -283,34 +288,57 @@ export default function MeetDetail() {
 	const params = useParams<{ id: string }>();
     const meetId = params.id;
 
-	const [meet, setMeet] = useState<Meet | null>(null)
+	// Result of the last meet fetch, tagged with the id it was for so a stale result is never shown for a new id.
+	const [meetResult, setMeetResult] = useState<{
+		id: string
+		meet: Meet | null
+		status: MeetLoadStatus
+	} | null>(null)
+	const [reloadKey, setReloadKey] = useState(0)
 	const [attendanceStatus, setAttendanceStatus] = useState(false)
 	const [attendeeCount, setAttendeeCount] = useState(0)
 
+	const loadStatus: MeetLoadStatus =
+		meetResult && meetResult.id === meetId ? meetResult.status : "loading"
+	const meet = loadStatus === "ready" ? meetResult!.meet : null
+	// Ignore an organizer resolved for a different meet.
+	const organizer = organizerRow && meet && organizerRow.id === meet.organizerId ? organizerRow : null
+
 	// Fetching project information from Supabase based on page ID.
 	useEffect(() => {
-	if (!meetId) return
+		if (!meetId) return
+		let cancelled = false
 
-	const fetchData = async () => {
-		const { data, error } = await supabase.from('meets').select('*').eq('id', meetId).single()
+		const fetchData = async () => {
+			const { data, error } = await supabase.from('meets').select('*').eq('id', meetId).single()
+			if (cancelled) return
 
-		if (error) {
-		console.error('There was an error fetching the meet.', error)
-		} else {
-		setMeet(data)
+			const status = meetFetchStatus(error, data != null)
+			if (status === "error") {
+				console.error('There was an error fetching the meet.', error)
+			}
+			setMeetResult({ id: meetId, meet: status === "ready" ? (data as Meet) : null, status })
 		}
-	//   setLoading(false)
+
+		fetchData()
+		return () => {
+			cancelled = true
+		}
+	}, [meetId, reloadKey])
+
+	const retryLoad = () => {
+		setMeetResult(null)
+		setReloadKey((k) => k + 1)
 	}
 
-	fetchData()
-	}, [meetId])
-
 	useEffect(() => {
+		let cancelled = false
 		const resolveAuthor = async () => {
 			if (meet) {
 				const user = await fetchUserByUID(meet.organizerId)
+				if (cancelled) return
 				// If the profile can't be loaded (e.g. deleted account), still render the meet
-				setOrganizer(
+				setOrganizerRow(
 					user ?? {
 						id: meet.organizerId,
 						fullname: "Unknown author",
@@ -324,6 +352,9 @@ export default function MeetDetail() {
 			}
 		}
 		resolveAuthor()
+		return () => {
+			cancelled = true
+		}
 	}, [meet])
 
 	useEffect(() => {
@@ -361,6 +392,8 @@ export default function MeetDetail() {
 	useEffect(() => {
 
 		if (isEditOpen && meet) {
+			// Intentional: seed the edit form from the meet each time the edit modal opens.
+			/* eslint-disable react-hooks/set-state-in-effect */
 			setTitle(meet?.title || '')
 			setBody(meet?.body || '')
 			setLinks((meet as { links?: string; link?: string }).links ?? meet?.link ?? '')
@@ -371,6 +404,7 @@ export default function MeetDetail() {
 			setStartTime(meet?.startTime != null ? (typeof meet.startTime === 'string' ? parseTime(meet.startTime) : meet.startTime) : null)
 			setEndTime(meet?.endTime != null ? (typeof meet.endTime === 'string' ? parseTime(meet.endTime) : meet.endTime) : null)
 			setLocation(meet.location)
+			/* eslint-enable react-hooks/set-state-in-effect */
 		}
 	  }, [meet, isEditOpen])
 
@@ -420,47 +454,48 @@ export default function MeetDetail() {
 		router.push("/seeAllMeets");
 	}
 
-	const handleRsvpToggle = async () => {
+	// One RSVP request at a time: rapid clicks are ignored while a request is in flight.
+	const { pending: rsvpPending, run: runRsvp } = useSingleFlight();
+
+	const handleRsvpToggle = () => {
 		if (!uid) {
 			// Logged-out visitors can't RSVP; send them to sign in and back here
 			promptLogin();
-			return;
+			return Promise.resolve();
 		}
-		if (!meet) return;
+		if (!meet) return Promise.resolve();
 
-		let error = null;
-
-		if (attendanceStatus) {
-			// User is attending, so they want to un-RSVP (DELETE the record)
-			const { error: deleteError } = await supabase
-				.from('meet_attendees')
-				.delete()
-				.eq('profile_id', uid)
-				.eq('meet_id', meet.id);
-			error = deleteError;
-		} else {
-			// User is not attending, so they want to RSVP (INSERT a new record)
-			const { error: insertError } = await supabase
-				.from('meet_attendees')
-				.insert([
-					{ 
-						profile_id: uid, 
-						meet_id: meet.id,
-					}
-				]);
-			error = insertError;
-		}
-
-		if (error) {
-			console.error("Error updating RSVP:", error);
-		} else {
-			// Flip the local state to reflect the successful database change
-			setAttendeeCount(prev => attendanceStatus ? prev - 1 : prev + 1);
-			setAttendanceStatus(!attendanceStatus);
-		}
+		return runRsvp(async () => {
+			const newAttending = !attendanceStatus;
+			const { error, changed } = await setRsvp(uid, meet.id, newAttending);
+			if (error) {
+				console.error("Error updating RSVP:", error);
+				return;
+			}
+			// If the database was already in the requested state (stale view), show it without moving the count.
+			if (changed) setAttendeeCount(prev => newAttending ? prev + 1 : prev - 1);
+			setAttendanceStatus(newAttending);
+		});
 	};
 
-	if (!meet || !organizer)
+	if (loadStatus === "loading")
+	return (
+		<div className="flex min-h-[50vh] flex-col items-center justify-center gap-4">
+			<Spinner size="lg" label="" />
+			<p className="text-lg text-foreground/80">Loading meet…</p>
+		</div>
+	)
+
+	if (loadStatus === "error")
+	return (
+		<div className="flex min-h-[50vh] flex-col items-center justify-center gap-4">
+			<p className="text-xl">Couldn&apos;t load this meet.</p>
+			<p className="text-foreground/70">Check your connection and try again.</p>
+			<Button color="primary" onPress={retryLoad}>Retry</Button>
+		</div>
+	)
+
+	if (loadStatus === "notFound" || !meet)
 	return (
 		<div className="flex flex-col justify-center items-center">
 			<p className="text-3xl my-3">...</p>
@@ -515,7 +550,7 @@ export default function MeetDetail() {
 						</div>
 						<div className="mt-2 flex items-center justify-start gap-1.5 text-sm text-foreground/80">
 							<MapPinIcon className="shrink-0 size-4 text-red-400/80" />
-							<span className="line-clamp-2 hover:underline hover:cursor-pointer" onClick={() => window.open(meet.mapsLink, "_blank", "noopener,noreferrer")}>{formatAddress(meet.location.address)}</span>
+							<span className="line-clamp-2 hover:underline hover:cursor-pointer" onClick={() => window.open(encodeToGoogleMaps(meet.location.name, meet.location.coordinates), "_blank", "noopener,noreferrer")}>{formatAddress(meet.location.address)}</span>
 						</div>
 					</div>
 
@@ -528,7 +563,10 @@ export default function MeetDetail() {
 					<div className="flex flex-wrap items-center justify-between gap-3">
 						<div className="flex items-center gap-2">
 							<span className="text-sm text-foreground/80">Organized by</span>
-							{isGuest ? (
+							{!organizer ? (
+								// Organizer profile still loading
+								<span className="text-sm text-foreground/60">…</span>
+							) : isGuest ? (
 								// Guests can't open user profiles, so show the name as plain text
 								<span className="text-sm font-semibold">{organizer.username ? organizer.username : organizer.fullname}</span>
 							) : (
@@ -538,6 +576,7 @@ export default function MeetDetail() {
 						<div className="flex items-center gap-2">
 							<Button
 								onPress={handleRsvpToggle}
+								isDisabled={rsvpPending}
 								size="sm"
 								className={`px-4 transition-colors ${
 									attendanceStatus
@@ -571,11 +610,13 @@ export default function MeetDetail() {
 			</div>
 			
 
-			<ReusableFadeInComponent isOpen={isUserOpen} onClose={onUserOpenChange}>
-				<UserCard 
-					user={organizer}
-				/>
-			</ReusableFadeInComponent>
+			{organizer && (
+				<ReusableFadeInComponent isOpen={isUserOpen} onClose={onUserOpenChange}>
+					<UserCard 
+						user={organizer}
+					/>
+				</ReusableFadeInComponent>
+			)}
 
 			{/* DELETE CONFIRM PROTOCOL */}
 			<Drawer className="bg-black blip-main" isOpen={isDeleteOpen} onOpenChange={onDeleteOpenChange} size="xs">
