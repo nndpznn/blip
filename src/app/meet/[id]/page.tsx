@@ -34,7 +34,7 @@ import { Time, today, getLocalTimeZone, CalendarDate, parseDate, parseTime } fro
 import { to12Hour } from "@/util/politeTimeString";
 import { encodeToGoogleMaps } from "@/util/encodeToGoogleMaps";
 import { useSingleFlight } from "@/hooks/useSingleFlight";
-import { setRsvp } from "@/api/rsvp";
+import { setRsvp } from "@/lib/rsvp";
 
 import { supabase } from '@/clients/supabaseClient'
 import { useSupabaseUserMetadata } from '@/hooks/useSupabaseUserMetadata'

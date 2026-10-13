@@ -4,9 +4,9 @@
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from 'react-dom/client';
-import { initMap, MAP_TEXT_FONT } from "../../api/map";
+import { initMap, MAP_TEXT_FONT } from "@/lib/map";
 import * as maplibregl from 'maplibre-gl';
-import { fetchUpcomingMapMeets } from '@/api/meets';
+import { fetchUpcomingMapMeets } from '@/lib/meets';
 
 // components
 import type { Point } from 'geojson';

@@ -5,7 +5,7 @@ import Meet from "@/models/meet";
 import MeetCard from "@/components/meetCard"
 import { supabase } from "@/clients/supabaseClient";
 import { useAuth } from "@/clients/authContext";
-import { fetchAttendeeSummary, fetchMeetPage } from "@/api/meets";
+import { fetchAttendeeSummary, fetchMeetPage } from "@/lib/meets";
 import {
 	initialCursor,
 	nextCursor,

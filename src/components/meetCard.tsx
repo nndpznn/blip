@@ -10,7 +10,7 @@ import { usePageAccent } from "@/contexts/PageAccentContext";
 import { useAuth } from "@/clients/authContext";
 import { useLoginPrompt } from "@/hooks/useLoginPrompt";
 import { useSingleFlight } from "@/hooks/useSingleFlight";
-import { setRsvp } from "@/api/rsvp";
+import { setRsvp } from "@/lib/rsvp";
 import { isMeetInFuture, type MeetRow } from "@/util/meetDates";
 
 /** Matches prior `h-90` intent (22.5rem) so grid cards stay a consistent size. */

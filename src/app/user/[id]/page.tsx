@@ -8,7 +8,7 @@ import { useParams } from 'next/navigation'
 import { useEffect, useState, useMemo } from "react";
 
 import { supabase } from '@/clients/supabaseClient'
-import { fetchAttendeeSummary } from '@/api/meets'
+import { fetchAttendeeSummary } from '@/lib/meets'
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button, Checkbox } from "@heroui/react";
 import { usePageAccent } from "@/contexts/PageAccentContext";
 import { getMeetDateTime, isMeetInFuture, type MeetRow } from "@/util/meetDates";
