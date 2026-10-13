@@ -3,6 +3,7 @@
 import { useAuth } from "@/clients/authContext";
 import { supabase } from "@/clients/supabaseClient";
 import { fetchUserByUID } from "@/hooks/fetchUserbyUID";
+import { ilikeLiteral } from "@/util/username";
 import { useEffect, useState, useCallback } from "react";
 import User, { ProfileRow } from "@/models/user";
 import { Button, Input, Spinner, useDisclosure } from "@heroui/react"
@@ -76,14 +77,16 @@ export default function Profile() {
 		if (currentUser && user) {
 			setUsernameTakenWarning(null)
 
-			// Check if username is already taken by another user
-			const { data: existingUser } = await supabase
+			// Check if username is already taken by another user (case-insensitive: "Nolan" == "nolan").
+			// Not .maybeSingle(): old data could hold several case variants, and we only need any other owner.
+			const { data: matches } = await supabase
 				.from('profiles')
 				.select('id')
-				.eq('username', username.trim())
-				.maybeSingle()
+				.ilike('username', ilikeLiteral(username.trim()))
+				.neq('id', user.id)
+				.limit(1)
 
-			if (existingUser && existingUser.id !== user.id) {
+			if (matches && matches.length > 0) {
 				setUsernameTakenWarning(`Username "${username.trim()}" is already taken. Please choose a different one.`)
 				return
 			}
