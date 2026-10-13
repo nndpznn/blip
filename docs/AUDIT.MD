@@ -11,7 +11,7 @@
 
 Blip is a California-focused car/coffee meet discovery app (map + list, RSVP, create/edit, profiles). Stack: **Next.js 16.1.6** App Router, **React 19**, TypeScript, **Supabase** (auth + Postgres + storage), MapLibre GL (OpenFreeMap tiles) + Photon search, HeroUI, Tailwind 4. Hosted on Vercel.
 
-**Auth boundary (current):** Cookie-backed `@supabase/ssr` clients, [`src/middleware.ts`](../src/middleware.ts) (session refresh, `/create` + `/profile` + `/user` gates, prod `/sandbox` block, security headers), and `/auth/callback` for OAuth. Logged-out visitors can browse the map, meet list and meet details; attending, creating and profile pages prompt sign-in (deployed and stable as of 2026-10-04). **Correction (2026-09-30):** the middleware previously sat at the repo root while the app uses `src/`, so Next never ran it and the `/create` / `/profile` gates and security headers were not active; it now lives in `src/` and the redirects and headers are verified. Client screens still talk to Supabase with the anon key; **RLS on the Supabase project is the data-authorization boundary**. Product maturity is pre-1.0 (`package.json` version `0.5.0`).
+**Auth boundary (current):** Cookie-backed `@supabase/ssr` clients, [`src/proxy.ts`](../src/proxy.ts) (Next 16's renamed middleware; session refresh, `/create` + `/profile` + `/user` gates, prod `/sandbox` block, security headers), and `/auth/callback` for OAuth. Logged-out visitors can browse the map, meet list and meet details; attending, creating and profile pages prompt sign-in (deployed and stable as of 2026-10-04). **Correction (2026-09-30):** the middleware previously sat at the repo root while the app uses `src/`, so Next never ran it and the `/create` / `/profile` gates and security headers were not active; it now lives in `src/` and the redirects and headers are verified. Client screens still talk to Supabase with the anon key; **RLS on the Supabase project is the data-authorization boundary**. Product maturity is pre-1.0 (`package.json` version `0.5.0`).
 
 ---
 
@@ -44,7 +44,7 @@ Priority order used: **security → reliability → efficiency → organization*
 
 | Requirement | Where |
 |-------------|--------|
-| Cookie sessions + middleware redirects for `/create`, `/profile`, `/user` → `/loginrequired?next=…` (effective only since the 2026-09-30 move to `src/`) | [`src/middleware.ts`](../src/middleware.ts), [`src/clients/supabase/`](../src/clients/supabase/) |
+| Cookie sessions + middleware redirects for `/create`, `/profile`, `/user` → `/loginrequired?next=…` (effective only since the 2026-09-30 move to `src/`) | [`src/proxy.ts`](../src/proxy.ts), [`src/clients/supabase/`](../src/clients/supabase/) |
 | `saveToDatabase` / `saveEditDatabase`: `getUser()`, force `organizerId` | [`src/models/meet.ts`](../src/models/meet.ts) |
 | Delete: require user + assert organizer before storage/row delete | [`src/app/meet/[id]/page.tsx`](../src/app/meet/[id]/page.tsx) |
 | Profile save: `getUser()`, `.eq('id', user.id)` | [`src/models/user.ts`](../src/models/user.ts) |
@@ -71,7 +71,7 @@ UI organizer gates remain for UX only; RLS (item 1) + write-path identity are th
 ### 4. Unbounded meet loads on map and list (Efficiency / Reliability) — DONE (pending migration)
 
 **Status (2026-10-04):** Implemented, with one deploy step outstanding.
-- **Map:** loads only upcoming meets (`date >= today`) and only the columns pins/popups use (`src/api/meets.ts`). No row cap handling by design: upcoming density is expected to stay far below Supabase's 1,000-row default.
+- **Map:** loads only upcoming meets (`date >= today`) and only the columns pins/popups use (`src/lib/meets.ts`). No row cap handling by design: upcoming density is expected to stay far below Supabase's 1,000-row default.
 - **List (`/seeAllMeets`):** infinite scroll in pages of 20, server-side date filter and ordering, "Show past meets" toggle. Sorts reduced to "Most recent" (posted date) and "Upcoming first" (soonest first, then past meets newest-first when the toggle is on). Paging plan is pure and unit tested (`src/util/meetPaging.ts`).
 - **Attendee counts:** new SQL function `meet_attendee_summary` replaces downloading every `meet_attendees` row (used by the list and user pages). Migration: `supabase/migrations/20261004235000_meet_attendee_summary.sql`.
 - **Behavior note:** "upcoming" is decided by date only, so a meet earlier today still counts as upcoming until midnight.
@@ -88,19 +88,19 @@ The map does `supabase.from('meets').select('*')` with no filter (`src/app/map/p
 
 ---
 
-### 5. Fragmented auth/loading and false “not found” UX (Reliability) — PARTIAL
+### 5. Fragmented auth/loading and false “not found” UX (Reliability) — DONE
 
 **Done since (2026-09-30):** `fetchUserByUID` now returns `null` on error (no more Postgrest error object treated as a profile); the meet detail page falls back to an “Unknown author” organizer so a missing profile no longer renders as “not found”; the expected “Auth session missing” result for guests is no longer logged as an error.
 
 **Done with item 2:** Single auth source via `AuthProvider` (`getUser` + `onAuthStateChange`); `useSupabaseUser` removed; `useSupabaseUserMetadata` wraps `useAuth`; create no longer uses `user!` (middleware + guard).
 
-**Done (2026-10-06):** RSVP toggles now have an in-flight lock on both the meet card and meet detail page (`useSingleFlight`; rapid clicks are ignored and the button disables while a request runs). RSVP writes go through `src/api/rsvp.ts`, which treats a duplicate insert (23505) or a delete of a missing row as "already in that state" and leaves the attendee count unchanged.
+**Done (2026-10-06):** RSVP toggles now have an in-flight lock on both the meet card and meet detail page (`useSingleFlight`; rapid clicks are ignored and the button disables while a request runs). RSVP writes go through `src/lib/rsvp.ts`, which treats a duplicate insert (23505) or a delete of a missing row as "already in that state" and leaves the attendee count unchanged.
 
 **Done (2026-10-11):** Meet detail now has an explicit `loading` / `error` / `notFound` / `ready` status (`src/util/meetLoadStatus.ts`, tested). It shows a spinner while loading instead of flashing "not found", reserves "not found" for a missing row (`PGRST116`) or malformed id (`22P02`), and shows a "Couldn't load this meet" message with a Retry button for any other failure. The organizer profile no longer blocks the page; a placeholder shows until it resolves, and a result for a previous meet id is never shown after navigating.
 
-**Still open:** ~~Meet detail has no `loading` / `error` / `ready` split.~~ ~~Username uniqueness is a client TOCTOU check~~ — the database already enforces it (`profiles_username_key` UNIQUE, verified 2026-10-05, no existing duplicates); the profile page now also handles the constraint error (23505) instead of silently closing the editor. The constraint is case-sensitive (`Nolan` ≠ `nolan`); a `lower(username)` unique index would close that if wanted. Duplicate RSVPs are likewise impossible already (`meet_attendees` primary key is `(profile_id, meet_id)`).
+**Username uniqueness:** ~~client TOCTOU check~~ — the database already enforces it (`profiles_username_key` UNIQUE, verified 2026-10-05); the profile page also handles the constraint error (23505) instead of silently closing the editor. That constraint was case-sensitive, so **(2026-10-12)** migration `20261012235500_username_case_insensitive_unique.sql` adds a unique index on `lower(username)` (checked: no existing collisions) and the profile page's pre-check now uses a case-insensitive match, so `Nolan` == `nolan`. **Apply the migration to production** (it only adds an index). Duplicate RSVPs are likewise impossible already (`meet_attendees` primary key is `(profile_id, meet_id)`).
 
-**Action item (remaining):** None for this section. Optional: show an error state for the attendee count and RSVP status fetches, which still only log to the console.
+**Action item (remaining):** None required. Optional: show an error state for the attendee count and RSVP status fetches, which still only log to the console.
 
 ---
 
@@ -109,13 +109,14 @@ The map does `supabase.from('meets').select('*')` with no filter (`src/app/map/p
 | Issue | Why it matters less *right now* |
 |--------|----------------------------------|
 | ~~Public Mapbox token in Search Box query strings~~ | **Resolved (2026-09-30):** Mapbox removed in favor of MapLibre + OpenFreeMap + Photon (no token). Old token rotated/revoked (2026-10-04). Photon's public endpoint has no SLA; consider a self-hosted/paid geocoder if search volume grows. |
-| `/sandbox` routes | **Mitigated:** middleware returns 404 for `/sandbox*` when `NODE_ENV === 'production'`. |
+| `/sandbox` routes | **Mitigated:** the proxy returns 404 for `/sandbox*` when `NODE_ENV === 'production'`. |
 | Dead code | **Culled (2026-09-23):** removed unused ThemeProvider, logoutButton, fetchUserByUsername, addEventMarkers, GoogleOAuthProvider/`@react-oauth/google`, and accidental `"npm"` dependency. |
 | ~~`encodeToGoogleMaps` puts coordinates in `query_place_id`~~ | **Fixed (2026-10-06):** links now use `query=lat,lng` (name search only as a fallback for invalid coordinates), with tests. The meet detail page builds the link from `location` at render time, because existing rows still store the old broken `mapsLink`. |
 | Client-only California substring check | Bypassable without server/RLS validation; product rule, not a vault. |
 | ~~Public `email` on `profiles`~~ | **Resolved (2026-10-04):** app code selects only public columns (email only for the user's own profile), and migration `20260930230000_hide_profile_email_from_anon.sql` was applied after deploy, revoking anon access to `email`. Logged-out pages confirmed working afterward. |
 | ~~Hardcoded Formspree form id~~ | **Improved (2026-10-06):** id read from `NEXT_PUBLIC_FORMSPREE_FORM_ID` (the old id remains the fallback so existing deploys keep working), honeypot field added, input length caps. The id is public by design; set the env var in Vercel to rotate it, then remove the fallback. |
-| Misleading `src/api/` name | Client MapLibre helper only (`src/api/map.ts`) — rename when cleaning structure. |
+| ~~Misleading `src/api/` name~~ | **Done (2026-10-12):** renamed to `src/lib/` (it holds the MapLibre helper and the client-side Supabase data helpers, not an HTTP API). |
+| ~~Deprecated `middleware` file name~~ | **Done (2026-10-12):** `src/middleware.ts` is now `src/proxy.ts` (export `proxy`), per Next 16; the session helper moved to `src/clients/supabase/session.ts`. Behavior unchanged. |
 | ~~Triplicated date/sort helpers across cards/list/user pages~~ | **Done (2026-10-06):** `getMeetDateTime` / `isMeetInFuture` live in `src/util/meetDates.ts` (tested); the card and user page use it, and the list page was rewritten onto `meetPaging.ts` earlier. The popup's display formatters remain single-use. |
 | RLS SQL not in `supabase/migrations/` | **Partly addressed (2026-10-05):** live policies exported as a reference snapshot (`supabase/snapshots/`) and storage/grant fixes written as migrations. Still no runnable baseline migration. |
 
@@ -150,13 +151,13 @@ The map does `supabase.from('meets').select('*')` with no filter (`src/app/map/p
 
 | Path | Role |
 |------|------|
-| `src/middleware.ts` | Session refresh, auth redirects, sandbox gate, security headers |
+| `src/proxy.ts` | Session refresh, auth redirects, sandbox gate, security headers |
 | `src/app/` | Routes: `/`, `/map`, `/seeAllMeets`, `/meet/[id]`, `/create`, `/profile`, `/user/[id]`, `/loginrequired`, `/issue`, `/auth/callback`, `/sandbox/*` |
 | `src/clients/` | Browser/server Supabase helpers + `AuthProvider` |
 | `src/models/` | `Meet` / `User` write + image upload helpers |
 | `src/components/` | Nav, cards, popup, search, galleries |
 | `src/hooks/` | Profile fetchers + metadata thin wrap of `useAuth` |
-| `src/api/map.ts` | Client MapLibre init + dark theme overrides (not an HTTP API); search via `src/util/photon.ts` |
-| `supabase/` | CLI `config.toml`; `migrations/` has the profile-email grant migration (applied) the attendee-summary function, and two 2026-10-05 hardening migrations (both applied 2026-10-05); `snapshots/` holds a non-runnable reference of live policies; `profiles` rows are created by a private trigger on `auth.users` (not in the repo) |
+| `src/lib/` | `map.ts`: client MapLibre init + dark theme overrides ; `meets.ts` / `rsvp.ts`: client-side Supabase data helpers (not an HTTP API); search via `src/util/photon.ts` |
+| `supabase/` | CLI `config.toml`; `migrations/` has the profile-email grant migration, the attendee-summary function (confirmed applied 2026-10-12), two 2026-10-05 hardening migrations (both applied 2026-10-05), and the 2026-10-12 case-insensitive username index (written, not yet applied); `snapshots/` holds a non-runnable reference of live policies; `profiles` rows are created by a private trigger on `auth.users` (not in the repo) |
 
 **Core tables (inferred):** `meets`, `profiles`, `meet_attendees`; storage bucket `images`.
