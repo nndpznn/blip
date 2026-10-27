@@ -1,0 +1,8 @@
+{
+  "name": "@blip/shared",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Pure, dependency-free types and helpers shared by the Next.js web app and the Expo app. Consumed as TypeScript source.",
+  "main": "src/index.ts",
+  "types": "src/index.ts"
+}

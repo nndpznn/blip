@@ -1,6 +1,6 @@
 import { Button } from "@heroui/react";
 import { useState, useEffect, useRef } from "react";
-import { searchPlaces, type PlaceSuggestion, type SearchBias } from "@/util/photon";
+import { searchPlaces, type PlaceSuggestion, type SearchBias } from "@blip/shared";
 
 export interface SearchResult {
   name: string;

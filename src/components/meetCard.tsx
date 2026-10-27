@@ -11,7 +11,7 @@ import { useAuth } from "@/clients/authContext";
 import { useLoginPrompt } from "@/hooks/useLoginPrompt";
 import { useSingleFlight } from "@/hooks/useSingleFlight";
 import { setRsvp } from "@/lib/rsvp";
-import { isMeetInFuture, type MeetRow } from "@/util/meetDates";
+import { isMeetInFuture, type MeetRow } from "@blip/shared";
 
 /** Matches prior `h-90` intent (22.5rem) so grid cards stay a consistent size. */
 const CARD_HEIGHT_CLASS = "h-[22.5rem]";

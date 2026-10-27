@@ -6,7 +6,7 @@ import {
 	planMeetPage,
 	type MeetCursor,
 	type MeetSort,
-} from "@/util/meetPaging";
+} from "@blip/shared";
 
 /** Only what meet cards render; skips `links`/`mapsLink` and anything else on the row. */
 const LIST_COLUMNS = "id, created_at, title, body, images, date, startTime, endTime, organizerId, location";
