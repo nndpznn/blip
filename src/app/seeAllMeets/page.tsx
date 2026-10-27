@@ -11,7 +11,7 @@ import {
 	nextCursor,
 	type MeetCursor,
 	type MeetSort,
-} from "@/util/meetPaging";
+} from "@blip/shared";
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button, Checkbox, Spinner } from "@heroui/react";
 
 /** Maps meet id -> attendee count. Keys are String(meet.id) for UUID-safe lookup. */

@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "Blip",
+    "slug": "blip",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "blip",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0d0d0d",
+    "ios": {
+      "bundleIdentifier": "com.nndpznn.blip",
+      "supportsTablet": false,
+      "usesAppleSignIn": true
+    },
+    "android": {
+      "package": "com.nndpznn.blip",
+      "adaptiveIcon": {
+        "backgroundColor": "#0d0d0d",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0d0d0d",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 120
+        }
+      ],
+      "@maplibre/maplibre-react-native",
+      "expo-secure-store",
+      "expo-web-browser",
+      "expo-apple-authentication",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Blip uses your photos so you can add pictures to a meet.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      "@react-native-community/datetimepicker"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

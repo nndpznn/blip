@@ -11,7 +11,7 @@ import { supabase } from '@/clients/supabaseClient'
 import { fetchAttendeeSummary } from '@/lib/meets'
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button, Checkbox } from "@heroui/react";
 import { usePageAccent } from "@/contexts/PageAccentContext";
-import { getMeetDateTime, isMeetInFuture, type MeetRow } from "@/util/meetDates";
+import { getMeetDateTime, isMeetInFuture, type MeetRow } from "@blip/shared";
 
 /** Maps meet id -> attendee count (from batch fetch). Keys are String(meet.id) for UUID-safe lookup. */
 type AttendeeCountMap = Record<string, number>;

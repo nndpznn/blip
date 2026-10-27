@@ -3,7 +3,7 @@
 import { useAuth } from "@/clients/authContext";
 import { supabase } from "@/clients/supabaseClient";
 import { fetchUserByUID } from "@/hooks/fetchUserbyUID";
-import { ilikeLiteral } from "@/util/username";
+import { ilikeLiteral } from "@blip/shared";
 import { useEffect, useState, useCallback } from "react";
 import User, { ProfileRow } from "@/models/user";
 import { Button, Input, Spinner, useDisclosure } from "@heroui/react"

@@ -1,17 +1,10 @@
 import { supabase } from "@/clients/supabaseClient"
 import { Time, parseDate, CalendarDate } from "@internationalized/date";
-import { encodeToGoogleMaps } from "@/util/encodeToGoogleMaps";
+import { encodeToGoogleMaps } from "@blip/shared";
 
-export interface LocationData {
-    name: string;           // e.g., "Whole Foods" or "595 Redwood Highway"
-    address: string;        // The full formatted address string
-    mapbox_id: string | null; // Legacy (Mapbox-era) records only; new places store null
-    coordinates: [number, number]; // Strictly a tuple of [lng, lat]
-    metadata?: {
-        category?: string;
-        is_poi: boolean;
-    };
-}
+// `LocationData` lives in the shared package so the mobile app uses the same type; re-exported for existing imports.
+import type { LocationData } from "@blip/shared";
+export type { LocationData };
 
 // Image-limit helpers live in a dependency-free module so they can be unit tested; re-exported for existing imports.
 import {
@@ -19,7 +12,7 @@ import {
 	MEET_IMAGE_MAX_COUNT,
 	isMeetImageOverLimit,
 	filesWithinMeetImageLimit,
-} from "@/util/meetImageLimits";
+} from "@blip/shared";
 export {
 	MEET_IMAGE_MAX_BYTES,
 	MEET_IMAGE_MAX_COUNT,

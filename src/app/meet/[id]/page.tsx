@@ -31,8 +31,8 @@ import { useAuth } from "@/clients/authContext";
 
 import {Calendar} from '@heroui/calendar'
 import { Time, today, getLocalTimeZone, CalendarDate, parseDate, parseTime } from "@internationalized/date";
-import { to12Hour } from "@/util/politeTimeString";
-import { encodeToGoogleMaps } from "@/util/encodeToGoogleMaps";
+import { to12Hour } from "@blip/shared";
+import { encodeToGoogleMaps } from "@blip/shared";
 import { useSingleFlight } from "@/hooks/useSingleFlight";
 import { setRsvp } from "@/lib/rsvp";
 
@@ -43,7 +43,7 @@ import { fetchUserByUID } from "@/hooks/fetchUserbyUID";
 import Searchbar from "@/components/searchbar";
 import { LocationData } from "@/models/meet";
 import { moveItemDown, moveItemUp } from "@/util/reorderArray";
-import { meetFetchStatus, type MeetLoadStatus } from "@/util/meetLoadStatus";
+import { meetFetchStatus, type MeetLoadStatus } from "@blip/shared";
 
 import UserCard from "@/components/userCard";
 import MeetImageGallery from "@/components/MeetImageGallery";

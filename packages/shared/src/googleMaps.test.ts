@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { encodeToGoogleMaps } from "./encodeToGoogleMaps";
+import { encodeToGoogleMaps } from "./googleMaps";
 
 const query = (url: string) => new URL(url).searchParams;
 
