@@ -2,18 +2,16 @@ import { supabase } from '@/clients/supabaseClient'
 import { PUBLIC_PROFILE_COLUMNS, type ProfileRow } from '@/models/user'
 
 /**
- * Loads a profile. By default only public columns are requested (never `email`), so this
- * works for logged-out visitors. Pass `includeEmail` only for the signed-in user's own profile.
+ * Loads a profile using only public columns (never `email`), so this works for logged-out
+ * visitors. The signed-in user's own email comes from the auth session (`user.email`); the
+ * database does not let any role read `profiles.email`.
  * Returns null when the profile can't be loaded.
  */
-export async function fetchUserByUID(
-  uid: string,
-  options: { includeEmail?: boolean } = {},
-): Promise<ProfileRow | null> {
+export async function fetchUserByUID(uid: string): Promise<ProfileRow | null> {
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select(options.includeEmail ? '*' : PUBLIC_PROFILE_COLUMNS)
+      .select(PUBLIC_PROFILE_COLUMNS)
       .eq('id', uid)
       .single()
 
