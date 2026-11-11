@@ -18,6 +18,8 @@ import Meet, {
 import { useAuth } from "@/clients/authContext";
 import MeetImagePreviewList from "@/components/MeetImagePreviewList";
 import Searchbar from "@/components/searchbar";
+import CharCounter from "@/components/CharCounter";
+import { MEET_BODY_MAX_LENGTH, MEET_LINKS_MAX_LENGTH, MEET_TITLE_MAX_LENGTH } from "@blip/shared";
 import { moveItemDown, moveItemUp } from "@/util/reorderArray";
 
 export default function Create() {
@@ -183,10 +185,14 @@ export default function Create() {
 							<p className="text-md ml-2 font-bold">(25 chars. max)</p>
 						</div>
 					
-						<Input value={title} onChange={e => setTitle(e.target.value)}size="md" type="text" />
+						<CharCounter value={title} max={MEET_TITLE_MAX_LENGTH}>
+							<Input value={title} onChange={e => setTitle(e.target.value)} size="md" type="text" classNames={{ input: "pr-10" }} />
+						</CharCounter>
 						
 						<p className="mt-5 text-xl font-bold">Body</p>
-						<Textarea minRows={4} maxRows={4} value={body} onChange={e => setBody(e.target.value)} size="md" type="text" />
+						<CharCounter value={body} max={MEET_BODY_MAX_LENGTH}>
+							<Textarea minRows={4} maxRows={4} value={body} onChange={e => setBody(e.target.value)} maxLength={MEET_BODY_MAX_LENGTH} size="md" type="text" classNames={{ input: "pb-4" }} />
+						</CharCounter>
 						
 						<p className="mt-5 text-xl font-bold">Location</p>
 						<Searchbar 
@@ -208,7 +214,9 @@ export default function Create() {
 						{/* <Input value={address} onChange={e => setAddress(e.target.value)}size="md" type="text" /> */}
 						
 						<p className="mt-5 text-xl font-bold">Links (Optional)</p>
-						<Input value={links} onChange={e => setLinks(e.target.value)}size="md" type="text" />
+						<CharCounter value={links} max={MEET_LINKS_MAX_LENGTH}>
+							<Input value={links} onChange={e => setLinks(e.target.value)} maxLength={MEET_LINKS_MAX_LENGTH} size="md" type="text" classNames={{ input: "pr-10" }} />
+						</CharCounter>
 					</div>
 
 					<div id="calendar" className="ml-10 flex min-h-0 min-w-0 w-2/5 flex-col items-center">

@@ -23,8 +23,10 @@ describe("validateMeetForm", () => {
 		}
 	});
 
-	it("limits the title length", () => {
+	it("limits the title and body length", () => {
 		assert.match(validateMeetForm({ ...valid, title: "x".repeat(26) }) ?? "", /too long/);
+		assert.match(validateMeetForm({ ...valid, body: "x".repeat(5001) }) ?? "", /Body is too long/);
+		assert.equal(validateMeetForm({ ...valid, body: "x".repeat(5000) }), null);
 		assert.equal(validateMeetForm({ ...valid, title: "x".repeat(25) }), null);
 	});
 
