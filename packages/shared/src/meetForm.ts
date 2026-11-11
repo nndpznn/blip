@@ -4,6 +4,9 @@
  */
 
 export const MEET_TITLE_MAX_LENGTH = 25;
+/** Mirrors the `meets_body_length` / `meets_links_length` database constraints. */
+export const MEET_BODY_MAX_LENGTH = 5000;
+export const MEET_LINKS_MAX_LENGTH = 500;
 
 export interface MeetFormInput {
 	title: string;
@@ -40,6 +43,9 @@ export function validateMeetForm(input: MeetFormInput): string | null {
 	}
 	if (title.length > MEET_TITLE_MAX_LENGTH) {
 		return `Title is too long (${title.length} chars). Limit to ${MEET_TITLE_MAX_LENGTH} characters, please!`;
+	}
+	if (input.body.length > MEET_BODY_MAX_LENGTH) {
+		return `Body is too long (${input.body.length} chars). Limit to ${MEET_BODY_MAX_LENGTH} characters, please!`;
 	}
 	const start = toMinutes(input.startTime);
 	const end = toMinutes(input.endTime);

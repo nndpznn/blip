@@ -4,7 +4,7 @@ export interface ProfileRow {
     id: string;
     fullname: string;
     username: string;
-	/** Only present on the signed-in user's own profile; other people's rows never include it. */
+	/** Never returned by the database; the signed-in user's email comes from the auth session. */
 	email?: string;
     headline: string;
     bio: string;
@@ -73,7 +73,7 @@ class User {
 				profile_color: this.profile_color
 		  })
 		  .eq("id", user.id)
-		  .select("*")
+		  .select(PUBLIC_PROFILE_COLUMNS)
 
 		if (error) {
 			const usernameTaken = error.code === "23505";
@@ -83,8 +83,7 @@ class User {
 		
 		if (!data || data.length === 0) return { profile: null, usernameTaken: false };
 
-		console.log("Profile data edited:", data[0]);
-		return { profile: data[0], usernameTaken: false };
+		return { profile: data[0] as unknown as ProfileRow, usernameTaken: false };
 	}
 }
   

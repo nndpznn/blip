@@ -1,7 +1,9 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   MEET_IMAGE_MAX_BYTES,
+  MEET_BODY_MAX_LENGTH,
   MEET_IMAGE_MAX_COUNT,
+  MEET_LINKS_MAX_LENGTH,
   MEET_TITLE_MAX_LENGTH,
   filesWithinMeetImageLimit,
   fromColumns,
@@ -14,11 +16,12 @@ import {
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { removeUploadedImages, uploadMeetImage, type MeetDraft, type PendingImage } from '@/lib/meetWrite';
 import { colors } from '@/theme';
 
+import { CounterInput } from './CounterInput';
 import { PlacePicker } from './PlacePicker';
 
 type ImageSlot =
@@ -247,16 +250,16 @@ export function MeetForm({
       <Text style={labelStyle}>
         Title <Text style={{ color: colors.textMuted, fontWeight: '400' }}>({MEET_TITLE_MAX_LENGTH} chars max)</Text>
       </Text>
-      <TextInput value={title} onChangeText={setTitle} maxLength={MEET_TITLE_MAX_LENGTH + 10} style={inputStyle} placeholderTextColor={colors.textMuted} />
+      <CounterInput value={title} max={MEET_TITLE_MAX_LENGTH} onChangeText={setTitle} maxLength={MEET_TITLE_MAX_LENGTH + 10} style={inputStyle} />
 
       <Text style={labelStyle}>Body</Text>
-      <TextInput value={body} onChangeText={setBody} multiline style={[inputStyle, { minHeight: 110, textAlignVertical: 'top' }]} placeholderTextColor={colors.textMuted} />
+      <CounterInput value={body} max={MEET_BODY_MAX_LENGTH} onChangeText={setBody} maxLength={MEET_BODY_MAX_LENGTH} multiline style={[inputStyle, { minHeight: 110, textAlignVertical: 'top' }]} />
 
       <Text style={labelStyle}>Location</Text>
       <PlacePicker value={location} onChange={setLocation} />
 
       <Text style={labelStyle}>Links (optional)</Text>
-      <TextInput value={links} onChangeText={setLinks} autoCapitalize="none" autoCorrect={false} keyboardType="url" style={inputStyle} placeholderTextColor={colors.textMuted} />
+      <CounterInput value={links} max={MEET_LINKS_MAX_LENGTH} onChangeText={setLinks} maxLength={MEET_LINKS_MAX_LENGTH} autoCapitalize="none" autoCorrect={false} keyboardType="url" style={inputStyle} />
 
       <Text style={labelStyle}>Date</Text>
       <View style={{ flexDirection: 'row' }}>

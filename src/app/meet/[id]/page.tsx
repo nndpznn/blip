@@ -31,7 +31,8 @@ import { useAuth } from "@/clients/authContext";
 
 import {Calendar} from '@heroui/calendar'
 import { Time, today, getLocalTimeZone, CalendarDate, parseDate, parseTime } from "@internationalized/date";
-import { to12Hour } from "@blip/shared";
+import { MEET_BODY_MAX_LENGTH, MEET_TITLE_MAX_LENGTH, to12Hour } from "@blip/shared";
+import CharCounter from "@/components/CharCounter";
 import { encodeToGoogleMaps } from "@blip/shared";
 import { useSingleFlight } from "@/hooks/useSingleFlight";
 import { setRsvp } from "@/lib/rsvp";
@@ -652,10 +653,14 @@ export default function MeetDetail() {
 						<div className="mb-5 flex min-h-0 flex-1 items-stretch overflow-hidden">
 							<div id="fields" className="min-h-0 min-w-0 w-2/5">
 								<p className="text-xl font-bold">Title</p>
-								<Input value={title} onChange={e => setTitle(e.target.value)}size="md" type="text" />
+								<CharCounter value={title} max={MEET_TITLE_MAX_LENGTH}>
+									<Input value={title} onChange={e => setTitle(e.target.value)} size="md" type="text" classNames={{ input: "pr-10" }} />
+								</CharCounter>
 								
 								<p className="mt-5 text-xl font-bold">Body</p>
-								<Textarea minRows={4} maxRows={4} value={body} onChange={e => setBody(e.target.value)} size="md" type="text" />
+								<CharCounter value={body} max={MEET_BODY_MAX_LENGTH}>
+									<Textarea minRows={4} maxRows={4} value={body} onChange={e => setBody(e.target.value)} maxLength={MEET_BODY_MAX_LENGTH} size="md" type="text" classNames={{ input: "pb-4" }} />
+								</CharCounter>
 								
 								<p className="mt-5 text-xl font-bold">NEW Location (Leave blank if not changing)</p>
 								<Searchbar 

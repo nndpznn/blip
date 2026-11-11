@@ -6,6 +6,35 @@ const SECURITY_HEADERS: Record<string, string> = {
 	'X-Content-Type-Options': 'nosniff',
 	'Referrer-Policy': 'strict-origin-when-cross-origin',
 	'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+	// Browsers ignore HSTS over plain http (e.g. localhost), so this is safe to send everywhere.
+	// No includeSubDomains/preload on purpose: widen only once every subdomain is known to be https.
+	'Strict-Transport-Security': 'max-age=31536000',
+	// Report-only first: violations show in the browser console without breaking anything.
+	// Promote to `Content-Security-Policy` once /map, /meets, /create, /profile and meet pages are clean.
+	// 'unsafe-inline' for scripts/styles is needed by Next.js/HeroUI until nonces are wired up.
+	'Content-Security-Policy-Report-Only': buildCsp(),
+}
+
+function buildCsp(): string {
+	const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+	const supabaseWs = supabaseUrl.replace(/^http/, 'ws')
+	const directives = [
+		"default-src 'self'",
+		// 'unsafe-eval' only outside production (React dev tooling needs it).
+		`script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'production' ? '' : " 'unsafe-eval'"}`,
+		"style-src 'self' 'unsafe-inline'",
+		// Meet photos come from Supabase Storage; the map draws tiles/sprites onto canvas and blobs.
+		`img-src 'self' data: blob: ${supabaseUrl} https://tiles.openfreemap.org`,
+		"font-src 'self' data: https://tiles.openfreemap.org",
+		// Supabase REST/auth/realtime, map style + tiles + glyphs, Photon geocoder, Formspree issue form.
+		`connect-src 'self' ${supabaseUrl} ${supabaseWs} https://tiles.openfreemap.org https://photon.komoot.io https://formspree.io`,
+		"worker-src 'self' blob:",
+		"frame-ancestors 'none'",
+		"base-uri 'self'",
+		"form-action 'self'",
+		"object-src 'none'",
+	]
+	return directives.join('; ')
 }
 
 const PROTECTED_PATHS = ['/create', '/profile', '/user']
